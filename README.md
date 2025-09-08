@@ -1,4 +1,4 @@
-## todo_backend — Gin + クリーンアーキテクチャ + GORM
+## stock_backend — Gin + クリーンアーキテクチャ + GORM
 
 Go 言語で構築したシンプルな 株価表示アプリの バックエンドです。Gin（HTTP サーバ）、クリーンアーキテクチャ（domain / usecase / interface / infrastructure）、GORM（ORM）を採用しています。デフォルトでは SQLite を利用しますが、DI により MySQL / PostgreSQL などに容易に差し替え可能です。
 
