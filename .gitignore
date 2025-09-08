@@ -1,0 +1,18 @@
+# バイナリファイル
+*.exe
+*.test
+*.out
+todo_backend
+
+# IDE / OS設定ファイル
+.idea/
+.vscode/
+.DS_Store
+
+# ログ・設定
+*.log
+.env
+.env.*
+
+# データベース
+*.db
