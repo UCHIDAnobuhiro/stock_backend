@@ -12,6 +12,8 @@ import (
 
 	"todo_backend/internal/domain"
 	"todo_backend/internal/infrastructure"
+	"todo_backend/internal/infrastructure/externalapi/twelvedata"
+	"todo_backend/internal/infrastructure/http"
 	"todo_backend/internal/infrastructure/mysql"
 	"todo_backend/internal/interface/handler"
 	"todo_backend/internal/usecase"
@@ -36,17 +38,23 @@ func main() {
 		log.Fatalf("failed to migrate: %v", err)
 	}
 
+	cfg := twelvedata.LoadConfig()
+	httpClient := http.NewHTTPClient(cfg.Timeout)
+
 	// Repository
 	userRepo := mysql.NewUserMySQL(db)
+	marketRepo := twelvedata.NewTwelveDataMarket(cfg, httpClient)
 
 	// Usecase
 	authUC := usecase.NewAuthUsecase(userRepo)
+	candlesUC := usecase.NewCandlesUsecase(marketRepo)
 
 	// Handler
 	authH := handler.NewAuthHandler(authUC)
+	candlesH := handler.NewCandlesHandler(candlesUC)
 
 	// ルータ生成
-	router := infrastructure.NewRouter(authH)
+	router := infrastructure.NewRouter(authH, candlesH)
 
 	// CORS追加
 	router.Use(cors.Default())
