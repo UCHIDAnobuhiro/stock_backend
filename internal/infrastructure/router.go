@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(authHandler *handler.AuthHandler) *gin.Engine {
+func NewRouter(authHandler *handler.AuthHandler, candles *handler.CandlesHandler) *gin.Engine {
 	r := gin.Default()
 	// CORS のデフォルト設定を有効
 	r.Use(cors.Default())
@@ -26,7 +26,13 @@ func NewRouter(authHandler *handler.AuthHandler) *gin.Engine {
 	// → リクエストヘッダーに JWT が必要になる
 	auth.Use(jwtmw.AuthRequired())
 	{
+		auth.GET("/healthz", handler.Health)
+		auth.GET("/candles/:code", candles.GetCandlesHandler)
 	}
+
+	// TODO:開発用。不要になったら削除
+	// r.GET("/healthz", handler.Health)
+	// r.GET("/candles/:code", candles.GetCandlesHandler)
 
 	return r
 }
