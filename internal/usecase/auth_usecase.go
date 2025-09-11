@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"todo_backend/internal/domain"
-	"todo_backend/internal/interface/repository"
+	"todo_backend/internal/domain/entity"
+	"todo_backend/internal/domain/repository"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -41,7 +41,7 @@ func (u *authUsecase) Signup(email, password string) error {
 	if err != nil {
 		return err
 	}
-	user := &domain.User{Email: email, Password: string(hashed)}
+	user := &entity.User{Email: email, Password: string(hashed)}
 	return u.users.Create(user)
 }
 
