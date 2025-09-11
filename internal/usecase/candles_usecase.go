@@ -2,8 +2,8 @@ package usecase
 
 import (
 	"context"
-	"todo_backend/internal/domain"
-	"todo_backend/internal/interface/repository"
+	"todo_backend/internal/domain/entity"
+	"todo_backend/internal/domain/repository"
 )
 
 type CandlesUsecase struct {
@@ -15,7 +15,7 @@ func NewCandlesUsecase(market repository.MarketRepository) *CandlesUsecase {
 }
 
 // GetCandles は銘柄コードと時間足(interval)を指定してロウソク足データを取得します。
-func (cu *CandlesUsecase) GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]domain.Candle, error) {
+func (cu *CandlesUsecase) GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	if interval == "" {
 		interval = "1day"
 	}

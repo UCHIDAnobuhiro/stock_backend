@@ -10,7 +10,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"todo_backend/internal/domain"
+	"todo_backend/internal/domain/entity"
 	"todo_backend/internal/infrastructure"
 	"todo_backend/internal/infrastructure/externalapi/twelvedata"
 	"todo_backend/internal/infrastructure/http"
@@ -34,7 +34,7 @@ func main() {
 	log.Println("USING_SQLITE:", dbPath)
 
 	// マイグレーション
-	if err := db.AutoMigrate(&domain.User{}); err != nil {
+	if err := db.AutoMigrate(&entity.User{}); err != nil {
 		log.Fatalf("failed to migrate: %v", err)
 	}
 

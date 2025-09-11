@@ -8,9 +8,9 @@ import (
 	"net/url"
 	"strconv"
 	"time"
-	"todo_backend/internal/domain"
+	"todo_backend/internal/domain/entity"
+	"todo_backend/internal/domain/repository"
 	"todo_backend/internal/interface/dto"
-	"todo_backend/internal/interface/repository"
 )
 
 type TwelveDataMarket struct {
@@ -23,7 +23,7 @@ func NewTwelveDataMarket(cfg Config, client *http.Client) repository.MarketRepos
 }
 
 // GetTimeSeries は Twelve Data API から株価の時系列データを取得し、domain.Candle のスライスとして返します。
-func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int) ([]domain.Candle, error) {
+func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	q := url.Values{}
 	// クエリの追加
 	q.Set("symbol", symbol)
@@ -61,7 +61,7 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 		return nil, fmt.Errorf("twelvedata: %s", body.Message)
 	}
 
-	candles := make([]domain.Candle, 0, len(body.Values))
+	candles := make([]entity.Candle, 0, len(body.Values))
 	for _, v := range body.Values {
 
 		// 時間
@@ -99,7 +99,7 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 		}
 
 		// domainに変換
-		candles = append(candles, domain.Candle{
+		candles = append(candles, entity.Candle{
 			Time:   tm,
 			Open:   o,
 			High:   h,

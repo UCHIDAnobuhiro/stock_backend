@@ -1,8 +1,8 @@
 package mysql
 
 import (
-	"todo_backend/internal/domain"
-	"todo_backend/internal/interface/repository"
+	"todo_backend/internal/domain/entity"
+	"todo_backend/internal/domain/repository"
 
 	"gorm.io/gorm"
 )
@@ -23,14 +23,14 @@ func NewUserMySQL(db *gorm.DB) *userMySQL {
 }
 
 // CreateはユーザをDBに追加します。
-func (r *userMySQL) Create(u *domain.User) error {
+func (r *userMySQL) Create(u *entity.User) error {
 	return r.db.Create(u).Error
 }
 
 // FindByEmailはEmailをキーにユーザを検索します。
 // 該当するユーザが存在しない場合はエラーを返します。
-func (r *userMySQL) FindByEmail(email string) (*domain.User, error) {
-	var u domain.User
+func (r *userMySQL) FindByEmail(email string) (*entity.User, error) {
+	var u entity.User
 	if err := r.db.Where("email = ?", email).First(&u).Error; err != nil {
 		return nil, err
 	}
@@ -39,8 +39,8 @@ func (r *userMySQL) FindByEmail(email string) (*domain.User, error) {
 
 // FindByIDはIDをキーにユーザを検索します。
 // 該当するユーザが存在しない場合、エラーを返します。
-func (r *userMySQL) FindByID(id uint) (*domain.User, error) {
-	var u domain.User
+func (r *userMySQL) FindByID(id uint) (*entity.User, error) {
+	var u entity.User
 	if err := r.db.First(&u, id).Error; err != nil {
 		return nil, err
 	}
