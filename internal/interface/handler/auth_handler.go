@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	"todo_backend/internal/usecase"
+	"stock_backend/internal/usecase"
 
 	"github.com/gin-gonic/gin"
 )

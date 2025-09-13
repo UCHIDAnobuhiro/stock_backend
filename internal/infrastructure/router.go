@@ -1,8 +1,8 @@
 package infrastructure
 
 import (
-	jwtmw "todo_backend/internal/infrastructure/jwt"
-	"todo_backend/internal/interface/handler"
+	jwtmw "stock_backend/internal/infrastructure/jwt"
+	"stock_backend/internal/interface/handler"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"

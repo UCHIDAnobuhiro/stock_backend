@@ -1,8 +1,8 @@
 package mysql
 
 import (
-	"todo_backend/internal/domain/entity"
-	"todo_backend/internal/domain/repository"
+	"stock_backend/internal/domain/entity"
+	"stock_backend/internal/domain/repository"
 
 	"gorm.io/gorm"
 )

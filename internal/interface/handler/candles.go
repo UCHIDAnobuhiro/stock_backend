@@ -3,9 +3,9 @@ package handler
 
 import (
 	"net/http"
+	"stock_backend/internal/interface/dto"
+	"stock_backend/internal/usecase"
 	"strconv"
-	"todo_backend/internal/interface/dto"
-	"todo_backend/internal/usecase"
 
 	"github.com/gin-gonic/gin"
 )
