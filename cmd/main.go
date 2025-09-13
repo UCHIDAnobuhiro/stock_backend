@@ -44,17 +44,20 @@ func main() {
 	// Repository
 	userRepo := mysql.NewUserMySQL(db)
 	marketRepo := twelvedata.NewTwelveDataMarket(cfg, httpClient)
+	symbolRepo := mysql.NewSymbolRepository(db)
 
 	// Usecase
 	authUC := usecase.NewAuthUsecase(userRepo)
 	candlesUC := usecase.NewCandlesUsecase(marketRepo)
+	symbolUC := usecase.NewSymbolUsecase(symbolRepo)
 
 	// Handler
 	authH := handler.NewAuthHandler(authUC)
 	candlesH := handler.NewCandlesHandler(candlesUC)
+	symbolH := handler.NewSymbolHandler(symbolUC)
 
 	// ルータ生成
-	router := infrastructure.NewRouter(authH, candlesH)
+	router := infrastructure.NewRouter(authH, candlesH, symbolH)
 
 	// CORS追加
 	router.Use(cors.Default())
