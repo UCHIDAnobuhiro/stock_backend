@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"todo_backend/internal/domain/entity"
+	"stock_backend/internal/domain/entity"
 )
 
 // MarketRepository　は株価データを取得するリポジトリのインターフェイスです。

@@ -10,13 +10,13 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"todo_backend/internal/domain/entity"
-	"todo_backend/internal/infrastructure"
-	"todo_backend/internal/infrastructure/externalapi/twelvedata"
-	"todo_backend/internal/infrastructure/http"
-	"todo_backend/internal/infrastructure/mysql"
-	"todo_backend/internal/interface/handler"
-	"todo_backend/internal/usecase"
+	"stock_backend/internal/domain/entity"
+	"stock_backend/internal/infrastructure"
+	"stock_backend/internal/infrastructure/externalapi/twelvedata"
+	"stock_backend/internal/infrastructure/http"
+	"stock_backend/internal/infrastructure/mysql"
+	"stock_backend/internal/interface/handler"
+	"stock_backend/internal/usecase"
 )
 
 func main() {
@@ -44,17 +44,20 @@ func main() {
 	// Repository
 	userRepo := mysql.NewUserMySQL(db)
 	marketRepo := twelvedata.NewTwelveDataMarket(cfg, httpClient)
+	symbolRepo := mysql.NewSymbolRepository(db)
 
 	// Usecase
 	authUC := usecase.NewAuthUsecase(userRepo)
 	candlesUC := usecase.NewCandlesUsecase(marketRepo)
+	symbolUC := usecase.NewSymbolUsecase(symbolRepo)
 
 	// Handler
 	authH := handler.NewAuthHandler(authUC)
 	candlesH := handler.NewCandlesHandler(candlesUC)
+	symbolH := handler.NewSymbolHandler(symbolUC)
 
 	// ルータ生成
-	router := infrastructure.NewRouter(authH, candlesH)
+	router := infrastructure.NewRouter(authH, candlesH, symbolH)
 
 	// CORS追加
 	router.Use(cors.Default())
