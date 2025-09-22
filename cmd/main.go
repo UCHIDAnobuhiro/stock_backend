@@ -34,7 +34,10 @@ func main() {
 	log.Println("USING_SQLITE:", dbPath)
 
 	// マイグレーション
-	if err := db.AutoMigrate(&entity.User{}); err != nil {
+	if err := db.AutoMigrate(
+		&entity.User{},
+		&mysql.CandleModel{},
+	); err != nil {
 		log.Fatalf("failed to migrate: %v", err)
 	}
 
@@ -45,10 +48,11 @@ func main() {
 	userRepo := mysql.NewUserMySQL(db)
 	marketRepo := twelvedata.NewTwelveDataMarket(cfg, httpClient)
 	symbolRepo := mysql.NewSymbolRepository(db)
+	candleRepo := mysql.NewCandleRepository(db)
 
 	// Usecase
 	authUC := usecase.NewAuthUsecase(userRepo)
-	candlesUC := usecase.NewCandlesUsecase(marketRepo)
+	candlesUC := usecase.NewCandlesUsecase(marketRepo, candleRepo)
 	symbolUC := usecase.NewSymbolUsecase(symbolRepo)
 
 	// Handler
