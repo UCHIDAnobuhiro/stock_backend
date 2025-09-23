@@ -7,4 +7,6 @@ import (
 
 type SymbolRepository interface {
 	ListActive(ctx context.Context) ([]entity.Symbol, error)
+
+	ListActiveCodes(ctx context.Context) ([]string, error)
 }

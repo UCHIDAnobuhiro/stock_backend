@@ -28,3 +28,16 @@ func (r *symbolMySQL) ListActive(ctx context.Context) ([]entity.Symbol, error) {
 	}
 	return symbols, nil
 }
+
+func (r *symbolMySQL) ListActiveCodes(ctx context.Context) ([]string, error) {
+	var codes []string
+	if err := r.db.WithContext(ctx).
+		Model(&entity.Symbol{}).
+		Where("is_active = ?", true).
+		Distinct("code").
+		Order("sort_key ASC").
+		Pluck("code", &codes).Error; err != nil {
+		return nil, err
+	}
+	return codes, nil
+}
