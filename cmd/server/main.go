@@ -3,17 +3,11 @@ package main
 import (
 	"log"
 	"os"
-	"path/filepath"
 
 	"github.com/gin-contrib/cors"
 	"github.com/joho/godotenv"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 
-	"stock_backend/internal/domain/entity"
 	"stock_backend/internal/infrastructure"
-	"stock_backend/internal/infrastructure/externalapi/twelvedata"
-	"stock_backend/internal/infrastructure/http"
 	"stock_backend/internal/infrastructure/mysql"
 	"stock_backend/internal/interface/handler"
 	"stock_backend/internal/usecase"
@@ -25,28 +19,12 @@ func main() {
 		log.Println("[INFO] .env not found; using system environment variables")
 	}
 
-	// DB初期化（今回はSQLite）
-	db, err := gorm.Open(sqlite.Open("./stock.db"), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
-	dbPath, _ := filepath.Abs("./stock.db")
-	log.Println("USING_SQLITE:", dbPath)
-
-	// マイグレーション
-	if err := db.AutoMigrate(
-		&entity.User{},
-		&mysql.CandleModel{},
-	); err != nil {
-		log.Fatalf("failed to migrate: %v", err)
-	}
-
-	cfg := twelvedata.LoadConfig()
-	httpClient := http.NewHTTPClient(cfg.Timeout)
+	// db
+	db := infrastructure.OpenDB()
 
 	// Repository
 	userRepo := mysql.NewUserMySQL(db)
-	marketRepo := twelvedata.NewTwelveDataMarket(cfg, httpClient)
+	marketRepo := infrastructure.NewMarket()
 	symbolRepo := mysql.NewSymbolRepository(db)
 	candleRepo := mysql.NewCandleRepository(db)
 
