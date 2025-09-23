@@ -4,6 +4,7 @@ package entity
 import "time"
 
 type Symbol struct {
+	ID        uint `gorm:"primaryKey"`
 	Code      string
 	Name      string
 	Market    string
