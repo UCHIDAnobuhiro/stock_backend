@@ -27,13 +27,14 @@ func NewRouter(authHandler *handler.AuthHandler, candles *handler.CandlesHandler
 	// → リクエストヘッダーに JWT が必要になる
 	auth.Use(jwtmw.AuthRequired())
 	{
-		auth.GET("/healthz", handler.Health)
 		auth.GET("/candles/:code", candles.GetCandlesHandler)
 		auth.GET("/symbols", symbol.List)
 	}
 
+	// 導通確認用
+	r.GET("/healthz", handler.Health)
+
 	// TODO:開発用。不要になったら削除
-	// r.GET("/healthz", handler.Health)
 	// r.GET("/candles/:code", candles.GetCandlesHandler)
 	// r.GET("/symbols", symbol.List)
 
