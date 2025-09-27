@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 	"stock_backend/internal/domain/entity"
-	dbmodel "stock_backend/internal/infrastructure/mysql"
+	mysqlrepo "stock_backend/internal/infrastructure/mysql"
 
-	"gorm.io/driver/mysql"
+	gmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -23,7 +23,7 @@ func OpenDB() *gorm.DB {
 
 	fmt.Println("DSN=", dsn)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(gmysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
@@ -31,7 +31,7 @@ func OpenDB() *gorm.DB {
 	// マイグレーション（User, Candle など）
 	if err := db.AutoMigrate(
 		&entity.User{},
-		&dbmodel.CandleModel{},
+		&mysqlrepo.CandleModel{},
 	); err != nil {
 		log.Fatalf("failed to migrate: %v", err)
 	}
