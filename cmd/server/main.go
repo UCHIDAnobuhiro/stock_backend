@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"stock_backend/internal/infrastructure"
+	"stock_backend/internal/infrastructure/db"
 	"stock_backend/internal/infrastructure/mysql"
 	"stock_backend/internal/interface/handler"
 	"stock_backend/internal/usecase"
@@ -20,7 +21,7 @@ func main() {
 	}
 
 	// db
-	db := infrastructure.OpenDB()
+	db := db.OpenDB()
 
 	// Repository
 	userRepo := mysql.NewUserMySQL(db)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"stock_backend/internal/infrastructure"
+	"stock_backend/internal/infrastructure/db"
 	"stock_backend/internal/infrastructure/mysql"
 	"stock_backend/internal/usecase"
 	"time"
@@ -17,7 +18,7 @@ func main() {
 		log.Println("[INFO] .env not found; using system environment variables")
 	}
 
-	db := infrastructure.OpenDB()
+	db := db.OpenDB()
 	marketRepo := infrastructure.NewMarket()
 	candleRepo := mysql.NewCandleRepository(db)
 	symbolRepo := mysql.NewSymbolRepository(db)
