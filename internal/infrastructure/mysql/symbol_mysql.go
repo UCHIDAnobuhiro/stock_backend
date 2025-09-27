@@ -34,7 +34,6 @@ func (r *symbolMySQL) ListActiveCodes(ctx context.Context) ([]string, error) {
 	if err := r.db.WithContext(ctx).
 		Model(&entity.Symbol{}).
 		Where("is_active = ?", true).
-		Distinct("code").
 		Order("sort_key ASC").
 		Pluck("code", &codes).Error; err != nil {
 		return nil, err

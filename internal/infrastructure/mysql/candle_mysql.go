@@ -68,8 +68,8 @@ func (r *candleMySQL) UpsertBatch(ctx context.Context, candles []entity.Candle) 
 func (r *candleMySQL) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	var rows []CandleModel
 	q := r.db.WithContext(ctx).
-		Where("symbol = ? AND interval = ?", symbol, interval).
-		Order("time DESC")
+		Where("symbol = ? AND `interval` = ?", symbol, interval).
+		Order("`time` DESC")
 	if outputsize > 0 {
 		q = q.Limit(outputsize)
 	}
