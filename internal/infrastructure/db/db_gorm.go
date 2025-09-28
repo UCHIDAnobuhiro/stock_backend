@@ -21,8 +21,6 @@ func OpenDB() *gorm.DB {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
 		user, pass, host, port, name)
 
-	fmt.Println("DSN=", dsn)
-
 	db, err := gorm.Open(gmysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
