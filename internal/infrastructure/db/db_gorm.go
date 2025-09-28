@@ -14,12 +14,20 @@ import (
 func OpenDB() *gorm.DB {
 	user := os.Getenv("DB_USER")
 	pass := os.Getenv("DB_PASSWORD")
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
 	name := os.Getenv("DB_NAME")
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
-		user, pass, host, port, name)
+	instance := os.Getenv("INSTANCE_CONNECTION_NAME")
+
+	var dsn string
+	if instance != "" {
+		dsn = fmt.Sprintf("%s:%s@unix(/cloudsql/%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
+			user, pass, instance, name)
+	} else {
+		host := os.Getenv("DB_HOST")
+		port := os.Getenv("DB_PORT")
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
+			user, pass, host, port, name)
+	}
 
 	db, err := gorm.Open(gmysql.Open(dsn), &gorm.Config{})
 	if err != nil {
