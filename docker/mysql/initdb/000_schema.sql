@@ -1,0 +1,11 @@
+-- docker/mysql/initdb/000_schema.sql
+CREATE TABLE IF NOT EXISTS symbols (
+  id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+  code       VARCHAR(20) NOT NULL UNIQUE,
+  name       VARCHAR(255) NOT NULL,
+  market     VARCHAR(100) NOT NULL,
+  is_active  TINYINT(1) NOT NULL DEFAULT 1,
+  sort_key   INT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+              ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
