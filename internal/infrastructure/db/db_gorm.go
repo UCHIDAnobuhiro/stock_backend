@@ -6,6 +6,7 @@ import (
 	"os"
 	"stock_backend/internal/domain/entity"
 	mysqlrepo "stock_backend/internal/infrastructure/mysql"
+	"time"
 
 	gmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -29,17 +30,33 @@ func OpenDB() *gorm.DB {
 			user, pass, host, port, name)
 	}
 
-	db, err := gorm.Open(gmysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
+	var (
+		db  *gorm.DB
+		err error
+	)
+
+	deadline := time.Now().Add(60 * time.Second)
+	for {
+		db, err = gorm.Open(gmysql.Open(dsn), &gorm.Config{})
+		if err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			log.Fatalf("DB connect failed after 60s: %v", err)
+		}
+		log.Printf("DB connect failed, retrying...: %v", err)
+		time.Sleep(3 * time.Second)
 	}
 
-	// マイグレーション（User, Candle など）
-	if err := db.AutoMigrate(
-		&entity.User{},
-		&mysqlrepo.CandleModel{},
-	); err != nil {
-		log.Fatalf("failed to migrate: %v", err)
+	if os.Getenv("RUN_MIGRATIONS") == "true" {
+		// マイグレーション（User, Candle など）
+		if err := db.AutoMigrate(
+			&entity.User{},
+			&mysqlrepo.CandleModel{},
+		); err != nil {
+			log.Fatalf("failed to migrate: %v", err)
+		}
+
 	}
 
 	return db
