@@ -1,0 +1,21 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o tmp/server ./cmd/server"
+bin = "tmp/server"
+full_bin = "tmp/server"
+log = "build.log"
+delay = 1000
+kill_delay = 500
+send_interrupt = true
+rerun = false
+
+# 監視対象と除外
+include_dir = ["cmd", "internal", "pkg"]
+exclude_dir = ["tmp", ".git", "vendor", "docker", "build"]
+include_ext = ["go", "mod", "sum"]
+exclude_file = ["*_test.go"]
+
+[log]
+time = true

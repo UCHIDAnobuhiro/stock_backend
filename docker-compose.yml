@@ -33,7 +33,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.server
     container_name: stock-backend
     env_file:
       - .env.docker
@@ -47,13 +47,15 @@ services:
   ingest:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.ingest
+    image: stock-ingest:local
+    container_name: stock-ingest
     env_file:
       - .env.docker
     depends_on:
       db:
         condition: service_healthy
-    command: ["./ingest"]
+    profiles: ["on-demand"]
 
 volumes:
   db_data:

@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/gin-contrib/cors"
-	"github.com/joho/godotenv"
 
 	"stock_backend/internal/infrastructure"
 	"stock_backend/internal/infrastructure/db"
@@ -15,11 +14,6 @@ import (
 )
 
 func main() {
-	// .envを読み込む
-	if err := godotenv.Load(".env"); err != nil {
-		log.Println("[INFO] .env not found; using system environment variables")
-	}
-
 	// db
 	db := db.OpenDB()
 
