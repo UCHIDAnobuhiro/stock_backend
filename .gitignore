@@ -16,3 +16,6 @@ todo_backend
 
 # データベース
 *.db
+
+# tmp
+tmp

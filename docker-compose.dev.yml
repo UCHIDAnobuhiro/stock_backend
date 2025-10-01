@@ -1,0 +1,32 @@
+# docker-compose.dev.yml
+version: "3.9"
+services:
+  backend-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.server.dev
+    container_name: stock-backend-dev
+    env_file:
+      - .env.docker
+    environment:
+      APP_ENV: docker-dev
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: appuser
+      DB_PASSWORD: apppass
+      DB_NAME: app
+      RUN_MIGRATIONS: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    # ローカルのソースをマウントして即時反映
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+
+volumes:
+  go-mod-cache:
+  go-build-cache:
