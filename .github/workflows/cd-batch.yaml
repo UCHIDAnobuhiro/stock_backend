@@ -1,0 +1,87 @@
+name: CD to Cloud Run Jobs (Batch, all secrets)
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - "ingest/**"
+            - ".github/workflows/cd-batch.yml"
+
+permissions:
+    contents: read
+    id-token: write
+
+env:
+    REGION: asia-northeast1
+    JOB_NAME: ingest
+    REGISTRY: asia-northeast1-docker.pkg.dev/stock-app-473503/stock-registry
+    IMAGE_TAG: ${{ github.sha }}
+    DOCKERFILE_PATH: Dockerfile.ingest
+    BUILD_CONTEXT: ingest
+
+jobs:
+    deploy-batch:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Auth to Google Cloud (OIDC/WIF)
+              uses: google-github-actions/auth@v2
+              with:
+                  workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+                  service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+            - name: Setup gcloud
+              uses: google-github-actions/setup-gcloud@v2
+              with:
+                  project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+            - name: Configure Docker for Artifact Registry
+              run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+            - name: Build & Push batch image
+              run: |
+                  IMAGE=${{ env.REGISTRY }}/${{ env.JOB_NAME }}:${{ env.IMAGE_TAG }}
+                  DOCKER_BUILDKIT=1 docker build -t "$IMAGE" -f "${{ env.DOCKERFILE_PATH }}" "${{ env.BUILD_CONTEXT }}"
+                  docker push "$IMAGE"
+                  echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+            # Job の作成 or 更新（存在チェックして分岐）
+            - name: Create/Update Cloud Run Job
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  if gcloud run jobs describe "${{ env.JOB_NAME }}" --region "${{ env.REGION }}" >/dev/null 2>&1; then
+                    CMD="update"
+                  else
+                    CMD="create"
+                  fi
+
+                  # 共通オプション
+                  ARGS=(
+                    "--image=$IMAGE"
+                    "--region=${{ env.REGION }}"
+                    "--tasks=1"
+                    "--max-retries=1"
+                    "--task-timeout=900s"
+                    "--cpu=1" "--memory=512Mi"
+
+                    # ▼ Secret Manager から全環境変数を注入
+                    "--set-secrets \
+                    JWT_SECRET=JWT_SECRET:latest, \
+                    TWELVE_DATA_API_KEY=TWELVE_DATA_API_KEY:latest, \
+                    TWELVE_DATA_BASE_URL=TWELVE_DATA_BASE_URL:latest, \
+                    DB_USER=DB_USER:latest, \
+                    DB_PASSWORD=DB_PASSWORD:latest, \
+                    DB_NAME=DB_NAME:latest, \
+                    INSTANCE_CONNECTION_NAME=INSTANCE_CONNECTION_NAME:latest, \
+                    RUN_MIGRATIONS=RUN_MIGRATIONS:latest" \
+                  )
+
+                  if [ "$CMD" = "create" ]; then
+                    gcloud run jobs create "${{ env.JOB_NAME }}" "${ARGS[@]}"
+                  else
+                    gcloud run jobs update "${{ env.JOB_NAME }}" "${ARGS[@]}"
+                  fi
