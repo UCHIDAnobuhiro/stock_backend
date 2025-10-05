@@ -1,0 +1,73 @@
+name: CD to Cloud Run (API, all secrets)
+
+on:
+    push:
+        branches: [main]
+
+env:
+    REGION: asia-northeast1
+    SERVICE_NAME: stock-backend
+    REGISTRY: asia-northeast1-docker.pkg.dev/stock-app-473503/stock-registry
+    IMAGE_TAG: ${{ github.sha }}
+    DOCKERFILE_PATH: Dockerfile.server
+    BUILD_CONTEXT: backend
+
+permissions:
+    contents: read
+    id-token: write
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Auth to Google Cloud (OIDC/WIF)
+              uses: google-github-actions/auth@v2
+              with:
+                  workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+                  service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+
+            - name: Setup gcloud
+              uses: google-github-actions/setup-gcloud@v2
+              with:
+                  project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+            - name: Configure Docker for Artifact Registry
+              run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+            - name: Build and push Docker image
+              run: |
+                  IMAGE=${{ env.REGISTRY }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }}
+                  DOCKER_BUILDKIT=1 docker build -t "$IMAGE" -f "${{ env.DOCKERFILE_PATH }}" "${{ env.BUILD_CONTEXT }}"
+                  docker push "$IMAGE"
+                  echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+            # 新リビジョンを no-traffic で作成（失敗しても既存に影響なし）
+            - name: Deploy (no traffic)
+              run: |
+                  gcloud run deploy ${{ env.SERVICE_NAME }} \
+                    --image "$IMAGE" \
+                    --region ${{ env.REGION }} \
+                    --platform managed \
+                    --no-traffic \
+                    --allow-unauthenticated \
+                    \
+                    # ▼ Secret Manager から環境変数として注入（すべて）
+                    --set-secrets \
+                      JWT_SECRET=JWT_SECRET:latest, \
+                      TWELVE_DATA_API_KEY=TWELVE_DATA_API_KEY:latest, \
+                      TWELVE_DATA_BASE_URL=TWELVE_DATA_BASE_URL:latest, \
+                      DB_USER=DB_USER:latest, \
+                      DB_PASSWORD=DB_PASSWORD:latest, \
+                      DB_NAME=DB_NAME:latest, \
+                      INSTANCE_CONNECTION_NAME=INSTANCE_CONNECTION_NAME:latest, \
+                      RUN_MIGRATIONS=RUN_MIGRATIONS:latest \
+
+            - name: Shift traffic to latest
+              run: |
+                  gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
+                    --region ${{ env.REGION }} \
+                    --to-latest
