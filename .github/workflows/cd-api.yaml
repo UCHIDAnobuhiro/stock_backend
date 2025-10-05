@@ -15,6 +15,8 @@ env:
     IMAGE_TAG: ${{ github.sha }}
     DOCKERFILE_PATH: Dockerfile.server
     BUILD_CONTEXT: .
+    # ★ Cloud Run ランタイム用の実行サービスアカウント（作成＆権限付与済みのものを指定）
+    RUNTIME_SERVICE_ACCOUNT: cr-service-runner@stock-app-473503.iam.gserviceaccount.com
 
 jobs:
     deploy-api:
@@ -40,35 +42,35 @@ jobs:
 
             - name: Build and push Docker image
               run: |
+                  set -euo pipefail
                   IMAGE=${{ env.REGISTRY }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }}
                   DOCKER_BUILDKIT=1 docker build -t "$IMAGE" -f "${{ env.DOCKERFILE_PATH }}" "${{ env.BUILD_CONTEXT }}"
                   docker push "$IMAGE"
                   echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-            # 新リビジョンを no-traffic で作成（失敗しても既存に影響なし）
-            - name: Deploy (no traffic)
+            - name: Deploy (create or update)
               run: |
-                  gcloud run deploy ${{ env.SERVICE_NAME }} \
+                  set -euo pipefail
+                  # 既存サービスの有無で no-traffic を付け外し
+                  if gcloud run services describe "${{ env.SERVICE_NAME }}" --region "${{ env.REGION }}" >/dev/null 2>&1; then
+                    EXTRA="--no-traffic"
+                  else
+                    EXTRA=""
+                  fi
+
+                  gcloud run deploy "${{ env.SERVICE_NAME }}" \
                     --image "$IMAGE" \
-                    --region ${{ env.REGION }} \
+                    --region "${{ env.REGION }}" \
                     --platform managed \
-                    # --no-traffic \
                     --allow-unauthenticated \
-                    --quiet \
-                    \
-                    # ▼ Secret Manager から環境変数として注入（すべて）
-                    --set-secrets \
-                      JWT_SECRET=JWT_SECRET:latest, \
-                      TWELVE_DATA_API_KEY=TWELVE_DATA_API_KEY:latest, \
-                      TWELVE_DATA_BASE_URL=TWELVE_DATA_BASE_URL:latest, \
-                      DB_USER=DB_USER:latest, \
-                      DB_PASSWORD=DB_PASSWORD:latest, \
-                      DB_NAME=DB_NAME:latest, \
-                      INSTANCE_CONNECTION_NAME=INSTANCE_CONNECTION_NAME:latest, \
-                      RUN_MIGRATIONS=RUN_MIGRATIONS:latest
+                    --service-account "${{ env.RUNTIME_SERVICE_ACCOUNT }}" \
+                    --set-secrets JWT_SECRET=JWT_SECRET:latest,TWELVE_DATA_API_KEY=TWELVE_DATA_API_KEY:latest,TWELVE_DATA_BASE_URL=TWELVE_DATA_BASE_URL:latest,DB_USER=DB_USER:latest,DB_PASSWORD=DB_PASSWORD:latest,DB_NAME=DB_NAME:latest,INSTANCE_CONNECTION_NAME=INSTANCE_CONNECTION_NAME:latest,RUN_MIGRATIONS=RUN_MIGRATIONS:latest \
+                    $EXTRA \
+                    --quiet
 
             - name: Shift traffic to latest
               run: |
-                  gcloud run services update-traffic ${{ env.SERVICE_NAME }} \
-                    --region ${{ env.REGION }} \
-                    --to-latest
+                  gcloud run services update-traffic "${{ env.SERVICE_NAME }}" \
+                    --region "${{ env.REGION }}" \
+                    --to-latest \
+                    --quiet
