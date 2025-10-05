@@ -52,7 +52,7 @@ jobs:
                     --image "$IMAGE" \
                     --region ${{ env.REGION }} \
                     --platform managed \
-                    --no-traffic \
+                    # --no-traffic \
                     --allow-unauthenticated \
                     \
                     # ▼ Secret Manager から環境変数として注入（すべて）
