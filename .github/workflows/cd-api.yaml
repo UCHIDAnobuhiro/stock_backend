@@ -17,7 +17,7 @@ env:
     BUILD_CONTEXT: .
 
 jobs:
-    deploy:
+    deploy-api:
         runs-on: ubuntu-latest
 
         steps:
@@ -54,6 +54,7 @@ jobs:
                     --platform managed \
                     # --no-traffic \
                     --allow-unauthenticated \
+                    --quiet \
                     \
                     # ▼ Secret Manager から環境変数として注入（すべて）
                     --set-secrets \
