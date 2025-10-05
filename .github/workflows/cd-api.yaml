@@ -4,17 +4,17 @@ on:
     push:
         branches: [main]
 
-env:
-    REGION: asia-northeast1
-    SERVICE_NAME: stock-backend
-    REGISTRY: asia-northeast1-docker.pkg.dev/stock-app-473503/stock-registry
-    IMAGE_TAG: ${{ github.sha }}
-    DOCKERFILE_PATH: Dockerfile.server
-    BUILD_CONTEXT: backend
-
 permissions:
     contents: read
     id-token: write
+
+env:
+    REGION: asia-northeast1
+    SERVICE_NAME: backend
+    REGISTRY: asia-northeast1-docker.pkg.dev/stock-app-473503/stock-registry
+    IMAGE_TAG: ${{ github.sha }}
+    DOCKERFILE_PATH: Dockerfile.server
+    BUILD_CONTEXT: .
 
 jobs:
     deploy:
@@ -64,7 +64,7 @@ jobs:
                       DB_PASSWORD=DB_PASSWORD:latest, \
                       DB_NAME=DB_NAME:latest, \
                       INSTANCE_CONNECTION_NAME=INSTANCE_CONNECTION_NAME:latest, \
-                      RUN_MIGRATIONS=RUN_MIGRATIONS:latest \
+                      RUN_MIGRATIONS=RUN_MIGRATIONS:latest
 
             - name: Shift traffic to latest
               run: |
