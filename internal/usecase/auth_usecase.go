@@ -54,7 +54,7 @@ func (u *authUsecase) Login(email, password string) (string, error) {
 	// 1. Emailでユーザ検索
 	user, err := u.users.FindByEmail(email)
 	if err != nil {
-		return "", errors.New("invalid credentials")
+		return "", errors.New("invalid email or password")
 	}
 
 	// 2. bcryptでパスワード検証
