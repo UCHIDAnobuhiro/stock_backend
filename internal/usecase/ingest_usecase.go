@@ -6,6 +6,14 @@ import (
 	"time"
 )
 
+const (
+	ingestRateLimitPerMinute = 8   // 1分あたりのAPI呼び出し上限
+	ingestOutputSize         = 200 // 1回のリクエストで取得するデータ件数
+)
+
+// ingestIntervals はデータ取得の対象となる時間足のリストです。
+var ingestIntervals = []string{"1day", "1week", "1month"}
+
 // IngestUsecase は外部APIからデータを取得し、データベースに永続化するユースケースを定義します。
 type IngestUsecase struct {
 	market repository.MarketRepository
@@ -36,11 +44,11 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol, interval string,
 // IngestAll は指定された全銘柄の時系列データを複数の時間足（日足, 週足, 月足）で取得し、
 // データベースに永続化します。APIのレートリミットを考慮して、リクエスト間に適切な待機時間を設けます。
 func (iu *IngestUsecase) IngestAll(ctx context.Context, symbols []string) error {
-	rl := NewRateLimiter(8, time.Minute) // 1分に8回まで
+	rl := NewRateLimiter(ingestRateLimitPerMinute, time.Minute)
 	for _, s := range symbols {
-		for _, interval := range []string{"1day", "1week", "1month"} {
+		for _, interval := range ingestIntervals {
 			rl.WaitIfNeeded()
-			if err := iu.ingestOne(ctx, s, interval, 200); err != nil {
+			if err := iu.ingestOne(ctx, s, interval, ingestOutputSize); err != nil {
 				// 1つでもエラーが発生したら処理を中断してエラーを返す
 				return err
 			}
