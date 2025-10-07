@@ -7,12 +7,11 @@ import (
 )
 
 type CandlesUsecase struct {
-	market repository.MarketRepository
 	candle repository.CandleRepository
 }
 
-func NewCandlesUsecase(market repository.MarketRepository, candle repository.CandleRepository) *CandlesUsecase {
-	return &CandlesUsecase{market: market, candle: candle}
+func NewCandlesUsecase(candle repository.CandleRepository) *CandlesUsecase {
+	return &CandlesUsecase{candle: candle}
 }
 
 // GetCandles は銘柄コードと時間足(interval)を指定してロウソク足データを取得します。
