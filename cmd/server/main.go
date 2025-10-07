@@ -19,13 +19,12 @@ func main() {
 
 	// Repository
 	userRepo := mysql.NewUserMySQL(db)
-	marketRepo := infrastructure.NewMarket()
 	symbolRepo := mysql.NewSymbolRepository(db)
 	candleRepo := mysql.NewCandleRepository(db)
 
 	// Usecase
 	authUC := usecase.NewAuthUsecase(userRepo)
-	candlesUC := usecase.NewCandlesUsecase(marketRepo, candleRepo)
+	candlesUC := usecase.NewCandlesUsecase(candleRepo)
 	symbolUC := usecase.NewSymbolUsecase(symbolRepo)
 
 	// Handler
