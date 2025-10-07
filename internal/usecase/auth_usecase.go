@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -39,10 +40,13 @@ func NewAuthUsecase(users repository.UserRepository) AuthUsecase {
 func (u *authUsecase) Signup(email, password string) error {
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to hash password: %w", err)
 	}
 	user := &entity.User{Email: email, Password: string(hashed)}
-	return u.users.Create(user)
+	if err := u.users.Create(user); err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+	return nil
 }
 
 // Loginはユーザ認証を行い、成功した場合はJWTのアクセストークンを返す。
@@ -83,7 +87,7 @@ func (u *authUsecase) Login(email, password string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := token.SignedString([]byte(secret))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
 
 	log.Printf("[LOGIN] success id=%d", user.ID)
