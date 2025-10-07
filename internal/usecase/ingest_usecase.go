@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"log"
 	"stock_backend/internal/domain/repository"
 	"time"
 )
@@ -49,8 +50,9 @@ func (iu *IngestUsecase) IngestAll(ctx context.Context, symbols []string) error 
 		for _, interval := range ingestIntervals {
 			rl.WaitIfNeeded()
 			if err := iu.ingestOne(ctx, s, interval, ingestOutputSize); err != nil {
-				// 1つでもエラーが発生したら処理を中断してエラーを返す
-				return err
+				// 1つの銘柄でエラーが発生しても処理を止めずにログに出力し、次の処理を続ける
+				log.Printf("ERROR: Failed to ingest symbol %s, interval %s: %v", s, interval, err)
+				continue // 次のintervalまたはsymbolへ
 			}
 		}
 	}
