@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// RateLimiterは、API呼び出しなどの操作の頻度を制限します。
 type RateLimiter struct {
 	limit     int           // 1分あたりの上限
 	interval  time.Duration // どの単位でリセットするか
@@ -12,6 +13,7 @@ type RateLimiter struct {
 	lastReset time.Time
 }
 
+// NewRateLimiterは新しいRateLimiterのインスタンスを生成します。
 func NewRateLimiter(limit int, interval time.Duration) *RateLimiter {
 	return &RateLimiter{
 		limit:     limit,
@@ -20,6 +22,7 @@ func NewRateLimiter(limit int, interval time.Duration) *RateLimiter {
 	}
 }
 
+// WaitIfNeededはレートリミットの上限に達しているかを確認し、必要であれば待機します。
 func (rl *RateLimiter) WaitIfNeeded() {
 	now := time.Now()
 	// interval を過ぎたらカウントリセット
