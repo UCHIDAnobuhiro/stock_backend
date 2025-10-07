@@ -11,10 +11,10 @@ import (
 )
 
 type CandlesHandler struct {
-	uc *usecase.CandlesUsecase
+	uc usecase.CandlesUsecase
 }
 
-func NewCandlesHandler(uc *usecase.CandlesUsecase) *CandlesHandler {
+func NewCandlesHandler(uc usecase.CandlesUsecase) *CandlesHandler {
 	return &CandlesHandler{uc: uc}
 }
 
