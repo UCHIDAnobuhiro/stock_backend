@@ -12,18 +12,23 @@ const (
 	MaxOutputSize     = 5000
 )
 
+// CandlesUsecase はロウソク足データに関するユースケースのインターフェースです。
+type CandlesUsecase interface {
+	GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+}
+
 // CandlesUsecase はロウソク足データに関するユースケースを定義します。
-type CandlesUsecase struct {
+type candlesUsecase struct {
 	candle repository.CandleRepository
 }
 
 // NewCandlesUsecase は新しい CandlesUsecase を作成します。
-func NewCandlesUsecase(candle repository.CandleRepository) *CandlesUsecase {
-	return &CandlesUsecase{candle: candle}
+func NewCandlesUsecase(candle repository.CandleRepository) CandlesUsecase {
+	return &candlesUsecase{candle: candle}
 }
 
 // GetCandles は銘柄コードと時間足(interval)を指定してロウソク足データを取得します。
-func (cu *CandlesUsecase) GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+func (cu *candlesUsecase) GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	if interval == "" {
 		interval = DefaultInterval
 	}
