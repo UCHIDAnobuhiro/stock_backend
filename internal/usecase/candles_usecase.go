@@ -12,10 +12,12 @@ const (
 	MaxOutputSize     = 5000
 )
 
+// CandlesUsecase はロウソク足データに関するユースケースを定義します。
 type CandlesUsecase struct {
 	candle repository.CandleRepository
 }
 
+// NewCandlesUsecase は新しい CandlesUsecase を作成します。
 func NewCandlesUsecase(candle repository.CandleRepository) *CandlesUsecase {
 	return &CandlesUsecase{candle: candle}
 }
