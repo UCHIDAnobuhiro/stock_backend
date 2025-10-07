@@ -14,6 +14,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	jwtExpiration = 1 * time.Hour
+)
+
 // AuthUsecaseは認証に関するユースケースを定義するインターフェースです。
 // 具体的な実装はインフラ層のDBや外部ライブラリに依存せず、
 // ユースケース層からはこの抽象を通して利用されます。
@@ -77,10 +81,10 @@ func (u *authUsecase) Login(email, password string) (string, error) {
 
 	// 4. JWT のクレーム設定
 	claims := jwt.MapClaims{
-		"sub":   user.ID,                               // ユーザーID（標準: sub）
-		"exp":   time.Now().Add(24 * time.Hour).Unix(), // 有効期限（標準: exp）
-		"iat":   time.Now().Unix(),                     // 発行時刻（標準: iat）
-		"email": user.Email,                            // アプリ独自の公開クレーム
+		"sub":   user.ID,                              // ユーザーID（標準: sub）
+		"exp":   time.Now().Add(jwtExpiration).Unix(), // 有効期限（標準: exp）
+		"iat":   time.Now().Unix(),                    // 発行時刻（標準: iat）
+		"email": user.Email,                           // アプリ独自の公開クレーム
 	}
 
 	// 署名付きJWTの生成
