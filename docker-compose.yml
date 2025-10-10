@@ -30,6 +30,21 @@ services:
       timeout: 3s
       retries: 20
 
+  redis:
+    image: redis:7.4
+    container_name: stock-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   backend:
     build:
       context: .
@@ -39,6 +54,8 @@ services:
       - .env.docker
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "8080:8080"
@@ -59,3 +76,4 @@ services:
 
 volumes:
   db_data:
+  redis_data:
