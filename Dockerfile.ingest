@@ -8,6 +8,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ingest ./cmd/ingest
 
 FROM alpine:latest
 WORKDIR /app
+
+RUN apk add --no-cache tzdata
+ENV TZ=Asia/Tokyo
+
 COPY --from=builder /app/ingest .
 # EXPOSE不要（ポート開けない）
 # 引数で日付/銘柄など切り替えるなら、ここはENTRYPOINTにしておくと便利
