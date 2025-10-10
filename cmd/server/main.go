@@ -4,27 +4,43 @@ import (
 	"log"
 	"os"
 
-	"github.com/gin-contrib/cors"
+	redisv9 "github.com/redis/go-redis/v9"
 
 	"stock_backend/internal/infrastructure"
-	"stock_backend/internal/infrastructure/db"
+	"stock_backend/internal/infrastructure/cache"
+	infraDB "stock_backend/internal/infrastructure/db"
 	"stock_backend/internal/infrastructure/mysql"
+	infraRedis "stock_backend/internal/infrastructure/redis"
 	"stock_backend/internal/interface/handler"
 	"stock_backend/internal/usecase"
 )
 
 func main() {
 	// db
-	db := db.OpenDB()
+	db := infraDB.OpenDB()
+
+	// Redis
+	var rdb *redisv9.Client
+	if tmp, err := infraRedis.NewRedisClient(); err != nil {
+		log.Println("[WARN] Redis unavailable. Running without cache.")
+		rdb = nil
+	} else {
+		rdb = tmp
+		defer rdb.Close()
+	}
 
 	// Repository
 	userRepo := mysql.NewUserMySQL(db)
 	symbolRepo := mysql.NewSymbolRepository(db)
 	candleRepo := mysql.NewCandleRepository(db)
 
+	// Redisキャッシュでラップ
+	ttl := cache.TimeUntilNext8AM()
+	cachedCandleRepo := cache.NewCachingCandleRepository(rdb, ttl, candleRepo, "candles")
+
 	// Usecase
 	authUC := usecase.NewAuthUsecase(userRepo)
-	candlesUC := usecase.NewCandlesUsecase(candleRepo)
+	candlesUC := usecase.NewCandlesUsecase(cachedCandleRepo)
 	symbolUC := usecase.NewSymbolUsecase(symbolRepo)
 
 	// Handler
@@ -35,8 +51,8 @@ func main() {
 	// ルータ生成
 	router := infrastructure.NewRouter(authH, candlesH, symbolH)
 
-	// CORS追加
-	router.Use(cors.Default())
+	// CORS追加 スマホアプリなのでコメントアウト
+	// router.Use(cors.Default())
 
 	// JWT_SECRETチェック（開発中の注意喚起）
 	if os.Getenv("JWT_SECRET") == "" {
