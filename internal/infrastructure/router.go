@@ -4,15 +4,12 @@ import (
 	jwtmw "stock_backend/internal/infrastructure/jwt"
 	"stock_backend/internal/interface/handler"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 func NewRouter(authHandler *handler.AuthHandler, candles *handler.CandlesHandler,
 	symbol *handler.SymbolHandler) *gin.Engine {
 	r := gin.Default()
-	// CORS のデフォルト設定を有効
-	r.Use(cors.Default())
 
 	// 認証不要
 	// 新規ユーザー登録
