@@ -12,6 +12,8 @@ func NewRouter(authHandler *handler.AuthHandler, candles *handler.CandlesHandler
 	r := gin.Default()
 
 	// 認証不要
+	// 導通確認用
+	r.GET("/healthz", handler.Health)
 	// 新規ユーザー登録
 	r.POST("/signup", authHandler.Signup)
 	// ログイン（JWT 発行）
@@ -27,9 +29,6 @@ func NewRouter(authHandler *handler.AuthHandler, candles *handler.CandlesHandler
 		auth.GET("/candles/:code", candles.GetCandlesHandler)
 		auth.GET("/symbols", symbol.List)
 	}
-
-	// 導通確認用
-	r.GET("/healthz", handler.Health)
 
 	// TODO:開発用。不要になったら削除
 	// r.GET("/candles/:code", candles.GetCandlesHandler)
