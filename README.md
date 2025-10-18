@@ -1,4 +1,4 @@
-# 🧠 Stock View API (Go / Gin / Clean Architecture)
+# 📈 Stock View API (Go / Gin / Clean Architecture)
 
 ## 🧭 概要
 
