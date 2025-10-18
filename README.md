@@ -80,7 +80,7 @@ REST API として、ユーザー認証、株価データ提供、キャッシ�
 ├── Dockerfile.ingest.dev       # ingest開発用Dockerfile（ローカル）
 ├── docker-compose.yml          # 共通のDocker構成（サービス定義・ネットワーク設定）
 ├── docker-compose.dev.yml      # ローカル開発用オーバーライド構成
-├── .docker.env                  # ローカル環境変数（gitignore推奨）
+├── .docker.env                 # ローカル環境変数（gitignore推奨）
 ├── go.mod
 ├── go.sum
 └── .github/
