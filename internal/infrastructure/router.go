@@ -30,9 +30,5 @@ func NewRouter(authHandler *handler.AuthHandler, candles *handler.CandlesHandler
 		auth.GET("/symbols", symbol.List)
 	}
 
-	// TODO:開発用。不要になったら削除
-	// r.GET("/candles/:code", candles.GetCandlesHandler)
-	// r.GET("/symbols", symbol.List)
-
 	return r
 }
