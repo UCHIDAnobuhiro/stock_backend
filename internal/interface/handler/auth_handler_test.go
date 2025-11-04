@@ -56,14 +56,14 @@ func TestAuthHandler_Signup(t *testing.T) {
 			requestBody:    gin.H{"email": "invalid-email", "password": "password123"},
 			mockSignupFunc: nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "Key: 'signupReq.Email' Error:Field validation for 'Email' failed on the 'email' tag"},
+			expectedBody:   gin.H{"error": "Key: 'SignupReq.Email' Error:Field validation for 'Email' failed on the 'email' tag"},
 		},
 		{
 			name:           "失敗: 短いパスワード",
 			requestBody:    gin.H{"email": "test@example.com", "password": "short"},
 			mockSignupFunc: nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "Key: 'signupReq.Password' Error:Field validation for 'Password' failed on the 'min' tag"},
+			expectedBody:   gin.H{"error": "Key: 'SignupReq.Password' Error:Field validation for 'Password' failed on the 'min' tag"},
 		},
 		{
 			name:           "失敗: メールアドレス重複 (Usecaseエラー)",
