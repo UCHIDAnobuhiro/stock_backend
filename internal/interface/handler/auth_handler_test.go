@@ -127,14 +127,14 @@ func TestAuthHandler_Login(t *testing.T) {
 			requestBody:    gin.H{"email": "invalid-email", "password": "password123"},
 			mockLoginFunc:  nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "Key: 'loginReq.Email' Error:Field validation for 'Email' failed on the 'email' tag"},
+			expectedBody:   gin.H{"error": "Key: 'LoginReq.Email' Error:Field validation for 'Email' failed on the 'email' tag"},
 		},
 		{
 			name:           "失敗: パスワードなし",
 			requestBody:    gin.H{"email": "test@example.com"},
 			mockLoginFunc:  nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "Key: 'loginReq.Password' Error:Field validation for 'Password' failed on the 'required' tag"},
+			expectedBody:   gin.H{"error": "Key: 'LoginReq.Password' Error:Field validation for 'Password' failed on the 'required' tag"},
 		},
 		{
 			name:           "失敗: 認証情報不正 (Usecaseエラー)",
