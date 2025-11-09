@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"stock_backend/internal/domain/entity"
@@ -45,7 +46,11 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 	if err != nil {
 		return nil, err
 	}
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			log.Printf("[WARN] failed to close response body: %v", err)
+		}
+	}()
 
 	if res.StatusCode >= 400 {
 		return nil, fmt.Errorf("twelvedata http %d", res.StatusCode)

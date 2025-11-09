@@ -1,4 +1,4 @@
-package infrastructure
+package router
 
 import (
 	jwtmw "stock_backend/internal/infrastructure/jwt"

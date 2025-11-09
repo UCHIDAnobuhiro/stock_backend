@@ -1,0 +1,22 @@
+version: "2"
+
+linters:
+  enable:
+    - depguard
+    - staticcheck
+    - errcheck
+    - govet
+    - ineffassign
+
+  settings:
+    depguard:
+      rules:
+        main:
+            files:
+              - "**/internal/feature/**/domain/**"
+              - "**/internal/feature/**/usecase/**"
+            deny:
+              - pkg: "yourmod/internal/feature/**/adapters"
+                desc: "domain/usecase must not depend on adapters"
+              - pkg: "yourmod/internal/feature/**/transport"
+                desc: "domain/usecase must not depend on transport"
