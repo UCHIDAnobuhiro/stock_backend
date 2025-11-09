@@ -6,7 +6,7 @@ import (
 
 	redisv9 "github.com/redis/go-redis/v9"
 
-	"stock_backend/internal/infrastructure"
+	"stock_backend/internal/app/router"
 	"stock_backend/internal/infrastructure/cache"
 	infraDB "stock_backend/internal/infrastructure/db"
 	"stock_backend/internal/infrastructure/mysql"
@@ -26,7 +26,11 @@ func main() {
 		rdb = nil
 	} else {
 		rdb = tmp
-		defer rdb.Close()
+		defer func() {
+			if err := rdb.Close(); err != nil {
+				log.Println("[ERROR] Failed to close Redis client:", err)
+			}
+		}()
 	}
 
 	// Repository
@@ -49,7 +53,7 @@ func main() {
 	symbolH := handler.NewSymbolHandler(symbolUC)
 
 	// ルータ生成
-	router := infrastructure.NewRouter(authH, candlesH, symbolH)
+	router := router.NewRouter(authH, candlesH, symbolH)
 
 	// CORS追加 スマホアプリなのでコメントアウト
 	// router.Use(cors.Default())
