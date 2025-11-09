@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"stock_backend/internal/domain/entity"
+	"stock_backend/internal/feature/auth/domain/entity"
 	mysqlrepo "stock_backend/internal/infrastructure/mysql"
 	"time"
 

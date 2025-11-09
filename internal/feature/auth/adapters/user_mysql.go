@@ -1,8 +1,8 @@
-package mysql
+package adapters
 
 import (
-	"stock_backend/internal/domain/entity"
-	"stock_backend/internal/domain/repository"
+	"stock_backend/internal/feature/auth/domain/entity"
+	"stock_backend/internal/feature/auth/domain/repository"
 
 	"gorm.io/gorm"
 )

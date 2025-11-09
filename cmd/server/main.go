@@ -7,6 +7,9 @@ import (
 	redisv9 "github.com/redis/go-redis/v9"
 
 	"stock_backend/internal/app/router"
+	"stock_backend/internal/feature/auth/adapters"
+	authHandler "stock_backend/internal/feature/auth/transport/handler"
+	authUC "stock_backend/internal/feature/auth/usecase"
 	"stock_backend/internal/infrastructure/cache"
 	infraDB "stock_backend/internal/infrastructure/db"
 	"stock_backend/internal/infrastructure/mysql"
@@ -34,7 +37,7 @@ func main() {
 	}
 
 	// Repository
-	userRepo := mysql.NewUserMySQL(db)
+	userRepo := adapters.NewUserMySQL(db)
 	symbolRepo := mysql.NewSymbolRepository(db)
 	candleRepo := mysql.NewCandleRepository(db)
 
@@ -43,12 +46,12 @@ func main() {
 	cachedCandleRepo := cache.NewCachingCandleRepository(rdb, ttl, candleRepo, "candles")
 
 	// Usecase
-	authUC := usecase.NewAuthUsecase(userRepo)
+	authUC := authUC.NewAuthUsecase(userRepo)
 	candlesUC := usecase.NewCandlesUsecase(cachedCandleRepo)
 	symbolUC := usecase.NewSymbolUsecase(symbolRepo)
 
 	// Handler
-	authH := handler.NewAuthHandler(authUC)
+	authH := authHandler.NewAuthHandler(authUC)
 	candlesH := handler.NewCandlesHandler(candlesUC)
 	symbolH := handler.NewSymbolHandler(symbolUC)
 

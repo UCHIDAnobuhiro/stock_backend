@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"stock_backend/internal/interface/dto"
-	"stock_backend/internal/usecase"
+	"stock_backend/internal/feature/auth/transport/http/dto"
+	"stock_backend/internal/feature/auth/usecase"
 
 	"github.com/gin-gonic/gin"
 )
