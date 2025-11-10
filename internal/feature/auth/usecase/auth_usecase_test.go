@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"errors"
-	"stock_backend/internal/domain/entity"
+	"stock_backend/internal/feature/auth/domain/entity"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"

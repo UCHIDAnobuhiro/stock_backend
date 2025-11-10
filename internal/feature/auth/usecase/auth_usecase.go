@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"stock_backend/internal/domain/entity"
-	"stock_backend/internal/domain/repository"
+	"stock_backend/internal/feature/auth/domain/entity"
+	"stock_backend/internal/feature/auth/domain/repository"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"

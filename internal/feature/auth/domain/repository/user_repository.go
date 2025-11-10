@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"stock_backend/internal/domain/entity"
+	"stock_backend/internal/feature/auth/domain/entity"
 )
 
 // UserRepositoryはユーザエンティティの永続化をを抽象化したインターフェースです。
