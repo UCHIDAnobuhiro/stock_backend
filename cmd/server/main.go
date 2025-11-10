@@ -8,23 +8,23 @@ import (
 
 	"stock_backend/internal/app/router"
 	"stock_backend/internal/feature/auth/adapters"
-	authHandler "stock_backend/internal/feature/auth/transport/handler"
-	authUC "stock_backend/internal/feature/auth/usecase"
+	authhandler "stock_backend/internal/feature/auth/transport/handler"
+	authusecase "stock_backend/internal/feature/auth/usecase"
 	"stock_backend/internal/infrastructure/cache"
-	infraDB "stock_backend/internal/infrastructure/db"
+	infradb "stock_backend/internal/infrastructure/db"
 	"stock_backend/internal/infrastructure/mysql"
-	infraRedis "stock_backend/internal/infrastructure/redis"
+	infraredis "stock_backend/internal/infrastructure/redis"
 	"stock_backend/internal/interface/handler"
 	"stock_backend/internal/usecase"
 )
 
 func main() {
 	// db
-	db := infraDB.OpenDB()
+	db := infradb.OpenDB()
 
 	// Redis
 	var rdb *redisv9.Client
-	if tmp, err := infraRedis.NewRedisClient(); err != nil {
+	if tmp, err := infraredis.NewRedisClient(); err != nil {
 		log.Println("[WARN] Redis unavailable. Running without cache.")
 		rdb = nil
 	} else {
@@ -46,12 +46,12 @@ func main() {
 	cachedCandleRepo := cache.NewCachingCandleRepository(rdb, ttl, candleRepo, "candles")
 
 	// Usecase
-	authUC := authUC.NewAuthUsecase(userRepo)
+	authUC := authusecase.NewAuthUsecase(userRepo)
 	candlesUC := usecase.NewCandlesUsecase(cachedCandleRepo)
 	symbolUC := usecase.NewSymbolUsecase(symbolRepo)
 
 	// Handler
-	authH := authHandler.NewAuthHandler(authUC)
+	authH := authhandler.NewAuthHandler(authUC)
 	candlesH := handler.NewCandlesHandler(candlesUC)
 	symbolH := handler.NewSymbolHandler(symbolUC)
 
