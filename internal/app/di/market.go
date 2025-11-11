@@ -1,4 +1,3 @@
-// internal/infrastructure/market.go
 package infrastructure
 
 import (
