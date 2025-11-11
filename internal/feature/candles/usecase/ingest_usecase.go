@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 	candlesrepo "stock_backend/internal/feature/candles/domain/repository"
-	"stock_backend/internal/usecase"
+	"stock_backend/internal/shared/ratelimiter"
 	"time"
 )
 
@@ -46,7 +46,7 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol, interval string,
 // IngestAll は指定された全銘柄の時系列データを複数の時間足（日足, 週足, 月足）で取得し、
 // データベースに永続化します。APIのレートリミットを考慮して、リクエスト間に適切な待機時間を設けます。
 func (iu *IngestUsecase) IngestAll(ctx context.Context, symbols []string) error {
-	rl := usecase.NewRateLimiter(ingestRateLimitPerMinute, time.Minute)
+	rl := ratelimiter.NewRateLimiter(ingestRateLimitPerMinute, time.Minute)
 	for _, s := range symbols {
 		for _, interval := range ingestIntervals {
 			rl.WaitIfNeeded()
