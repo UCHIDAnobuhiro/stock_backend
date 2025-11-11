@@ -7,7 +7,7 @@ import (
 	candlesadapters "stock_backend/internal/feature/candles/adapters"
 	candlesusecase "stock_backend/internal/feature/candles/usecase"
 	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
-	"stock_backend/internal/infrastructure/db"
+	"stock_backend/internal/platform/db"
 	"time"
 )
 

@@ -16,9 +16,9 @@ import (
 	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
-	"stock_backend/internal/infrastructure/cache"
-	infradb "stock_backend/internal/infrastructure/db"
-	infraredis "stock_backend/internal/infrastructure/redis"
+	"stock_backend/internal/platform/cache"
+	infradb "stock_backend/internal/platform/db"
+	infraredis "stock_backend/internal/platform/redis"
 )
 
 func main() {

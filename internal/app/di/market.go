@@ -2,8 +2,8 @@ package di
 
 import (
 	"stock_backend/internal/feature/candles/domain/repository"
-	"stock_backend/internal/infrastructure/externalapi/twelvedata"
-	infrahttp "stock_backend/internal/infrastructure/http"
+	"stock_backend/internal/platform/externalapi/twelvedata"
+	infrahttp "stock_backend/internal/platform/http"
 )
 
 func NewMarket() repository.MarketRepository {

@@ -4,8 +4,8 @@ import (
 	authhandler "stock_backend/internal/feature/auth/transport/handler"
 	candleshandler "stock_backend/internal/feature/candles/transport/handler"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
-	handler "stock_backend/internal/infrastructure/http/hander"
-	jwtmw "stock_backend/internal/infrastructure/jwt"
+	handler "stock_backend/internal/platform/http/hander"
+	jwtmw "stock_backend/internal/platform/jwt"
 
 	"github.com/gin-gonic/gin"
 )
