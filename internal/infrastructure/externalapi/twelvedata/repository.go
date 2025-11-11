@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"stock_backend/internal/feature/candles/domain/entity"
 	"stock_backend/internal/feature/candles/domain/repository"
-	"stock_backend/internal/interface/dto"
+	"stock_backend/internal/infrastructure/externalapi/twelvedata/dto"
 	"strconv"
 	"time"
 )
