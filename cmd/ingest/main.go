@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"stock_backend/internal/feature/symbollist/adapters"
 	"stock_backend/internal/infrastructure"
 	"stock_backend/internal/infrastructure/db"
 	"stock_backend/internal/infrastructure/mysql"
@@ -15,7 +16,7 @@ func main() {
 	db := db.OpenDB()
 	marketRepo := infrastructure.NewMarket()
 	candleRepo := mysql.NewCandleRepository(db)
-	symbolRepo := mysql.NewSymbolRepository(db)
+	symbolRepo := adapters.NewSymbolRepository(db)
 	uc := usecase.NewIngestUsecase(marketRepo, candleRepo)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)

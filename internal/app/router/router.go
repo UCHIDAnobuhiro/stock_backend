@@ -2,6 +2,7 @@ package router
 
 import (
 	authhandler "stock_backend/internal/feature/auth/transport/handler"
+	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	jwtmw "stock_backend/internal/infrastructure/jwt"
 	"stock_backend/internal/interface/handler"
 
@@ -9,7 +10,7 @@ import (
 )
 
 func NewRouter(authHandler *authhandler.AuthHandler, candles *handler.CandlesHandler,
-	symbol *handler.SymbolHandler) *gin.Engine {
+	symbol *symbollisthandler.SymbolHandler) *gin.Engine {
 	r := gin.Default()
 
 	// 認証不要

@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"stock_backend/internal/domain/entity"
+	"stock_backend/internal/feature/symbollist/domain/entity"
 )
 
 type SymbolRepository interface {
