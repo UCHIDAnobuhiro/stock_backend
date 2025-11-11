@@ -60,7 +60,7 @@ REST API として、ユーザー認証、株価データ提供、キャッシ�
 │   │   ├── entity/             # ドメインモデル（例：Candle, Symbol）
 │   │   └── repository/         # リポジトリインタフェース
 │   │
-│   ├── infrastructure/         # インフラ層（外部依存モジュール）
+│   ├── platform/         # インフラ層（外部依存モジュール）
 │   │   ├── cache/              # キャッシュ処理（例：Redis）
 │   │   ├── db/                 # DB接続初期化
 │   │   ├── externalapi/        # 外部APIクライアント（Twelve Dataなど）

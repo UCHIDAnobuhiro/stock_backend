@@ -3,8 +3,8 @@ package usecase
 import (
 	"context"
 	"log"
-	"stock_backend/internal/domain/repository"
-	candlerepo "stock_backend/internal/feature/candles/domain/repository"
+	candlesrepo "stock_backend/internal/feature/candles/domain/repository"
+	"stock_backend/internal/shared/ratelimiter"
 	"time"
 )
 
@@ -18,12 +18,12 @@ var ingestIntervals = []string{"1day", "1week", "1month"}
 
 // IngestUsecase は外部APIからデータを取得し、データベースに永続化するユースケースを定義します。
 type IngestUsecase struct {
-	market repository.MarketRepository
-	candle candlerepo.CandleRepository
+	market candlesrepo.MarketRepository
+	candle candlesrepo.CandleRepository
 }
 
 // NewIngestUsecase は新しい IngestUsecase を作成します。
-func NewIngestUsecase(market repository.MarketRepository, candle candlerepo.CandleRepository) *IngestUsecase {
+func NewIngestUsecase(market candlesrepo.MarketRepository, candle candlesrepo.CandleRepository) *IngestUsecase {
 	return &IngestUsecase{market: market, candle: candle}
 }
 
@@ -46,7 +46,7 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol, interval string,
 // IngestAll は指定された全銘柄の時系列データを複数の時間足（日足, 週足, 月足）で取得し、
 // データベースに永続化します。APIのレートリミットを考慮して、リクエスト間に適切な待機時間を設けます。
 func (iu *IngestUsecase) IngestAll(ctx context.Context, symbols []string) error {
-	rl := NewRateLimiter(ingestRateLimitPerMinute, time.Minute)
+	rl := ratelimiter.NewRateLimiter(ingestRateLimitPerMinute, time.Minute)
 	for _, s := range symbols {
 		for _, interval := range ingestIntervals {
 			rl.WaitIfNeeded()

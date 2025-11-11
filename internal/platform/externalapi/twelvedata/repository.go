@@ -7,9 +7,9 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"stock_backend/internal/domain/repository"
 	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/interface/dto"
+	"stock_backend/internal/feature/candles/domain/repository"
+	"stock_backend/internal/platform/externalapi/twelvedata/dto"
 	"strconv"
 	"time"
 )
