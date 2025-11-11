@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 	"stock_backend/internal/feature/auth/domain/entity"
-	mysqlrepo "stock_backend/internal/infrastructure/mysql"
+	candleadapters "stock_backend/internal/feature/candles/adapters"
 	"time"
 
 	gmysql "gorm.io/driver/mysql"
@@ -52,7 +52,7 @@ func OpenDB() *gorm.DB {
 		// マイグレーション（User, Candle など）
 		if err := db.AutoMigrate(
 			&entity.User{},
-			&mysqlrepo.CandleModel{},
+			&candleadapters.CandleModel{},
 		); err != nil {
 			log.Fatalf("failed to migrate: %v", err)
 		}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
-	"stock_backend/internal/domain/entity"
+	"stock_backend/internal/feature/candles/domain/entity"
 	"testing"
 	"time"
 )
