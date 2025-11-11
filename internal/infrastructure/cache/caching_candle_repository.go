@@ -9,12 +9,12 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"stock_backend/internal/domain/entity"
-	"stock_backend/internal/domain/repository"
+	"stock_backend/internal/feature/candles/domain/entity"
+	candlerepo "stock_backend/internal/feature/candles/domain/repository"
 )
 
 type CachingCandleRepository struct {
-	inner     repository.CandleRepository
+	inner     candlerepo.CandleRepository
 	rdb       *redis.Client
 	ttl       time.Duration
 	namespace string
@@ -22,7 +22,7 @@ type CachingCandleRepository struct {
 
 // NewCachingCandleRepository は CandleRepository を Redis キャッシュでデコレートします。
 // ttl=0 の場合は 5分にフォールバックします。namespace が空なら "candles" を使います。
-func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner repository.CandleRepository, namespace string) repository.CandleRepository {
+func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner candlerepo.CandleRepository, namespace string) candlerepo.CandleRepository {
 	if ttl <= 0 {
 		ttl = 5 * time.Minute
 	}

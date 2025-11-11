@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"stock_backend/internal/domain/entity"
+	"stock_backend/internal/feature/candles/domain/entity"
 )
 
 // CandleRepository　はロウソク足の永続化を抽象化します

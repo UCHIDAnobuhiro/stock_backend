@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"stock_backend/internal/domain/entity"
+	"stock_backend/internal/feature/candles/domain/entity"
 	"testing"
 	"time"
 

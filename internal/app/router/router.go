@@ -2,6 +2,7 @@ package router
 
 import (
 	authhandler "stock_backend/internal/feature/auth/transport/handler"
+	candleshandler "stock_backend/internal/feature/candles/transport/handler"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	jwtmw "stock_backend/internal/infrastructure/jwt"
 	"stock_backend/internal/interface/handler"
@@ -9,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(authHandler *authhandler.AuthHandler, candles *handler.CandlesHandler,
+func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.CandlesHandler,
 	symbol *symbollisthandler.SymbolHandler) *gin.Engine {
 	r := gin.Default()
 

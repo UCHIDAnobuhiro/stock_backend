@@ -3,8 +3,8 @@ package handler
 
 import (
 	"net/http"
-	"stock_backend/internal/interface/dto"
-	"stock_backend/internal/usecase"
+	"stock_backend/internal/feature/candles/transport/http/dto"
+	"stock_backend/internal/feature/candles/usecase"
 	"strconv"
 
 	"github.com/gin-gonic/gin"

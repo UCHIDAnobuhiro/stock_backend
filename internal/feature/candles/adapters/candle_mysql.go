@@ -1,9 +1,9 @@
-package mysql
+package adapters
 
 import (
 	"context"
-	"stock_backend/internal/domain/entity"
-	"stock_backend/internal/domain/repository"
+	"stock_backend/internal/feature/candles/domain/entity"
+	"stock_backend/internal/feature/candles/domain/repository"
 	"time"
 
 	"gorm.io/gorm"

@@ -10,15 +10,15 @@ import (
 	authadapters "stock_backend/internal/feature/auth/adapters"
 	authhandler "stock_backend/internal/feature/auth/transport/handler"
 	authusecase "stock_backend/internal/feature/auth/usecase"
+	candlesadapters "stock_backend/internal/feature/candles/adapters"
+	candleshandler "stock_backend/internal/feature/candles/transport/handler"
+	candlesusecase "stock_backend/internal/feature/candles/usecase"
 	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
 	"stock_backend/internal/infrastructure/cache"
 	infradb "stock_backend/internal/infrastructure/db"
-	"stock_backend/internal/infrastructure/mysql"
 	infraredis "stock_backend/internal/infrastructure/redis"
-	"stock_backend/internal/interface/handler"
-	"stock_backend/internal/usecase"
 )
 
 func main() {
@@ -42,7 +42,7 @@ func main() {
 	// Repository
 	userRepo := authadapters.NewUserMySQL(db)
 	symbolRepo := symbollistadapters.NewSymbolRepository(db)
-	candleRepo := mysql.NewCandleRepository(db)
+	candleRepo := candlesadapters.NewCandleRepository(db)
 
 	// Redisキャッシュでラップ
 	ttl := cache.TimeUntilNext8AM()
@@ -51,12 +51,12 @@ func main() {
 	// Usecase
 	authUC := authusecase.NewAuthUsecase(userRepo)
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
-	candlesUC := usecase.NewCandlesUsecase(cachedCandleRepo)
+	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
 
 	// Handler
 	authH := authhandler.NewAuthHandler(authUC)
 	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
-	candlesH := handler.NewCandlesHandler(candlesUC)
+	candlesH := candleshandler.NewCandlesHandler(candlesUC)
 
 	// ルータ生成
 	router := router.NewRouter(authH, candlesH, symbolH)
