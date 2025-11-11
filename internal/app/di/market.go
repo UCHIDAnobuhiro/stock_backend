@@ -1,4 +1,4 @@
-package infrastructure
+package di
 
 import (
 	"stock_backend/internal/feature/candles/domain/repository"
