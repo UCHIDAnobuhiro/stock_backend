@@ -2,7 +2,7 @@
 package infrastructure
 
 import (
-	"stock_backend/internal/domain/repository"
+	"stock_backend/internal/feature/candles/domain/repository"
 	"stock_backend/internal/infrastructure/externalapi/twelvedata"
 	infrahttp "stock_backend/internal/infrastructure/http"
 )

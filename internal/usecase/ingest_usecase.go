@@ -3,8 +3,7 @@ package usecase
 import (
 	"context"
 	"log"
-	"stock_backend/internal/domain/repository"
-	candlerepo "stock_backend/internal/feature/candles/domain/repository"
+	candlesrepo "stock_backend/internal/feature/candles/domain/repository"
 	"time"
 )
 
@@ -18,12 +17,12 @@ var ingestIntervals = []string{"1day", "1week", "1month"}
 
 // IngestUsecase は外部APIからデータを取得し、データベースに永続化するユースケースを定義します。
 type IngestUsecase struct {
-	market repository.MarketRepository
-	candle candlerepo.CandleRepository
+	market candlesrepo.MarketRepository
+	candle candlesrepo.CandleRepository
 }
 
 // NewIngestUsecase は新しい IngestUsecase を作成します。
-func NewIngestUsecase(market repository.MarketRepository, candle candlerepo.CandleRepository) *IngestUsecase {
+func NewIngestUsecase(market candlesrepo.MarketRepository, candle candlesrepo.CandleRepository) *IngestUsecase {
 	return &IngestUsecase{market: market, candle: candle}
 }
 
