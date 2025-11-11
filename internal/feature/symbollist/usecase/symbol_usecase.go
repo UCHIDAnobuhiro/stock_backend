@@ -2,8 +2,8 @@ package usecase
 
 import (
 	"context"
-	"stock_backend/internal/domain/entity"
-	"stock_backend/internal/domain/repository"
+	"stock_backend/internal/feature/symbollist/domain/entity"
+	"stock_backend/internal/feature/symbollist/domain/repository"
 )
 
 type SymbolUsecase struct {

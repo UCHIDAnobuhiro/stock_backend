@@ -2,8 +2,8 @@ package handler
 
 import (
 	"net/http"
-	"stock_backend/internal/interface/dto"
-	"stock_backend/internal/usecase"
+	"stock_backend/internal/feature/symbollist/transport/http/dto"
+	"stock_backend/internal/feature/symbollist/usecase"
 
 	"github.com/gin-gonic/gin"
 )
