@@ -6,50 +6,60 @@ import (
 
 	redisv9 "github.com/redis/go-redis/v9"
 
-	"stock_backend/internal/infrastructure"
-	"stock_backend/internal/infrastructure/cache"
-	infraDB "stock_backend/internal/infrastructure/db"
-	"stock_backend/internal/infrastructure/mysql"
-	infraRedis "stock_backend/internal/infrastructure/redis"
-	"stock_backend/internal/interface/handler"
-	"stock_backend/internal/usecase"
+	"stock_backend/internal/app/router"
+	authadapters "stock_backend/internal/feature/auth/adapters"
+	authhandler "stock_backend/internal/feature/auth/transport/handler"
+	authusecase "stock_backend/internal/feature/auth/usecase"
+	candlesadapters "stock_backend/internal/feature/candles/adapters"
+	candleshandler "stock_backend/internal/feature/candles/transport/handler"
+	candlesusecase "stock_backend/internal/feature/candles/usecase"
+	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
+	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
+	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
+	"stock_backend/internal/platform/cache"
+	infradb "stock_backend/internal/platform/db"
+	infraredis "stock_backend/internal/platform/redis"
 )
 
 func main() {
 	// db
-	db := infraDB.OpenDB()
+	db := infradb.OpenDB()
 
 	// Redis
 	var rdb *redisv9.Client
-	if tmp, err := infraRedis.NewRedisClient(); err != nil {
+	if tmp, err := infraredis.NewRedisClient(); err != nil {
 		log.Println("[WARN] Redis unavailable. Running without cache.")
 		rdb = nil
 	} else {
 		rdb = tmp
-		defer rdb.Close()
+		defer func() {
+			if err := rdb.Close(); err != nil {
+				log.Println("[ERROR] Failed to close Redis client:", err)
+			}
+		}()
 	}
 
 	// Repository
-	userRepo := mysql.NewUserMySQL(db)
-	symbolRepo := mysql.NewSymbolRepository(db)
-	candleRepo := mysql.NewCandleRepository(db)
+	userRepo := authadapters.NewUserMySQL(db)
+	symbolRepo := symbollistadapters.NewSymbolRepository(db)
+	candleRepo := candlesadapters.NewCandleRepository(db)
 
 	// Redisキャッシュでラップ
 	ttl := cache.TimeUntilNext8AM()
 	cachedCandleRepo := cache.NewCachingCandleRepository(rdb, ttl, candleRepo, "candles")
 
 	// Usecase
-	authUC := usecase.NewAuthUsecase(userRepo)
-	candlesUC := usecase.NewCandlesUsecase(cachedCandleRepo)
-	symbolUC := usecase.NewSymbolUsecase(symbolRepo)
+	authUC := authusecase.NewAuthUsecase(userRepo)
+	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
+	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
 
 	// Handler
-	authH := handler.NewAuthHandler(authUC)
-	candlesH := handler.NewCandlesHandler(candlesUC)
-	symbolH := handler.NewSymbolHandler(symbolUC)
+	authH := authhandler.NewAuthHandler(authUC)
+	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
+	candlesH := candleshandler.NewCandlesHandler(candlesUC)
 
 	// ルータ生成
-	router := infrastructure.NewRouter(authH, candlesH, symbolH)
+	router := router.NewRouter(authH, candlesH, symbolH)
 
 	// CORS追加 スマホアプリなのでコメントアウト
 	// router.Use(cors.Default())

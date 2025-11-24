@@ -20,6 +20,12 @@ jobs:
             - name: Install dependencies
               run: go mod download
 
+            - name: Run golangci-lint
+              uses: golangci/golangci-lint-action@v8
+              with:
+                  version: v2.6.2
+                  args: --timeout=5m
+
             - name: Run build
               run: go build ./...
 
