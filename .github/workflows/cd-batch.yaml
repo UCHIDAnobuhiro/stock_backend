@@ -13,7 +13,7 @@ env:
     JOB_NAME: ingest
     REGISTRY: asia-northeast1-docker.pkg.dev/stock-app-473503/stock-registry
     IMAGE_TAG: ${{ github.sha }}
-    DOCKERFILE_PATH: Dockerfile.ingest
+    DOCKERFILE_PATH: docker/Dockerfile.ingest
     BUILD_CONTEXT: .
     RUNTIME_SERVICE_ACCOUNT: cr-jobs-runner@stock-app-473503.iam.gserviceaccount.com
 

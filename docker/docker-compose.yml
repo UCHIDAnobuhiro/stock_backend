@@ -1,4 +1,4 @@
-# ./docker-compose.yml
+# ./docker/docker-compose.yml
 services:
   db:
     image: mysql:8.4
@@ -14,7 +14,7 @@ services:
       TZ: Asia/Tokyo
     volumes:
       - db_data:/var/lib/mysql
-      - ./docker/mysql/initdb:/docker-entrypoint-initdb.d
+      - ./mysql/initdb:/docker-entrypoint-initdb.d
     ports:
       - "3306:3306"
     restart: unless-stopped
@@ -45,11 +45,11 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.server
+      context: ..
+      dockerfile: docker/Dockerfile.server
     container_name: stock-backend
     env_file:
-      - .env.docker
+      - ../.env.docker
     depends_on:
       db:
         condition: service_healthy
@@ -61,12 +61,12 @@ services:
 
   ingest:
     build:
-      context: .
-      dockerfile: Dockerfile.ingest
+      context: ..
+      dockerfile: docker/Dockerfile.ingest
     image: stock-ingest:local
     container_name: stock-ingest
     env_file:
-      - .env.docker
+      - ../.env.docker
     depends_on:
       db:
         condition: service_healthy

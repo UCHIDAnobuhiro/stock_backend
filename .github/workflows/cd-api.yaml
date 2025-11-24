@@ -13,7 +13,7 @@ env:
     SERVICE_NAME: backend
     REGISTRY: asia-northeast1-docker.pkg.dev/stock-app-473503/stock-registry
     IMAGE_TAG: ${{ github.sha }}
-    DOCKERFILE_PATH: Dockerfile.server
+    DOCKERFILE_PATH: docker/Dockerfile.server
     BUILD_CONTEXT: .
     RUNTIME_SERVICE_ACCOUNT: cr-service-runner@stock-app-473503.iam.gserviceaccount.com
 

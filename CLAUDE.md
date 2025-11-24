@@ -7,10 +7,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Local Development
 ```bash
 # Start API server (with hot reload via Air)
-docker compose -f docker-compose.yml -f docker-compose.dev.yml -p stock up backend-dev
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock up backend-dev
 
 # Run batch data ingestion (fetches stock data from external API)
-docker compose -f docker-compose.yml -f docker-compose.dev.yml -p stock run --rm --no-deps ingest
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock run --rm --no-deps ingest
 
 # View logs
 docker logs -f stock-backend-dev
