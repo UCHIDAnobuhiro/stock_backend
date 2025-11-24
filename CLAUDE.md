@@ -172,14 +172,9 @@ When adding a new feature, follow the established pattern:
 
 ## Creating Pull Requests
 
-When creating pull requests, **ALWAYS follow the template in** [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md).
+When creating pull requests, write clear and concise PR descriptions that include:
 
-The PR description must include these sections:
-
-1. **Description**: Brief explanation of what the PR does
+1. **Summary**: Brief explanation of what the PR does and why
 2. **Changes**: Bulleted list of main changes
-3. **Testing**: How the changes were tested
-   - Check applicable items: Unit tests, Integration tests, Manual testing
-4. **Review Points**: What reviewers should focus on
-
-Use the template format to ensure consistency and completeness in all pull request descriptions.
+3. **Testing**: How the changes were tested (unit tests, integration tests, manual testing, etc.)
+4. **Review Points** (optional): Specific areas or aspects that reviewers should focus on
