@@ -169,3 +169,17 @@ When adding a new feature, follow the established pattern:
 7. **Register routes** in `internal/app/router/router.go`
 
 **Important**: Respect the dependency rules - domain/usecase layers cannot import adapters or transport layers. This is enforced by golangci-lint depguard.
+
+## Creating Pull Requests
+
+When creating pull requests, **ALWAYS follow the template in** [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md).
+
+The PR description must include these sections:
+
+1. **Description**: Brief explanation of what the PR does
+2. **Changes**: Bulleted list of main changes
+3. **Testing**: How the changes were tested
+   - Check applicable items: Unit tests, Integration tests, Manual testing
+4. **Review Points**: What reviewers should focus on
+
+Use the template format to ensure consistency and completeness in all pull request descriptions.
