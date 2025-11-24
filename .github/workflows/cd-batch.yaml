@@ -1,8 +1,9 @@
 name: CD to Cloud Run Jobs (Batch, all secrets)
 
 on:
-    push:
-        branches: [main]
+    workflow_dispatch:  # 手動実行のみ
+    # push:
+    #     branches: [main]
 
 permissions:
     contents: read
