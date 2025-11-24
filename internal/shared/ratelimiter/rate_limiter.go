@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+// RateLimiterInterface は、API呼び出しなどの操作の頻度を制限するインターフェースです。
+type RateLimiterInterface interface {
+	WaitIfNeeded()
+}
+
 // RateLimiterは、API呼び出しなどの操作の頻度を制限します。
 type RateLimiter struct {
 	limit     int           // 1分あたりの上限

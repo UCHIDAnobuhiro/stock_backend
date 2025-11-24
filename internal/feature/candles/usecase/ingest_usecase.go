@@ -5,12 +5,10 @@ import (
 	"log"
 	candlesrepo "stock_backend/internal/feature/candles/domain/repository"
 	"stock_backend/internal/shared/ratelimiter"
-	"time"
 )
 
 const (
-	ingestRateLimitPerMinute = 8   // 1分あたりのAPI呼び出し上限
-	ingestOutputSize         = 200 // 1回のリクエストで取得するデータ件数
+	ingestOutputSize = 200 // 1回のリクエストで取得するデータ件数
 )
 
 // ingestIntervals はデータ取得の対象となる時間足のリストです。
@@ -18,13 +16,14 @@ var ingestIntervals = []string{"1day", "1week", "1month"}
 
 // IngestUsecase は外部APIからデータを取得し、データベースに永続化するユースケースを定義します。
 type IngestUsecase struct {
-	market candlesrepo.MarketRepository
-	candle candlesrepo.CandleRepository
+	market      candlesrepo.MarketRepository
+	candle      candlesrepo.CandleRepository
+	rateLimiter ratelimiter.RateLimiterInterface
 }
 
 // NewIngestUsecase は新しい IngestUsecase を作成します。
-func NewIngestUsecase(market candlesrepo.MarketRepository, candle candlesrepo.CandleRepository) *IngestUsecase {
-	return &IngestUsecase{market: market, candle: candle}
+func NewIngestUsecase(market candlesrepo.MarketRepository, candle candlesrepo.CandleRepository, rateLimiter ratelimiter.RateLimiterInterface) *IngestUsecase {
+	return &IngestUsecase{market: market, candle: candle, rateLimiter: rateLimiter}
 }
 
 // ingestOne は指定された銘柄と時間足の時系列データを外部リポジトリから取得し、
@@ -46,10 +45,9 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol, interval string,
 // IngestAll は指定された全銘柄の時系列データを複数の時間足（日足, 週足, 月足）で取得し、
 // データベースに永続化します。APIのレートリミットを考慮して、リクエスト間に適切な待機時間を設けます。
 func (iu *IngestUsecase) IngestAll(ctx context.Context, symbols []string) error {
-	rl := ratelimiter.NewRateLimiter(ingestRateLimitPerMinute, time.Minute)
 	for _, s := range symbols {
 		for _, interval := range ingestIntervals {
-			rl.WaitIfNeeded()
+			iu.rateLimiter.WaitIfNeeded()
 			if err := iu.ingestOne(ctx, s, interval, ingestOutputSize); err != nil {
 				// 1つの銘柄でエラーが発生しても処理を止めずにログに出力し、次の処理を続ける
 				log.Printf("ERROR: Failed to ingest symbol %s, interval %s: %v", s, interval, err)
