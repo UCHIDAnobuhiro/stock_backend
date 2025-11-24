@@ -3,6 +3,13 @@ name: CI
 on:
     pull_request:
         branches: [main]
+        paths-ignore:
+            - "**.md"
+            - "docs/**"
+            - ".github/PULL_REQUEST_TEMPLATE.md"
+            - "CLAUDE.md"
+            - "README.md"
+            - "LICENSE"
 
 jobs:
     build-test:
