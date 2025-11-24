@@ -21,10 +21,10 @@ jobs:
               run: go mod download
 
             - name: Run golangci-lint
-              uses: golangci/golangci-lint-action@v6
+              uses: golangci/golangci-lint-action@v8
               with:
-                  version: latest
-                  args: --timeout=5m
+                  version: v2.6.2
+                  args: run --timeout=5m
 
             - name: Run build
               run: go build ./...
