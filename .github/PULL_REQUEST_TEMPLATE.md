@@ -1,22 +1,22 @@
-## 概要
-<!-- このPull Requestでやったことを簡潔に記述してください -->
+## Description
 
-## 変更内容
-<!-- 主な変更点や修正内容を箇条書きで書いてください -->
+<!-- Briefly describe what this PR does -->
+
+## Changes
+
+<!-- List the main changes -->
+
 -
 -
 
-## 背景・理由
-<!-- なぜこの変更が必要だったのかを書いてください -->
+## Testing
 
-## 動作確認方法
-<!-- 動作確認の手順があれば記述してください -->
-1.
-2.
-3.
+<!-- How was this tested? -->
 
-## スクリーンショット（あれば）
-<!-- UI変更がある場合はビフォーアフターの画像を添付 -->
+- [ ] Unit tests added/updated
+- [ ] Integration tests added/updated
+- [ ] Manual testing performed
 
-## 備考
-<!-- レビュワーに伝えておきたいことがあれば書いてください -->
+## Review Points
+
+## <!-- What should reviewers focus on? -->
