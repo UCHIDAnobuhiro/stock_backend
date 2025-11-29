@@ -12,26 +12,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// mockAuthUsecase は usecase.AuthUsecase インターフェースのモック実装です。
+// mockAuthUsecase is a mock implementation of the usecase.AuthUsecase interface.
 type mockAuthUsecase struct {
 	SignupFunc func(email, password string) error
 	LoginFunc  func(email, password string) (string, error)
 }
 
-// Signup はモックの Signup メソッドです。
+// Signup is the mock implementation of the Signup method.
 func (m *mockAuthUsecase) Signup(email, password string) error {
 	if m.SignupFunc != nil {
 		return m.SignupFunc(email, password)
 	}
-	return nil // デフォルトでは成功
+	return nil // Default: success
 }
 
-// Login はモックの Login メソッドです。
+// Login is the mock implementation of the Login method.
 func (m *mockAuthUsecase) Login(email, password string) (string, error) {
 	if m.LoginFunc != nil {
 		return m.LoginFunc(email, password)
 	}
-	return "", errors.New("login failed") // デフォルトでは失敗
+	return "", errors.New("login failed") // Default: failure
 }
 
 func TestAuthHandler_Signup(t *testing.T) {
@@ -45,28 +45,28 @@ func TestAuthHandler_Signup(t *testing.T) {
 		expectedBody   gin.H
 	}{
 		{
-			name:           "成功: ユーザー登録",
+			name:           "success: user registration",
 			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
 			mockSignupFunc: func(email, password string) error { return nil },
 			expectedStatus: http.StatusCreated,
 			expectedBody:   gin.H{"message": "ok"},
 		},
 		{
-			name:           "失敗: 無効なメールアドレス",
+			name:           "failure: invalid email address",
 			requestBody:    gin.H{"email": "invalid-email", "password": "password123"},
-			mockSignupFunc: nil, // Usecaseは呼ばれない
+			mockSignupFunc: nil, // Usecase is not called
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   gin.H{"error": "Key: 'SignupReq.Email' Error:Field validation for 'Email' failed on the 'email' tag"},
 		},
 		{
-			name:           "失敗: 短いパスワード",
+			name:           "failure: short password",
 			requestBody:    gin.H{"email": "test@example.com", "password": "short"},
-			mockSignupFunc: nil, // Usecaseは呼ばれない
+			mockSignupFunc: nil, // Usecase is not called
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   gin.H{"error": "Key: 'SignupReq.Password' Error:Field validation for 'Password' failed on the 'min' tag"},
 		},
 		{
-			name:           "失敗: メールアドレス重複 (Usecaseエラー)",
+			name:           "failure: duplicate email (usecase error)",
 			requestBody:    gin.H{"email": "existing@example.com", "password": "password123"},
 			mockSignupFunc: func(email, password string) error { return errors.New("email already exists") },
 			expectedStatus: http.StatusConflict,
@@ -95,7 +95,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &responseBody)
 			assert.NoError(t, err)
 
-			// エラーメッセージはGinのバリデーションエラーの詳細を含むため、部分一致で確認
+			// Error messages include Gin validation error details, so check partial match
 			if tt.expectedStatus == http.StatusBadRequest {
 				assert.Contains(t, responseBody["error"], tt.expectedBody["error"])
 			} else {
@@ -116,41 +116,41 @@ func TestAuthHandler_Login(t *testing.T) {
 		expectedBody   gin.H
 	}{
 		{
-			name:           "成功: ユーザーログイン",
+			name:           "success: user login",
 			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
 			mockLoginFunc:  func(email, password string) (string, error) { return "dummy-jwt-token", nil },
 			expectedStatus: http.StatusOK,
 			expectedBody:   gin.H{"token": "dummy-jwt-token"},
 		},
 		{
-			name:           "失敗: 無効なメールアドレス",
+			name:           "failure: invalid email address",
 			requestBody:    gin.H{"email": "invalid-email", "password": "password123"},
-			mockLoginFunc:  nil, // Usecaseは呼ばれない
+			mockLoginFunc:  nil, // Usecase is not called
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   gin.H{"error": "Key: 'LoginReq.Email' Error:Field validation for 'Email' failed on the 'email' tag"},
 		},
 		{
-			name:           "失敗: パスワードなし",
+			name:           "failure: missing password",
 			requestBody:    gin.H{"email": "test@example.com"},
-			mockLoginFunc:  nil, // Usecaseは呼ばれない
+			mockLoginFunc:  nil, // Usecase is not called
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   gin.H{"error": "Key: 'LoginReq.Password' Error:Field validation for 'Password' failed on the 'required' tag"},
 		},
 		{
-			name:           "失敗: 認証情報不正 (Usecaseエラー)",
+			name:           "failure: invalid credentials (usecase error)",
 			requestBody:    gin.H{"email": "wrong@example.com", "password": "wrong-password"},
 			mockLoginFunc:  func(email, password string) (string, error) { return "", errors.New("invalid email or password") },
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody:   gin.H{"error": "invalid email or password"},
 		},
 		{
-			name:        "失敗: JWTシークレット未設定 (Usecaseエラー)",
+			name:        "failure: JWT secret not set (usecase error)",
 			requestBody: gin.H{"email": "test@example.com", "password": "password123"},
 			mockLoginFunc: func(email, password string) (string, error) {
 				return "", errors.New("server misconfigured: JWT_SECRET missing")
 			},
 			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   gin.H{"error": "invalid email or password"}, // Usecaseのエラーメッセージは隠蔽される
+			expectedBody:   gin.H{"error": "invalid email or password"}, // Usecase error message is hidden
 		},
 	}
 
@@ -175,7 +175,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &responseBody)
 			assert.NoError(t, err)
 
-			// エラーメッセージはGinのバリデーションエラーの詳細を含むため、部分一致で確認
+			// Error messages include Gin validation error details, so check partial match
 			if tt.expectedStatus == http.StatusBadRequest {
 				assert.Contains(t, responseBody["error"], tt.expectedBody["error"])
 			} else {
