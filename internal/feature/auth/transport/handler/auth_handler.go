@@ -1,3 +1,4 @@
+// Package handler provides HTTP handlers for the auth feature.
 package handler
 
 import (
@@ -9,23 +10,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AuthHandlerは認証関連のHTTPリクエストを処理します。
-// Usecase層のAuthUsecaseに依存し、JSONリクエストを受けてレスポンスを返す責務を持ちます。
+// AuthHandler handles HTTP requests for authentication operations.
+// It depends on the AuthUsecase from the usecase layer and handles JSON requests/responses.
 type AuthHandler struct {
 	auth usecase.AuthUsecase
 }
 
-// NewAuthHandlerはAuthHandlerの新しいインスタンスを返します。
-// DI用のコンストラクタであり、外部から AuthUsecase を注入します。
+// NewAuthHandler creates a new AuthHandler instance.
+// This is a constructor for dependency injection, injecting AuthUsecase from outside.
 func NewAuthHandler(auth usecase.AuthUsecase) *AuthHandler {
 	return &AuthHandler{auth: auth}
 }
 
-// Signupは新規ユーザー登録APIです。
-// - リクエストJSONをsignupReqにバインド
-// - バリデーションエラー時は400を返す
-// - ユーザー作成失敗（例:重複メール）の場合は409を返す
-// - 成功時は201を返す
+// Signup handles the user registration API endpoint.
+// - Binds the request JSON to SignupReq
+// - Returns 400 on validation errors
+// - Returns 409 on user creation failure (e.g., duplicate email)
+// - Returns 201 on success
 func (h *AuthHandler) Signup(c *gin.Context) {
 	var req dto.SignupReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -39,11 +40,11 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "ok"})
 }
 
-// LoginはログインAPIです。
-// - リクエストJSONをLoginReqにバインド
-// - バリデーションエラー時は400を返す
-// - 認証失敗時は401を返す
-// - 認証成功時はJWTを発行して200を返す
+// Login handles the user login API endpoint.
+// - Binds the request JSON to LoginReq
+// - Returns 400 on validation errors
+// - Returns 401 on authentication failure
+// - Returns 200 with JWT token on successful authentication
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
