@@ -8,54 +8,54 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// mockUserRepository は repository.UserRepository インターフェースのモック実装です。
-// テスト中にDBの動作をシミュレートします。
+// mockUserRepository is a mock implementation of repository.UserRepository interface.
+// It simulates database operations during testing.
 type mockUserRepository struct {
-	// CreateFunc を設定すると、Createメソッドが呼ばれたときにこの関数が実行されます。
+	// CreateFunc is called when the Create method is invoked.
 	CreateFunc func(user *entity.User) error
-	// FindByEmailFunc を設定すると、FindByEmailメソッドが呼ばれたときにこの関数が実行されます。
+	// FindByEmailFunc is called when the FindByEmail method is invoked.
 	FindByEmailFunc func(email string) (*entity.User, error)
-	// FindByIDFunc を設定すると、FindByIDメソッドが呼ばれたときにこの関数が実行されます。
+	// FindByIDFunc is called when the FindByID method is invoked.
 	FindByIDFunc func(id uint) (*entity.User, error)
 }
 
-// Create はモックのCreateメソッドです。
+// Create is the mock implementation of the Create method.
 func (m *mockUserRepository) Create(user *entity.User) error {
 	if m.CreateFunc != nil {
 		return m.CreateFunc(user)
 	}
-	return nil // デフォルトでは成功
+	return nil // Default: success
 }
 
-// FindByEmail はモックのFindByEmailメソッドです。
+// FindByEmail is the mock implementation of the FindByEmail method.
 func (m *mockUserRepository) FindByEmail(email string) (*entity.User, error) {
 	if m.FindByEmailFunc != nil {
 		return m.FindByEmailFunc(email)
 	}
-	// デフォルトではユーザーが見つからないエラーを返します。
+	// Default: return user not found error
 	return nil, errors.New("user not found")
 }
 
-// FindByID はモックのFindByIDメソッドです。
+// FindByID is the mock implementation of the FindByID method.
 func (m *mockUserRepository) FindByID(id uint) (*entity.User, error) {
 	if m.FindByIDFunc != nil {
 		return m.FindByIDFunc(id)
 	}
-	// デフォルトではユーザーが見つからないエラーを返します。
+	// Default: return user not found error
 	return nil, errors.New("user not found")
 }
 
 func TestAuthUsecase_Signup(t *testing.T) {
-	t.Run("サインアップ成功", func(t *testing.T) {
+	t.Run("successful signup", func(t *testing.T) {
 		mockRepo := &mockUserRepository{
 			CreateFunc: func(user *entity.User) error {
-				// パスワードがハッシュ化されているかを確認
+				// Verify that the password is hashed
 				if len(user.Password) == 0 || user.Password == "password123" {
-					t.Errorf("パスワードがハッシュ化されていません")
+					t.Errorf("password is not hashed")
 				}
-				// 実際にbcryptとして妥当かも確認
+				// Verify that it's a valid bcrypt hash
 				if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("password123")); err != nil {
-					t.Errorf("bcryptハッシュとして無効です: %v", err)
+					t.Errorf("invalid bcrypt hash: %v", err)
 				}
 				return nil
 			},
@@ -65,11 +65,11 @@ func TestAuthUsecase_Signup(t *testing.T) {
 		err := uc.Signup("test@example.com", "password123")
 
 		if err != nil {
-			t.Errorf("予期せぬエラーが発生しました: %v", err)
+			t.Errorf("unexpected error: %v", err)
 		}
 	})
 
-	t.Run("リポジトリでの作成失敗", func(t *testing.T) {
+	t.Run("repository create failure", func(t *testing.T) {
 		expectedErr := errors.New("database error")
 		mockRepo := &mockUserRepository{
 			CreateFunc: func(user *entity.User) error {
@@ -81,13 +81,13 @@ func TestAuthUsecase_Signup(t *testing.T) {
 		err := uc.Signup("test@example.com", "password123")
 
 		if !errors.Is(err, expectedErr) {
-			t.Errorf("期待したエラー '%v' と異なるエラーが返されました: %v", expectedErr, err)
+			t.Errorf("expected error '%v', got: %v", expectedErr, err)
 		}
 	})
 }
 
 func TestAuthUsecase_Login(t *testing.T) {
-	// テスト用のハッシュ化済みパスワード
+	// Hashed password for testing
 	password := "password123"
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 	testUser := &entity.User{
@@ -96,10 +96,10 @@ func TestAuthUsecase_Login(t *testing.T) {
 		Password: string(hashedPassword),
 	}
 
-	// テスト用のJWTシークレットキーを設定
+	// Set JWT secret for testing
 	t.Setenv("JWT_SECRET", "test-secret")
 
-	t.Run("ログイン成功", func(t *testing.T) {
+	t.Run("successful login", func(t *testing.T) {
 		mockRepo := &mockUserRepository{
 			FindByEmailFunc: func(email string) (*entity.User, error) {
 				if email == testUser.Email {
@@ -113,15 +113,15 @@ func TestAuthUsecase_Login(t *testing.T) {
 		token, err := uc.Login("test@example.com", "password123")
 
 		if err != nil {
-			t.Fatalf("予期せぬエラーが発生しました: %v", err)
+			t.Fatalf("unexpected error: %v", err)
 		}
 
 		if token == "" {
-			t.Error("トークンが空です")
+			t.Error("token is empty")
 		}
 	})
 
-	t.Run("ユーザーが見つからない", func(t *testing.T) {
+	t.Run("user not found", func(t *testing.T) {
 		mockRepo := &mockUserRepository{
 			FindByEmailFunc: func(email string) (*entity.User, error) {
 				return nil, errors.New("user not found")
@@ -132,16 +132,16 @@ func TestAuthUsecase_Login(t *testing.T) {
 		_, err := uc.Login("wrong@example.com", "password123")
 
 		if err == nil {
-			t.Fatal("エラーが返されるべきところで、nilが返されました")
+			t.Fatal("expected error but got nil")
 		}
 
 		expectedErrMsg := "invalid email or password"
 		if err.Error() != expectedErrMsg {
-			t.Errorf("期待したエラーメッセージ '%s' と異なるメッセージが返されました: '%s'", expectedErrMsg, err.Error())
+			t.Errorf("expected error message '%s', got: '%s'", expectedErrMsg, err.Error())
 		}
 	})
 
-	t.Run("パスワードが違う", func(t *testing.T) {
+	t.Run("incorrect password", func(t *testing.T) {
 		mockRepo := &mockUserRepository{
 			FindByEmailFunc: func(email string) (*entity.User, error) {
 				return testUser, nil
@@ -152,17 +152,17 @@ func TestAuthUsecase_Login(t *testing.T) {
 		_, err := uc.Login("test@example.com", "wrong-password")
 
 		if err == nil {
-			t.Fatal("エラーが返されるべきところで、nilが返されました")
+			t.Fatal("expected error but got nil")
 		}
 
 		expectedErrMsg := "invalid email or password"
 		if err.Error() != expectedErrMsg {
-			t.Errorf("期待したエラーメッセージ '%s' と異なるメッセージが返されました: '%s'", expectedErrMsg, err.Error())
+			t.Errorf("expected error message '%s', got: '%s'", expectedErrMsg, err.Error())
 		}
 	})
 
-	t.Run("JWTシークレットが設定されていない", func(t *testing.T) {
-		// このテストケース内でのみ環境変数を空にする
+	t.Run("JWT secret not set", func(t *testing.T) {
+		// Clear JWT_SECRET for this test case only
 		t.Setenv("JWT_SECRET", "")
 
 		mockRepo := &mockUserRepository{
@@ -175,12 +175,12 @@ func TestAuthUsecase_Login(t *testing.T) {
 		_, err := uc.Login("test@example.com", "password123")
 
 		if err == nil {
-			t.Fatal("エラーが返されるべきところで、nilが返されました")
+			t.Fatal("expected error but got nil")
 		}
 
 		expectedErrMsg := "server misconfigured: JWT_SECRET missing"
 		if err.Error() != expectedErrMsg {
-			t.Errorf("期待したエラーメッセージ '%s' と異なるメッセージが返されました: '%s'", expectedErrMsg, err.Error())
+			t.Errorf("expected error message '%s', got: '%s'", expectedErrMsg, err.Error())
 		}
 	})
 }

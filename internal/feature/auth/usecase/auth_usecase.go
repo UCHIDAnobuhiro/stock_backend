@@ -1,3 +1,4 @@
+// Package usecase implements the business logic for the auth feature.
 package usecase
 
 import (
@@ -15,26 +16,29 @@ import (
 )
 
 const (
+	// jwtExpiration defines the validity period for issued JWT tokens.
 	jwtExpiration = 1 * time.Hour
 )
 
-// AuthUsecase は認証に関するユースケースを定義します。
+// AuthUsecase defines use cases for authentication operations.
 type AuthUsecase interface {
+	// Signup registers a new user with the given email and password.
 	Signup(email, password string) error
-	Login(email, password string) (string, error) // returns JWT
+	// Login authenticates a user and returns a JWT token on success.
+	Login(email, password string) (string, error)
 }
 
-// authUsecase は AuthUsecase の実装です。
+// authUsecase implements the AuthUsecase interface.
 type authUsecase struct {
 	users repository.UserRepository
 }
 
-// NewAuthUsecase は新しい authUsecase を作成します。
+// NewAuthUsecase creates a new AuthUsecase instance.
 func NewAuthUsecase(users repository.UserRepository) AuthUsecase {
 	return &authUsecase{users: users}
 }
 
-// Signup は新規ユーザーを登録します。
+// Signup registers a new user with a hashed password.
 func (u *authUsecase) Signup(email, password string) error {
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -44,16 +48,17 @@ func (u *authUsecase) Signup(email, password string) error {
 	return u.users.Create(user)
 }
 
-// Login はユーザーを認証し、成功した場合にJWTを返します。
+// Login authenticates a user and returns a JWT token on success.
+// It verifies the email and password, then generates a signed JWT token.
 func (u *authUsecase) Login(email, password string) (string, error) {
-	// Emailでユーザーを検索
+	// Find user by email
 	user, err := u.users.FindByEmail(email)
 	if err != nil {
 		return "", errors.New("invalid email or password")
 	}
 
-	// 2. bcryptでパスワード検証
-	// 第1引数が「ハッシュ」、第2引数が「平文」
+	// Verify password with bcrypt
+	// First argument is the hashed password, second is the plaintext password
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
 		log.Printf("[LOGIN] bcrypt NG: %v", err)
@@ -61,7 +66,7 @@ func (u *authUsecase) Login(email, password string) (string, error) {
 	}
 	log.Printf("[LOGIN] bcrypt OK for id=%d", user.ID)
 
-	// JWTを生成
+	// Generate JWT token
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		return "", errors.New("server misconfigured: JWT_SECRET missing")
@@ -74,7 +79,7 @@ func (u *authUsecase) Login(email, password string) (string, error) {
 		"email": user.Email,
 	}
 
-	// 署名
+	// Sign the token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := token.SignedString([]byte(secret))
 	if err != nil {
