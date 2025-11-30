@@ -4,7 +4,7 @@ package usecase
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"stock_backend/internal/feature/auth/domain/entity"
 	"stock_backend/internal/feature/auth/domain/repository"
@@ -63,10 +63,10 @@ func (u *authUsecase) Login(email, password string) (string, error) {
 	// First argument is the hashed password, second is the plaintext password
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		log.Printf("[LOGIN] bcrypt NG: %v", err)
+		slog.Debug("password verification failed", "user_id", user.ID, "error", err)
 		return "", errors.New("invalid email or password")
 	}
-	log.Printf("[LOGIN] bcrypt OK for id=%d", user.ID)
+	slog.Debug("password verified", "user_id", user.ID)
 
 	// Generate JWT token using injected generator
 	token, err := u.jwtGenerator.GenerateToken(user.ID, user.Email)
@@ -74,6 +74,6 @@ func (u *authUsecase) Login(email, password string) (string, error) {
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	log.Printf("[LOGIN] success id=%d", user.ID)
+	slog.Info("login successful", "user_id", user.ID, "email", user.Email)
 	return token, nil
 }
