@@ -3,10 +3,10 @@ package handler
 import "github.com/gin-gonic/gin"
 
 func Health(c *gin.Context) {
-	// キャッシュされないように明示
+	// Explicitly prevent caching
 	c.Header("Cache-Control", "no-store")
 
-	// GET/HEAD/OPTIONS すべて 200 or 204 で返す
+	// Return 200 or 204 for all GET/HEAD/OPTIONS requests
 	switch c.Request.Method {
 	case "HEAD":
 		c.Status(200)

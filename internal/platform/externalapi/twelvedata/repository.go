@@ -26,25 +26,26 @@ func NewTwelveDataMarket(cfg Config, client *http.Client) *TwelveDataMarket {
 	return &TwelveDataMarket{cfg: cfg, client: client}
 }
 
-// GetTimeSeries は Twelve Data API から株価の時系列データを取得し、domain.Candle のスライスとして返します。
+// GetTimeSeries retrieves time series stock data from the Twelve Data API
+// and returns it as a slice of domain.Candle.
 func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	q := url.Values{}
-	// クエリの追加
+	// Add query parameters
 	q.Set("symbol", symbol)
 	q.Set("interval", interval)
 	q.Set("outputsize", strconv.Itoa(outputsize))
 	q.Set("apikey", t.cfg.TwelveDataAPIKey)
 
-	// URLの生成
+	// Generate URL
 	u := fmt.Sprintf("%s/time_series?%s", t.cfg.BaseURL, q.Encode())
 
-	// リクエストオブジェクトの作成
+	// Create request object
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	// リクエスト
+	// Execute request
 	res, err := t.client.Do(req)
 	if err != nil {
 		return nil, err
@@ -59,9 +60,8 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 		return nil, fmt.Errorf("twelvedata http %d", res.StatusCode)
 	}
 
-	// dto
+	// Decode JSON response into DTO
 	var body dto.TimeSeriesResponse
-	// JSONを構造体にデコード
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 	candles := make([]entity.Candle, 0, len(body.Values))
 	for _, v := range body.Values {
 
-		// 時間
+		// Parse timestamp
 		tm, err := time.Parse("2006-01-02 15:04:05", v.Datetime)
 		if err != nil {
 			tm, err = time.Parse("2006-01-02", v.Datetime)
@@ -80,33 +80,33 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 				return nil, fmt.Errorf("parse time %q: %w", v.Datetime, err)
 			}
 		}
-		//　始値
+		// Parse open price
 		o, err := strconv.ParseFloat(v.Open, 64)
 		if err != nil {
 			return nil, fmt.Errorf("parse open %q: %w", v.Open, err)
 		}
-		// 高値
+		// Parse high price
 		h, err := strconv.ParseFloat(v.High, 64)
 		if err != nil {
 			return nil, fmt.Errorf("parse high %q: %w", v.High, err)
 		}
-		// 安値
+		// Parse low price
 		l, err := strconv.ParseFloat(v.Low, 64)
 		if err != nil {
 			return nil, fmt.Errorf("parse low %q: %w", v.Low, err)
 		}
-		// 現在値
+		// Parse close price
 		c, err := strconv.ParseFloat(v.Close, 64)
 		if err != nil {
 			return nil, fmt.Errorf("parse close %q: %w", v.Close, err)
 		}
-		//出来高
+		// Parse volume
 		vol64, err := strconv.ParseInt(v.Volume, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("parse volume %q: %w", v.Volume, err)
 		}
 
-		// domainに変換
+		// Convert to domain entity
 		candles = append(candles, entity.Candle{
 			Time:   tm,
 			Open:   o,

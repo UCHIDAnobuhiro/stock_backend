@@ -73,14 +73,15 @@ Each feature follows a consistent layered structure:
 ```
 feature/<name>/
 ├── domain/
-│   ├── entity/       # Domain models (e.g., Candle, Symbol, User)
-│   └── repository/   # Repository interfaces (no implementation)
-├── usecase/          # Application logic (orchestrates repositories)
+│   └── entity/       # Domain models (e.g., Candle, Symbol, User)
+├── usecase/          # Application logic (defines repository interfaces, orchestrates business logic)
 ├── adapters/         # Repository implementations (MySQL, etc.)
 └── transport/
     ├── handler/      # HTTP handlers (Gin)
     └── http/dto/     # Request/response DTOs
 ```
+
+**Note**: Following Go convention, **repository interfaces are defined in the usecase layer** (by the consumer), not in a separate domain/repository directory. This ensures interfaces are defined where they are used.
 
 ### Dependency Rules (Enforced by golangci-lint depguard)
 
@@ -92,7 +93,7 @@ This ensures domain logic remains independent of infrastructure details.
 
 ### Key Architectural Patterns
 
-1. **Repository Pattern**: All data access goes through repository interfaces defined in `domain/repository/`
+1. **Repository Pattern**: All data access goes through repository interfaces defined in the `usecase/` layer (following Go's "interfaces are defined by the consumer" convention)
 2. **Decorator Pattern for Caching**: `platform/cache/CachingCandleRepository` wraps the base repository
    - Implements the same `CandleRepository` interface
    - Transparently adds Redis caching without changing usecase code
@@ -159,11 +160,12 @@ When adding a new feature, follow the established pattern:
 1. **Create feature directory** under `internal/feature/<feature-name>/`
 2. **Define domain layer first**:
    - `domain/entity/` - Create domain models (pure Go structs)
-   - `domain/repository/` - Define repository interfaces (no implementations)
-3. **Implement usecase layer**: `usecase/` - Business logic that orchestrates repositories
-4. **Implement adapters**: `adapters/` - Repository implementations (MySQL, etc.)
+3. **Implement usecase layer**: `usecase/`
+   - Define repository interfaces here (following Go convention: "interfaces are defined by the consumer")
+   - Implement business logic that orchestrates repositories
+4. **Implement adapters**: `adapters/` - Repository implementations (MySQL, etc.) that implement the interfaces defined in usecase
 5. **Add transport layer**:
-   - `transport/handler/` - HTTP handlers
+   - `transport/handler/` - HTTP handlers (may also define usecase interfaces here if needed)
    - `transport/http/dto/` - Request/response DTOs
 6. **Wire dependencies** in `cmd/server/main.go` or `cmd/ingest/main.go`
 7. **Register routes** in `internal/app/router/router.go`

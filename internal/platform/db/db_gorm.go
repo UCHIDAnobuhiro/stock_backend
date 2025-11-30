@@ -50,7 +50,7 @@ func OpenDB() *gorm.DB {
 	}
 
 	if os.Getenv("RUN_MIGRATIONS") == "true" {
-		// マイグレーション（User, Candle など）
+		// Run migrations (User, Candle, etc.)
 		if err := db.AutoMigrate(
 			&entity.User{},
 			&candleadapters.CandleModel{},

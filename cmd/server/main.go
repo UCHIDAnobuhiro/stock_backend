@@ -56,7 +56,7 @@ func main() {
 	symbolRepo := symbollistadapters.NewSymbolRepository(db)
 	candleRepo := candlesadapters.NewCandleRepository(db)
 
-	// Redisキャッシュでラップ
+	// Wrap with Redis cache
 	ttl := cache.TimeUntilNext8AM()
 	cachedCandleRepo := cache.NewCachingCandleRepository(rdb, ttl, candleRepo, "candles")
 
@@ -78,10 +78,10 @@ func main() {
 	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
 	candlesH := candleshandler.NewCandlesHandler(candlesUC)
 
-	// ルータ生成
+	// Create router
 	router := router.NewRouter(authH, candlesH, symbolH)
 
-	// CORS追加 スマホアプリなのでコメントアウト
+	// CORS middleware commented out for mobile app
 	// router.Use(cors.Default())
 
 	slog.Info("Starting server", "port", 8080)

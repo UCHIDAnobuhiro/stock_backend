@@ -18,7 +18,7 @@ func NewRedisClient() (*redis.Client, error) {
 		DB:       0,
 	})
 
-	// 接続確認
+	// Verify connection
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		slog.Error("Redis connection failed", "address", addr, "error", err)
 		return nil, err
