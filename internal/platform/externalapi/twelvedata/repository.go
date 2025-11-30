@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"stock_backend/internal/feature/candles/domain/entity"
@@ -48,7 +48,7 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 	}
 	defer func() {
 		if err := res.Body.Close(); err != nil {
-			log.Printf("[WARN] failed to close response body: %v", err)
+			slog.Warn("failed to close response body", "error", err)
 		}
 	}()
 

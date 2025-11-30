@@ -2,7 +2,7 @@ package redis
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/redis/go-redis/v9"
@@ -20,10 +20,10 @@ func NewRedisClient() (*redis.Client, error) {
 
 	// 接続確認
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
-		log.Printf("Redis接続に失敗しました: %v", err)
+		slog.Error("Redis connection failed", "address", addr, "error", err)
 		return nil, err
 	}
 
-	log.Println("Redis接続に成功しました:", addr)
+	slog.Info("Redis connection successful", "address", addr)
 	return rdb, nil
 }

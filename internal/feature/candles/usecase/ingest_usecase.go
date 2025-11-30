@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	candlesrepo "stock_backend/internal/feature/candles/domain/repository"
 	"stock_backend/internal/shared/ratelimiter"
 )
@@ -50,7 +50,7 @@ func (iu *IngestUsecase) IngestAll(ctx context.Context, symbols []string) error 
 			iu.rateLimiter.WaitIfNeeded()
 			if err := iu.ingestOne(ctx, s, interval, ingestOutputSize); err != nil {
 				// 1つの銘柄でエラーが発生しても処理を止めずにログに出力し、次の処理を続ける
-				log.Printf("ERROR: Failed to ingest symbol %s, interval %s: %v", s, interval, err)
+				slog.Error("failed to ingest data", "symbol", s, "interval", interval, "error", err)
 				continue // 次のintervalまたはsymbolへ
 			}
 		}

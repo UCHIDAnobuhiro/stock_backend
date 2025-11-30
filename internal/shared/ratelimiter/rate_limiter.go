@@ -1,7 +1,7 @@
 package ratelimiter
 
 import (
-	"log"
+	"log/slog"
 	"time"
 )
 
@@ -40,7 +40,7 @@ func (rl *RateLimiter) WaitIfNeeded() {
 	if rl.count > rl.limit {
 		sleep := rl.interval - now.Sub(rl.lastReset)
 		if sleep > 0 {
-			log.Printf("[RATE LIMIT] hit %d calls, sleeping for %v...", rl.limit, sleep)
+			slog.Info("rate limit reached, sleeping", "limit", rl.limit, "sleep_duration", sleep)
 			time.Sleep(sleep)
 		}
 		// リセット

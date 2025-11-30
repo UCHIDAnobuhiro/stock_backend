@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"stock_backend/internal/feature/auth/domain/entity"
 	candleadapters "stock_backend/internal/feature/candles/adapters"
@@ -42,9 +42,10 @@ func OpenDB() *gorm.DB {
 			break
 		}
 		if time.Now().After(deadline) {
-			log.Fatalf("DB connect failed after 60s: %v", err)
+			slog.Error("DB connect failed after 60s", "error", err)
+			os.Exit(1)
 		}
-		log.Printf("DB connect failed, retrying...: %v", err)
+		slog.Warn("DB connect failed, retrying", "error", err)
 		time.Sleep(3 * time.Second)
 	}
 
@@ -54,7 +55,8 @@ func OpenDB() *gorm.DB {
 			&entity.User{},
 			&candleadapters.CandleModel{},
 		); err != nil {
-			log.Fatalf("failed to migrate: %v", err)
+			slog.Error("failed to migrate", "error", err)
+			os.Exit(1)
 		}
 
 	}
