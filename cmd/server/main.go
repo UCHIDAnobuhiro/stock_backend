@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	redisv9 "github.com/redis/go-redis/v9"
 
@@ -18,6 +19,7 @@ import (
 	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
 	"stock_backend/internal/platform/cache"
 	infradb "stock_backend/internal/platform/db"
+	jwtmw "stock_backend/internal/platform/jwt"
 	infraredis "stock_backend/internal/platform/redis"
 )
 
@@ -48,8 +50,15 @@ func main() {
 	ttl := cache.TimeUntilNext8AM()
 	cachedCandleRepo := cache.NewCachingCandleRepository(rdb, ttl, candleRepo, "candles")
 
+	// JWT Generator
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("[FATAL] JWT_SECRET environment variable is required")
+	}
+	jwtGen := jwtmw.NewGenerator(jwtSecret, 1*time.Hour)
+
 	// Usecase
-	authUC := authusecase.NewAuthUsecase(userRepo)
+	authUC := authusecase.NewAuthUsecase(userRepo, jwtGen)
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
 	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
 
@@ -63,11 +72,6 @@ func main() {
 
 	// CORS追加 スマホアプリなのでコメントアウト
 	// router.Use(cors.Default())
-
-	// JWT_SECRETチェック（開発中の注意喚起）
-	if os.Getenv("JWT_SECRET") == "" {
-		log.Println("[WARN] JWT_SECRET is not set. Set a strong secret in production.")
-	}
 
 	if err := router.Run(":8080"); err != nil {
 		log.Fatal(err)

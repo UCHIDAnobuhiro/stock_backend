@@ -19,6 +19,22 @@ type mockUserRepository struct {
 	FindByIDFunc func(id uint) (*entity.User, error)
 }
 
+// mockJWTGenerator is a mock implementation of JWTGenerator interface.
+// It simulates JWT token generation during testing.
+type mockJWTGenerator struct {
+	// GenerateTokenFunc is called when the GenerateToken method is invoked.
+	GenerateTokenFunc func(userID uint, email string) (string, error)
+}
+
+// GenerateToken is the mock implementation of the GenerateToken method.
+func (m *mockJWTGenerator) GenerateToken(userID uint, email string) (string, error) {
+	if m.GenerateTokenFunc != nil {
+		return m.GenerateTokenFunc(userID, email)
+	}
+	// Default: return a dummy token
+	return "mock-jwt-token", nil
+}
+
 // Create is the mock implementation of the Create method.
 func (m *mockUserRepository) Create(user *entity.User) error {
 	if m.CreateFunc != nil {
@@ -60,8 +76,9 @@ func TestAuthUsecase_Signup(t *testing.T) {
 				return nil
 			},
 		}
+		mockJWT := &mockJWTGenerator{}
 
-		uc := NewAuthUsecase(mockRepo)
+		uc := NewAuthUsecase(mockRepo, mockJWT)
 		err := uc.Signup("test@example.com", "password123")
 
 		if err != nil {
@@ -76,8 +93,9 @@ func TestAuthUsecase_Signup(t *testing.T) {
 				return expectedErr
 			},
 		}
+		mockJWT := &mockJWTGenerator{}
 
-		uc := NewAuthUsecase(mockRepo)
+		uc := NewAuthUsecase(mockRepo, mockJWT)
 		err := uc.Signup("test@example.com", "password123")
 
 		if !errors.Is(err, expectedErr) {
@@ -96,9 +114,6 @@ func TestAuthUsecase_Login(t *testing.T) {
 		Password: string(hashedPassword),
 	}
 
-	// Set JWT secret for testing
-	t.Setenv("JWT_SECRET", "test-secret")
-
 	t.Run("successful login", func(t *testing.T) {
 		mockRepo := &mockUserRepository{
 			FindByEmailFunc: func(email string) (*entity.User, error) {
@@ -108,8 +123,16 @@ func TestAuthUsecase_Login(t *testing.T) {
 				return nil, errors.New("user not found")
 			},
 		}
+		mockJWT := &mockJWTGenerator{
+			GenerateTokenFunc: func(userID uint, email string) (string, error) {
+				if userID != testUser.ID || email != testUser.Email {
+					t.Errorf("unexpected userID or email: got userID=%d, email=%s", userID, email)
+				}
+				return "mock-jwt-token", nil
+			},
+		}
 
-		uc := NewAuthUsecase(mockRepo)
+		uc := NewAuthUsecase(mockRepo, mockJWT)
 		token, err := uc.Login("test@example.com", "password123")
 
 		if err != nil {
@@ -119,6 +142,10 @@ func TestAuthUsecase_Login(t *testing.T) {
 		if token == "" {
 			t.Error("token is empty")
 		}
+
+		if token != "mock-jwt-token" {
+			t.Errorf("expected token 'mock-jwt-token', got: '%s'", token)
+		}
 	})
 
 	t.Run("user not found", func(t *testing.T) {
@@ -127,8 +154,9 @@ func TestAuthUsecase_Login(t *testing.T) {
 				return nil, errors.New("user not found")
 			},
 		}
+		mockJWT := &mockJWTGenerator{}
 
-		uc := NewAuthUsecase(mockRepo)
+		uc := NewAuthUsecase(mockRepo, mockJWT)
 		_, err := uc.Login("wrong@example.com", "password123")
 
 		if err == nil {
@@ -147,8 +175,9 @@ func TestAuthUsecase_Login(t *testing.T) {
 				return testUser, nil
 			},
 		}
+		mockJWT := &mockJWTGenerator{}
 
-		uc := NewAuthUsecase(mockRepo)
+		uc := NewAuthUsecase(mockRepo, mockJWT)
 		_, err := uc.Login("test@example.com", "wrong-password")
 
 		if err == nil {
@@ -161,24 +190,26 @@ func TestAuthUsecase_Login(t *testing.T) {
 		}
 	})
 
-	t.Run("JWT secret not set", func(t *testing.T) {
-		// Clear JWT_SECRET for this test case only
-		t.Setenv("JWT_SECRET", "")
-
+	t.Run("JWT generation failure", func(t *testing.T) {
 		mockRepo := &mockUserRepository{
 			FindByEmailFunc: func(email string) (*entity.User, error) {
 				return testUser, nil
 			},
 		}
+		mockJWT := &mockJWTGenerator{
+			GenerateTokenFunc: func(userID uint, email string) (string, error) {
+				return "", errors.New("failed to sign token")
+			},
+		}
 
-		uc := NewAuthUsecase(mockRepo)
+		uc := NewAuthUsecase(mockRepo, mockJWT)
 		_, err := uc.Login("test@example.com", "password123")
 
 		if err == nil {
 			t.Fatal("expected error but got nil")
 		}
 
-		expectedErrMsg := "server misconfigured: JWT_SECRET missing"
+		expectedErrMsg := "failed to generate token: failed to sign token"
 		if err.Error() != expectedErrMsg {
 			t.Errorf("expected error message '%s', got: '%s'", expectedErrMsg, err.Error())
 		}
