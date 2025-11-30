@@ -70,26 +70,32 @@ func (u *authUsecase) Signup(email, password string) error {
 
 // Login authenticates a user and returns a JWT token on success.
 // It verifies the email and password, then generates a signed JWT token.
+// To prevent timing attacks, bcrypt comparison is performed even when user doesn't exist.
 func (u *authUsecase) Login(email, password string) (string, error) {
 	// Find user by email
 	user, err := u.users.FindByEmail(email)
-	if err != nil {
-		return "", errors.New("invalid email or password")
+
+	// Use a dummy hash for timing attack mitigation when user doesn't exist
+	// This ensures bcrypt.CompareHashAndPassword is always called
+	passwordHash := "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy" // dummy hash
+	if err == nil {
+		passwordHash = user.Password
 	}
 
-	// Verify password with bcrypt
+	// Always verify password to prevent timing attacks
 	// First argument is the hashed password, second is the plaintext password
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
-	if err != nil {
-		slog.Debug("password verification failed", "user_id", user.ID, "error", err)
+	compareErr := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password))
+
+	// If user not found or password incorrect, return generic error
+	if err != nil || compareErr != nil {
+		slog.Debug("login failed", "email", email)
 		return "", errors.New("invalid email or password")
 	}
-	slog.Debug("password verified", "user_id", user.ID)
 
 	// Generate JWT token using injected generator
-	token, err := u.jwtGenerator.GenerateToken(user.ID, user.Email)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate token: %w", err)
+	token, tokenErr := u.jwtGenerator.GenerateToken(user.ID, user.Email)
+	if tokenErr != nil {
+		return "", fmt.Errorf("failed to generate token: %w", tokenErr)
 	}
 
 	slog.Info("login successful", "user_id", user.ID)
