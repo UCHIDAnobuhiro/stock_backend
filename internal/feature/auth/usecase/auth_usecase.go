@@ -74,6 +74,6 @@ func (u *authUsecase) Login(email, password string) (string, error) {
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	slog.Info("login successful", "user_id", user.ID, "email", user.Email)
+	slog.Info("login successful", "user_id", user.ID)
 	return token, nil
 }
