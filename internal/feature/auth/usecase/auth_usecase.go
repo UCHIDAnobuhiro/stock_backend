@@ -5,20 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
-	"time"
 
 	"stock_backend/internal/feature/auth/domain/entity"
 	"stock_backend/internal/feature/auth/domain/repository"
 
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	// jwtExpiration defines the validity period for issued JWT tokens.
-	jwtExpiration = 1 * time.Hour
-)
+// JWTGenerator defines the interface for generating JWT tokens.
+type JWTGenerator interface {
+	// GenerateToken creates a signed JWT token for the given user.
+	GenerateToken(userID uint, email string) (string, error)
+}
 
 // AuthUsecase defines use cases for authentication operations.
 type AuthUsecase interface {
@@ -30,12 +28,16 @@ type AuthUsecase interface {
 
 // authUsecase implements the AuthUsecase interface.
 type authUsecase struct {
-	users repository.UserRepository
+	users        repository.UserRepository
+	jwtGenerator JWTGenerator
 }
 
 // NewAuthUsecase creates a new AuthUsecase instance.
-func NewAuthUsecase(users repository.UserRepository) AuthUsecase {
-	return &authUsecase{users: users}
+func NewAuthUsecase(users repository.UserRepository, jwtGenerator JWTGenerator) AuthUsecase {
+	return &authUsecase{
+		users:        users,
+		jwtGenerator: jwtGenerator,
+	}
 }
 
 // Signup registers a new user with a hashed password.
@@ -66,26 +68,12 @@ func (u *authUsecase) Login(email, password string) (string, error) {
 	}
 	log.Printf("[LOGIN] bcrypt OK for id=%d", user.ID)
 
-	// Generate JWT token
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		return "", errors.New("server misconfigured: JWT_SECRET missing")
-	}
-
-	claims := jwt.MapClaims{
-		"sub":   user.ID,
-		"exp":   time.Now().Add(jwtExpiration).Unix(),
-		"iat":   time.Now().Unix(),
-		"email": user.Email,
-	}
-
-	// Sign the token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := token.SignedString([]byte(secret))
+	// Generate JWT token using injected generator
+	token, err := u.jwtGenerator.GenerateToken(user.ID, user.Email)
 	if err != nil {
-		return "", fmt.Errorf("failed to sign token: %w", err)
+		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
 
 	log.Printf("[LOGIN] success id=%d", user.ID)
-	return signed, nil
+	return token, nil
 }
