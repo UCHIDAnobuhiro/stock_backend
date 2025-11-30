@@ -34,18 +34,18 @@ As a REST API, it provides user authentication, stock data delivery, and cache o
 
 ## 🛠️ Tech Stack
 
-| Category      | Technology                                                     |
-| ------------- | -------------------------------------------------------------- |
-| Language      | Go (1.24)                                                      |
-| Web Framework | Gin                                                            |
-| ORM           | GORM                                                           |
-| DB            | MySQL / Cloud SQL                                              |
-| Cache         | Redis                                                          |
-| Auth          | JWT / bcrypt                                                   |
+| Category      | Technology                                                          |
+| ------------- | ------------------------------------------------------------------- |
+| Language      | Go (1.24)                                                           |
+| Web Framework | Gin                                                                 |
+| ORM           | GORM                                                                |
+| DB            | MySQL / Cloud SQL                                                   |
+| Cache         | Redis                                                               |
+| Auth          | JWT / bcrypt                                                        |
 | Config        | **.env.docker (local) / Secret Manager (production) + os.Getenv()** |
-| Container     | Docker / Docker Compose                                        |
-| Cloud         | Google Cloud Run / Cloud SQL / Secret Manager / Artifact Registry |
-| CI/CD         | GitHub Actions                                                 |
+| Container     | Docker / Docker Compose                                             |
+| Cloud         | Google Cloud Run / Cloud SQL / Secret Manager / Artifact Registry   |
+| CI/CD         | GitHub Actions                                                      |
 
 ## 📂 Directory Structure
 
@@ -144,26 +144,26 @@ As a REST API, it provides user authentication, stock data delivery, and cache o
 
 ### 🩺 Health Check
 
-| Method | Path       | Auth     | Description                          |
-| ------ | ---------- | -------- | ------------------------------------ |
+| Method | Path       | Auth         | Description                           |
+| ------ | ---------- | ------------ | ------------------------------------- |
 | GET    | `/healthz` | Not required | Service health check (returns 200 OK) |
 
 ---
 
 ### 🔐 Authentication
 
-| Method | Path      | Auth     | Description                          |
-| ------ | --------- | -------- | ------------------------------------ |
-| POST   | `/signup` | Not required | New user registration                |
-| POST   | `/login`  | Not required | Login (issues JWT access token)      |
+| Method | Path      | Auth         | Description                     |
+| ------ | --------- | ------------ | ------------------------------- |
+| POST   | `/signup` | Not required | New user registration           |
+| POST   | `/login`  | Not required | Login (issues JWT access token) |
 
 ---
 
 ### 💹 Stock Data (Candles / Symbols)
 
-| Method | Path             | Auth     | Description                                    |
-| ------ | ---------------- | -------- | ---------------------------------------------- |
-| GET    | `/symbols`       | Required | Fetch symbol list                              |
+| Method | Path             | Auth     | Description                                            |
+| ------ | ---------------- | -------- | ------------------------------------------------------ |
+| GET    | `/symbols`       | Required | Fetch symbol list                                      |
 | GET    | `/candles/:code` | Required | Fetch candlestick data for specified code (e.g., AAPL) |
 
 ### 💡 Notes
@@ -201,8 +201,8 @@ As a REST API, it provides user authentication, stock data delivery, and cache o
 
 ```bash
 # Clone repository
-git clone https://github.com/yourname/stock-view-backend.git
-cd stock-view-backend
+git clone https://github.com/UCHIDAnobuhiro/stock_backend.git
+cd stock_backend
 
 # Copy environment variables
 cp example.env.docker .env.docker
