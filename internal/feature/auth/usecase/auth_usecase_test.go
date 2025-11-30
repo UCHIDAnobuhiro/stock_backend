@@ -62,121 +62,101 @@ func (m *mockUserRepository) FindByID(id uint) (*entity.User, error) {
 }
 
 func TestAuthUsecase_Signup(t *testing.T) {
-	t.Run("successful signup", func(t *testing.T) {
-		mockRepo := &mockUserRepository{
-			CreateFunc: func(user *entity.User) error {
-				// Verify that the password is hashed
-				if len(user.Password) == 0 || user.Password == "password123" {
-					t.Errorf("password is not hashed")
+	tests := []struct {
+		name              string
+		email             string
+		password          string
+		wantErr           bool
+		errMsg            string
+		verifyBcryptHash  bool
+		repositoryErr     error
+	}{
+		{
+			name:             "successful signup",
+			email:            "test@example.com",
+			password:         "password123",
+			wantErr:          false,
+			verifyBcryptHash: true,
+		},
+		{
+			name:     "password too short",
+			email:    "test@example.com",
+			password: "short",
+			wantErr:  true,
+			errMsg:   "password must be at least 8 characters long",
+		},
+		{
+			name:             "password at minimum length",
+			email:            "test@example.com",
+			password:         "12345678",
+			wantErr:          false,
+			verifyBcryptHash: true,
+		},
+		{
+			name:     "empty password",
+			email:    "test@example.com",
+			password: "",
+			wantErr:  true,
+			errMsg:   "password must be at least 8 characters long",
+		},
+		{
+			name:             "long password",
+			email:            "test@example.com",
+			password:         "this-is-a-very-long-password-with-many-characters",
+			wantErr:          false,
+			verifyBcryptHash: true,
+		},
+		{
+			name:          "repository create failure",
+			email:         "test@example.com",
+			password:      "password123",
+			wantErr:       true,
+			repositoryErr: errors.New("database error"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := &mockUserRepository{
+				CreateFunc: func(user *entity.User) error {
+					if tt.verifyBcryptHash {
+						// Verify that the password is hashed
+						if len(user.Password) == 0 || user.Password == tt.password {
+							t.Errorf("password is not hashed")
+						}
+						// Verify that it's a valid bcrypt hash
+						if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(tt.password)); err != nil {
+							t.Errorf("invalid bcrypt hash: %v", err)
+						}
+					}
+					if tt.repositoryErr != nil {
+						return tt.repositoryErr
+					}
+					return nil
+				},
+			}
+			mockJWT := &mockJWTGenerator{}
+
+			uc := NewAuthUsecase(mockRepo, mockJWT)
+			err := uc.Signup(tt.email, tt.password)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error but got nil")
 				}
-				// Verify that it's a valid bcrypt hash
-				if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("password123")); err != nil {
-					t.Errorf("invalid bcrypt hash: %v", err)
+				if tt.errMsg != "" && err.Error() != tt.errMsg {
+					t.Errorf("expected error '%s', got: '%s'", tt.errMsg, err.Error())
 				}
-				return nil
-			},
-		}
-		mockJWT := &mockJWTGenerator{}
-
-		uc := NewAuthUsecase(mockRepo, mockJWT)
-		err := uc.Signup("test@example.com", "password123")
-
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-	})
-
-	t.Run("password too short", func(t *testing.T) {
-		mockRepo := &mockUserRepository{}
-		mockJWT := &mockJWTGenerator{}
-
-		uc := NewAuthUsecase(mockRepo, mockJWT)
-		err := uc.Signup("test@example.com", "short")
-
-		if err == nil {
-			t.Fatal("expected error for short password")
-		}
-
-		expectedMsg := "password must be at least 8 characters long"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error '%s', got: '%s'", expectedMsg, err.Error())
-		}
-	})
-
-	t.Run("password at minimum length", func(t *testing.T) {
-		mockRepo := &mockUserRepository{
-			CreateFunc: func(user *entity.User) error {
-				// Verify that the password is hashed
-				if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("12345678")); err != nil {
-					t.Errorf("invalid bcrypt hash: %v", err)
+				if tt.repositoryErr != nil && !errors.Is(err, tt.repositoryErr) {
+					t.Errorf("expected error '%v', got: %v", tt.repositoryErr, err)
 				}
-				return nil
-			},
-		}
-		mockJWT := &mockJWTGenerator{}
-
-		uc := NewAuthUsecase(mockRepo, mockJWT)
-		err := uc.Signup("test@example.com", "12345678")
-
-		if err != nil {
-			t.Errorf("unexpected error for valid 8-character password: %v", err)
-		}
-	})
-
-	t.Run("empty password", func(t *testing.T) {
-		mockRepo := &mockUserRepository{}
-		mockJWT := &mockJWTGenerator{}
-
-		uc := NewAuthUsecase(mockRepo, mockJWT)
-		err := uc.Signup("test@example.com", "")
-
-		if err == nil {
-			t.Fatal("expected error for empty password")
-		}
-
-		expectedMsg := "password must be at least 8 characters long"
-		if err.Error() != expectedMsg {
-			t.Errorf("expected error '%s', got: '%s'", expectedMsg, err.Error())
-		}
-	})
-
-	t.Run("long password", func(t *testing.T) {
-		longPassword := "this-is-a-very-long-password-with-many-characters"
-		mockRepo := &mockUserRepository{
-			CreateFunc: func(user *entity.User) error {
-				// Verify that the password is hashed
-				if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(longPassword)); err != nil {
-					t.Errorf("invalid bcrypt hash: %v", err)
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
 				}
-				return nil
-			},
-		}
-		mockJWT := &mockJWTGenerator{}
-
-		uc := NewAuthUsecase(mockRepo, mockJWT)
-		err := uc.Signup("test@example.com", longPassword)
-
-		if err != nil {
-			t.Errorf("unexpected error for valid long password: %v", err)
-		}
-	})
-
-	t.Run("repository create failure", func(t *testing.T) {
-		expectedErr := errors.New("database error")
-		mockRepo := &mockUserRepository{
-			CreateFunc: func(user *entity.User) error {
-				return expectedErr
-			},
-		}
-		mockJWT := &mockJWTGenerator{}
-
-		uc := NewAuthUsecase(mockRepo, mockJWT)
-		err := uc.Signup("test@example.com", "password123")
-
-		if !errors.Is(err, expectedErr) {
-			t.Errorf("expected error '%v', got: %v", expectedErr, err)
-		}
-	})
+			}
+		})
+	}
 }
 
 func TestAuthUsecase_Login(t *testing.T) {
@@ -189,104 +169,99 @@ func TestAuthUsecase_Login(t *testing.T) {
 		Password: string(hashedPassword),
 	}
 
-	t.Run("successful login", func(t *testing.T) {
-		mockRepo := &mockUserRepository{
-			FindByEmailFunc: func(email string) (*entity.User, error) {
-				if email == testUser.Email {
-					return testUser, nil
+	tests := []struct {
+		name              string
+		email             string
+		password          string
+		wantErr           bool
+		errMsg            string
+		expectedToken     string
+		findByEmailResult *entity.User
+		findByEmailErr    error
+		jwtGenerateErr    error
+		verifyJWTParams   bool
+	}{
+		{
+			name:              "successful login",
+			email:             "test@example.com",
+			password:          "password123",
+			wantErr:           false,
+			expectedToken:     "mock-jwt-token",
+			findByEmailResult: testUser,
+			verifyJWTParams:   true,
+		},
+		{
+			name:           "user not found",
+			email:          "wrong@example.com",
+			password:       "password123",
+			wantErr:        true,
+			errMsg:         "invalid email or password",
+			findByEmailErr: errors.New("user not found"),
+		},
+		{
+			name:              "incorrect password",
+			email:             "test@example.com",
+			password:          "wrong-password",
+			wantErr:           true,
+			errMsg:            "invalid email or password",
+			findByEmailResult: testUser,
+		},
+		{
+			name:              "JWT generation failure",
+			email:             "test@example.com",
+			password:          "password123",
+			wantErr:           true,
+			errMsg:            "failed to generate token: failed to sign token",
+			findByEmailResult: testUser,
+			jwtGenerateErr:    errors.New("failed to sign token"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := &mockUserRepository{
+				FindByEmailFunc: func(email string) (*entity.User, error) {
+					if tt.findByEmailErr != nil {
+						return nil, tt.findByEmailErr
+					}
+					return tt.findByEmailResult, nil
+				},
+			}
+			mockJWT := &mockJWTGenerator{
+				GenerateTokenFunc: func(userID uint, email string) (string, error) {
+					if tt.verifyJWTParams {
+						if userID != testUser.ID || email != testUser.Email {
+							t.Errorf("unexpected userID or email: got userID=%d, email=%s", userID, email)
+						}
+					}
+					if tt.jwtGenerateErr != nil {
+						return "", tt.jwtGenerateErr
+					}
+					return tt.expectedToken, nil
+				},
+			}
+
+			uc := NewAuthUsecase(mockRepo, mockJWT)
+			token, err := uc.Login(tt.email, tt.password)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error but got nil")
 				}
-				return nil, errors.New("user not found")
-			},
-		}
-		mockJWT := &mockJWTGenerator{
-			GenerateTokenFunc: func(userID uint, email string) (string, error) {
-				if userID != testUser.ID || email != testUser.Email {
-					t.Errorf("unexpected userID or email: got userID=%d, email=%s", userID, email)
+				if tt.errMsg != "" && err.Error() != tt.errMsg {
+					t.Errorf("expected error message '%s', got: '%s'", tt.errMsg, err.Error())
 				}
-				return "mock-jwt-token", nil
-			},
-		}
-
-		uc := NewAuthUsecase(mockRepo, mockJWT)
-		token, err := uc.Login("test@example.com", "password123")
-
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-
-		if token == "" {
-			t.Error("token is empty")
-		}
-
-		if token != "mock-jwt-token" {
-			t.Errorf("expected token 'mock-jwt-token', got: '%s'", token)
-		}
-	})
-
-	t.Run("user not found", func(t *testing.T) {
-		mockRepo := &mockUserRepository{
-			FindByEmailFunc: func(email string) (*entity.User, error) {
-				return nil, errors.New("user not found")
-			},
-		}
-		mockJWT := &mockJWTGenerator{}
-
-		uc := NewAuthUsecase(mockRepo, mockJWT)
-		_, err := uc.Login("wrong@example.com", "password123")
-
-		if err == nil {
-			t.Fatal("expected error but got nil")
-		}
-
-		expectedErrMsg := "invalid email or password"
-		if err.Error() != expectedErrMsg {
-			t.Errorf("expected error message '%s', got: '%s'", expectedErrMsg, err.Error())
-		}
-	})
-
-	t.Run("incorrect password", func(t *testing.T) {
-		mockRepo := &mockUserRepository{
-			FindByEmailFunc: func(email string) (*entity.User, error) {
-				return testUser, nil
-			},
-		}
-		mockJWT := &mockJWTGenerator{}
-
-		uc := NewAuthUsecase(mockRepo, mockJWT)
-		_, err := uc.Login("test@example.com", "wrong-password")
-
-		if err == nil {
-			t.Fatal("expected error but got nil")
-		}
-
-		expectedErrMsg := "invalid email or password"
-		if err.Error() != expectedErrMsg {
-			t.Errorf("expected error message '%s', got: '%s'", expectedErrMsg, err.Error())
-		}
-	})
-
-	t.Run("JWT generation failure", func(t *testing.T) {
-		mockRepo := &mockUserRepository{
-			FindByEmailFunc: func(email string) (*entity.User, error) {
-				return testUser, nil
-			},
-		}
-		mockJWT := &mockJWTGenerator{
-			GenerateTokenFunc: func(userID uint, email string) (string, error) {
-				return "", errors.New("failed to sign token")
-			},
-		}
-
-		uc := NewAuthUsecase(mockRepo, mockJWT)
-		_, err := uc.Login("test@example.com", "password123")
-
-		if err == nil {
-			t.Fatal("expected error but got nil")
-		}
-
-		expectedErrMsg := "failed to generate token: failed to sign token"
-		if err.Error() != expectedErrMsg {
-			t.Errorf("expected error message '%s', got: '%s'", expectedErrMsg, err.Error())
-		}
-	})
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if token == "" {
+					t.Error("token is empty")
+				}
+				if tt.expectedToken != "" && token != tt.expectedToken {
+					t.Errorf("expected token '%s', got: '%s'", tt.expectedToken, token)
+				}
+			}
+		})
+	}
 }
