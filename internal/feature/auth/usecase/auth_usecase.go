@@ -12,6 +12,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	// minPasswordLength defines the minimum acceptable password length.
+	minPasswordLength = 8
+)
+
 // JWTGenerator defines the interface for generating JWT tokens.
 type JWTGenerator interface {
 	// GenerateToken creates a signed JWT token for the given user.
@@ -40,8 +45,21 @@ func NewAuthUsecase(users repository.UserRepository, jwtGenerator JWTGenerator) 
 	}
 }
 
+// validatePassword checks if the password meets security requirements.
+func validatePassword(password string) error {
+	if len(password) < minPasswordLength {
+		return fmt.Errorf("password must be at least %d characters long", minPasswordLength)
+	}
+	return nil
+}
+
 // Signup registers a new user with a hashed password.
 func (u *authUsecase) Signup(email, password string) error {
+	// Validate password strength
+	if err := validatePassword(password); err != nil {
+		return err
+	}
+
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)

@@ -86,6 +86,81 @@ func TestAuthUsecase_Signup(t *testing.T) {
 		}
 	})
 
+	t.Run("password too short", func(t *testing.T) {
+		mockRepo := &mockUserRepository{}
+		mockJWT := &mockJWTGenerator{}
+
+		uc := NewAuthUsecase(mockRepo, mockJWT)
+		err := uc.Signup("test@example.com", "short")
+
+		if err == nil {
+			t.Fatal("expected error for short password")
+		}
+
+		expectedMsg := "password must be at least 8 characters long"
+		if err.Error() != expectedMsg {
+			t.Errorf("expected error '%s', got: '%s'", expectedMsg, err.Error())
+		}
+	})
+
+	t.Run("password at minimum length", func(t *testing.T) {
+		mockRepo := &mockUserRepository{
+			CreateFunc: func(user *entity.User) error {
+				// Verify that the password is hashed
+				if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("12345678")); err != nil {
+					t.Errorf("invalid bcrypt hash: %v", err)
+				}
+				return nil
+			},
+		}
+		mockJWT := &mockJWTGenerator{}
+
+		uc := NewAuthUsecase(mockRepo, mockJWT)
+		err := uc.Signup("test@example.com", "12345678")
+
+		if err != nil {
+			t.Errorf("unexpected error for valid 8-character password: %v", err)
+		}
+	})
+
+	t.Run("empty password", func(t *testing.T) {
+		mockRepo := &mockUserRepository{}
+		mockJWT := &mockJWTGenerator{}
+
+		uc := NewAuthUsecase(mockRepo, mockJWT)
+		err := uc.Signup("test@example.com", "")
+
+		if err == nil {
+			t.Fatal("expected error for empty password")
+		}
+
+		expectedMsg := "password must be at least 8 characters long"
+		if err.Error() != expectedMsg {
+			t.Errorf("expected error '%s', got: '%s'", expectedMsg, err.Error())
+		}
+	})
+
+	t.Run("long password", func(t *testing.T) {
+		longPassword := "this-is-a-very-long-password-with-many-characters"
+		mockRepo := &mockUserRepository{
+			CreateFunc: func(user *entity.User) error {
+				// Verify that the password is hashed
+				if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(longPassword)); err != nil {
+					t.Errorf("invalid bcrypt hash: %v", err)
+				}
+				return nil
+			},
+		}
+		mockJWT := &mockJWTGenerator{}
+
+		uc := NewAuthUsecase(mockRepo, mockJWT)
+		err := uc.Signup("test@example.com", longPassword)
+
+		if err != nil {
+			t.Errorf("unexpected error for valid long password: %v", err)
+		}
+	})
+
 	t.Run("repository create failure", func(t *testing.T) {
 		expectedErr := errors.New("database error")
 		mockRepo := &mockUserRepository{
