@@ -61,7 +61,7 @@ func main() {
 	cachedCandleRepo := cache.NewCachingCandleRepository(rdb, ttl, candleRepo, "candles")
 
 	// JWT Generator
-	jwtSecret := os.Getenv("JWT_SECRET")
+	jwtSecret := os.Getenv(jwtmw.EnvKeyJWTSecret)
 	if jwtSecret == "" {
 		slog.Error("JWT_SECRET environment variable is required")
 		os.Exit(1)
