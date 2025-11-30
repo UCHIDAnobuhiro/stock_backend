@@ -20,8 +20,8 @@ type CachingCandleRepository struct {
 	namespace string
 }
 
-// NewCachingCandleRepository は CandleRepository を Redis キャッシュでデコレートします。
-// ttl=0 の場合は 5分にフォールバックします。namespace が空なら "candles" を使います。
+// NewCachingCandleRepository decorates a CandleRepository with Redis caching.
+// If ttl is 0, it defaults to 5 minutes. If namespace is empty, it uses "candles".
 func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner usecase.CandleRepository, namespace string) *CachingCandleRepository {
 	if ttl <= 0 {
 		ttl = 5 * time.Minute
@@ -38,16 +38,16 @@ func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner usec
 }
 
 func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
-	// まず本体（MySQL）へ
+	// First upsert to the underlying repository (MySQL)
 	if err := c.inner.UpsertBatch(ctx, candles); err != nil {
 		return err
 	}
-	// Redis 未設定なら終了
+	// Exit early if Redis is not configured or there are no candles
 	if c.rdb == nil || len(candles) == 0 {
 		return nil
 	}
 
-	// 影響範囲のキャッシュを無効化（symbol+interval ごとのキー）
+	// Invalidate affected cache entries (keys per symbol+interval)
 	seen := map[string]struct{}{}
 	for _, cd := range candles {
 		prefix := c.cacheKeyPrefix(cd.Symbol, cd.Interval)
@@ -55,36 +55,36 @@ func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []ent
 			continue
 		}
 		seen[prefix] = struct{}{}
-		_ = c.deleteByPattern(ctx, prefix+"*") // 失敗しても本処理は成功させる
+		_ = c.deleteByPattern(ctx, prefix+"*") // Best effort: don't fail if cache deletion fails
 	}
 	return nil
 }
 
 func (c *CachingCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
-	// Redis 未設定なら素通し
+	// Bypass cache if Redis is not configured
 	if c.rdb == nil {
 		return c.inner.Find(ctx, symbol, interval, outputsize)
 	}
 
 	key := c.cacheKey(symbol, interval, outputsize)
 
-	// 1) キャッシュヒット確認
+	// 1) Check cache
 	if b, err := c.rdb.Get(ctx, key).Bytes(); err == nil && len(b) > 0 {
 		var out []entity.Candle
 		if err := json.Unmarshal(b, &out); err == nil {
 			return out, nil
 		}
-		// 壊れていたら落とす
+		// Delete corrupted cache entry
 		_ = c.rdb.Del(ctx, key).Err()
 	}
 
-	// 2) DB へフォールバック
+	// 2) Fallback to database
 	out, err := c.inner.Find(ctx, symbol, interval, outputsize)
 	if err != nil {
 		return nil, err
 	}
 
-	// 3) キャッシュ保存（ベストエフォート）
+	// 3) Store in cache (best effort)
 	if b, err := json.Marshal(out); err == nil {
 		_ = c.rdb.Set(ctx, key, b, c.ttl).Err()
 	}
@@ -92,7 +92,7 @@ func (c *CachingCandleRepository) Find(ctx context.Context, symbol, interval str
 	return out, nil
 }
 
-// ---- 補助 ----
+// Helper methods
 
 func (c *CachingCandleRepository) cacheKey(symbol, interval string, outputsize int) string {
 	return fmt.Sprintf("%s:%s:%s:%d",
@@ -132,7 +132,7 @@ func (c *CachingCandleRepository) deleteByPattern(ctx context.Context, pattern s
 }
 
 func safe(s string) string {
-	// Redis キーに使いづらい記号の簡易エスケープ
+	// Simple escaping of characters that are problematic for Redis keys
 	s = strings.ReplaceAll(s, " ", "_")
 	s = strings.ReplaceAll(s, ":", "_")
 	return s

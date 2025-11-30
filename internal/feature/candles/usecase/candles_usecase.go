@@ -11,27 +11,27 @@ const (
 	MaxOutputSize     = 5000
 )
 
-// CandleRepository はロウソク足の永続化を抽象化します。
+// CandleRepository abstracts the persistence layer for candlestick data.
 // Following Go convention: interfaces are defined by the consumer (usecase), not the provider (adapters).
 type CandleRepository interface {
-	// Find はデータベースを検索します。
+	// Find searches the database for candlestick data.
 	Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 
-	// UpsertBatch は (symbol, interval, time) をユニークキーとしてUpsertします。
+	// UpsertBatch performs upsert operations using (symbol, interval, time) as a unique key.
 	UpsertBatch(ctx context.Context, candles []entity.Candle) error
 }
 
-// candlesUsecase はロウソク足データに関するユースケースを定義します。
+// candlesUsecase defines the use case for candlestick data operations.
 type candlesUsecase struct {
 	candle CandleRepository
 }
 
-// NewCandlesUsecase は新しい candlesUsecase を作成します。
+// NewCandlesUsecase creates a new candlesUsecase.
 func NewCandlesUsecase(candle CandleRepository) *candlesUsecase {
 	return &candlesUsecase{candle: candle}
 }
 
-// GetCandles は銘柄コードと時間足(interval)を指定してロウソク足データを取得します。
+// GetCandles retrieves candlestick data for a given symbol and time interval.
 func (cu *candlesUsecase) GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	if interval == "" {
 		interval = DefaultInterval

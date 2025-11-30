@@ -11,11 +11,11 @@ import (
 
 const ContextUserID = "userID"
 
-// AuthRequiredはJWTを検証し、認証されたユーザーのみがアクセスできるようにする
-// Ginのミドルウェア関数を返します
+// AuthRequired returns a Gin middleware function that validates JWT tokens
+// and restricts access to authenticated users only.
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 1. Authorization ヘッダーの取得
+		// 1. Get Authorization header
 		auth := c.GetHeader("Authorization")
 		if !strings.HasPrefix(auth, "Bearer ") {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing bearer token"})
@@ -23,35 +23,35 @@ func AuthRequired() gin.HandlerFunc {
 		}
 		tokenStr := strings.TrimPrefix(auth, "Bearer ")
 
-		// 2. 秘密鍵の読み込み（環境変数から）
+		// 2. Load secret key from environment variable
 		secret := os.Getenv(EnvKeyJWTSecret)
 		if secret == "" {
-			// サーバー側の設定ミス（JWT_SECRET未設定）
+			// Server misconfiguration (JWT_SECRET not set)
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "server misconfigured"})
 			return
 		}
 
-		// 3. JWT のパースと署名検証
+		// 3. Parse and verify JWT signature
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-			// 署名アルゴリズムのチェック（HMACのみ許可）
+			// Check signing algorithm (only HMAC allowed)
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, jwt.ErrSignatureInvalid
 			}
 			return []byte(secret), nil
 		})
 		if err != nil || !token.Valid {
-			// 検証エラーまたは不正なトークン
+			// Validation error or invalid token
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			return
 		}
 
-		// 4. Claims（ペイロード部分）の取り出し
+		// 4. Extract claims (payload)
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			if sub, ok := claims["sub"].(float64); ok { // JWTはjsonでfloatになる
+			if sub, ok := claims["sub"].(float64); ok { // JWT numbers are decoded as float64
 				c.Set(ContextUserID, uint(sub))
 			}
 		}
-		// 5. 次のハンドラへ処理を渡す
+		// 5. Pass control to the next handler
 		c.Next()
 	}
 }

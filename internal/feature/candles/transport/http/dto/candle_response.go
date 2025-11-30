@@ -1,11 +1,11 @@
 package dto
 
-// CandleResponse はロウソク足データのレスポンスDTOです。
+// CandleResponse is the response DTO for candlestick data.
 type CandleResponse struct {
-	Time   string  `json:"time"`   // 日付
-	Open   float64 `json:"open"`   // 始値
-	High   float64 `json:"high"`   // 高値
-	Low    float64 `json:"low"`    // 安値
-	Close  float64 `json:"close"`  // 終値
-	Volume int64   `json:"volume"` // 出来高
+	Time   string  `json:"time"`   // Date
+	Open   float64 `json:"open"`   // Opening price
+	High   float64 `json:"high"`   // Highest price
+	Low    float64 `json:"low"`    // Lowest price
+	Close  float64 `json:"close"`  // Closing price
+	Volume int64   `json:"volume"` // Trading volume
 }

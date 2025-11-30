@@ -5,7 +5,7 @@ import (
 	"stock_backend/internal/feature/symbollist/domain/entity"
 )
 
-// SymbolRepository はシンボル（銘柄）データの永続化を抽象化します。
+// SymbolRepository abstracts the persistence layer for symbol (stock ticker) data.
 // Following Go convention: interfaces are defined by the consumer (usecase), not the provider (adapters).
 type SymbolRepository interface {
 	ListActive(ctx context.Context) ([]entity.Symbol, error)
@@ -21,6 +21,6 @@ func NewSymbolUsecase(r SymbolRepository) *SymbolUsecase {
 }
 
 func (u *SymbolUsecase) ListActiveSymbols(ctx context.Context) ([]entity.Symbol, error) {
-	// 将来ここでバリデ/並び/絞り込みなどビジネスロジックを追加
+	// Future enhancement: add validation, sorting, filtering, or other business logic here
 	return u.repo.ListActive(ctx)
 }

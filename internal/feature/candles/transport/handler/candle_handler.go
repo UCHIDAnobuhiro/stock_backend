@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CandlesUsecase はロウソク足データに関するユースケースのインターフェースです。
+// CandlesUsecase defines the use case interface for candlestick data operations.
 // Following Go convention: interfaces are defined by the consumer (handler), not the provider (usecase).
 type CandlesUsecase interface {
 	GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
@@ -25,16 +25,16 @@ func NewCandlesHandler(uc CandlesUsecase) *CandlesHandler {
 	return &CandlesHandler{uc: uc}
 }
 
-// GetCandles は銘柄コードと時間足を受け取り、ロウソク足データを JSON で返します。
+// GetCandlesHandler receives a stock symbol and time interval, then returns candlestick data as JSON.
 //
-// エンドポイント例
+// Endpoint example:
 // GET /candles/:code?interval=1day&outputsize=200
 func (h *CandlesHandler) GetCandlesHandler(c *gin.Context) {
 	code := c.Param("code")
-	// 指定されていない場合は以下を設定
+	// Use defaults if not specified
 	interval := c.DefaultQuery("interval", "1day")
 	outputsizeStr := c.DefaultQuery("outputsize", "200")
-	// 文字列を数値に変換
+	// Convert string to integer
 	outputsize, _ := strconv.Atoi(outputsizeStr)
 
 	candles, err := h.uc.GetCandles(c.Request.Context(), code, interval, outputsize)
@@ -44,7 +44,7 @@ func (h *CandlesHandler) GetCandlesHandler(c *gin.Context) {
 		return
 	}
 
-	// データの整形
+	// Format data
 	out := make([]dto.CandleResponse, 0, len(candles))
 	for _, x := range candles {
 		out = append(out, dto.CandleResponse{
