@@ -7,7 +7,6 @@ import (
 	"log/slog"
 
 	"stock_backend/internal/feature/auth/domain/entity"
-	"stock_backend/internal/feature/auth/domain/repository"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -17,28 +16,37 @@ const (
 	minPasswordLength = 8
 )
 
+// UserRepository abstracts the persistence layer for user entities.
+// Following Go convention: interfaces are defined by the consumer (usecase), not the provider (adapters).
+type UserRepository interface {
+	// Create persists a new user to the storage.
+	// It returns an error if a user with the same email already exists.
+	Create(user *entity.User) error
+
+	// FindByEmail retrieves a user matching the specified email address.
+	// It returns an error if the user does not exist.
+	FindByEmail(email string) (*entity.User, error)
+
+	// FindByID retrieves a user matching the specified ID.
+	// It returns an error if the user does not exist.
+	FindByID(id uint) (*entity.User, error)
+}
+
 // JWTGenerator defines the interface for generating JWT tokens.
+// Following Go convention: interfaces are defined by the consumer (usecase), not the provider (platform/jwt).
 type JWTGenerator interface {
 	// GenerateToken creates a signed JWT token for the given user.
 	GenerateToken(userID uint, email string) (string, error)
 }
 
-// AuthUsecase defines use cases for authentication operations.
-type AuthUsecase interface {
-	// Signup registers a new user with the given email and password.
-	Signup(email, password string) error
-	// Login authenticates a user and returns a JWT token on success.
-	Login(email, password string) (string, error)
-}
-
-// authUsecase implements the AuthUsecase interface.
+// authUsecase implements authentication business logic.
 type authUsecase struct {
-	users        repository.UserRepository
+	users        UserRepository
 	jwtGenerator JWTGenerator
 }
 
-// NewAuthUsecase creates a new AuthUsecase instance.
-func NewAuthUsecase(users repository.UserRepository, jwtGenerator JWTGenerator) AuthUsecase {
+// NewAuthUsecase creates a new authUsecase instance.
+func NewAuthUsecase(users UserRepository, jwtGenerator JWTGenerator) *authUsecase {
 	return &authUsecase{
 		users:        users,
 		jwtGenerator: jwtGenerator,

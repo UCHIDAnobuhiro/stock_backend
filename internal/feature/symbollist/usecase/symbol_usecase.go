@@ -3,14 +3,20 @@ package usecase
 import (
 	"context"
 	"stock_backend/internal/feature/symbollist/domain/entity"
-	"stock_backend/internal/feature/symbollist/domain/repository"
 )
 
-type SymbolUsecase struct {
-	repo repository.SymbolRepository
+// SymbolRepository はシンボル（銘柄）データの永続化を抽象化します。
+// Following Go convention: interfaces are defined by the consumer (usecase), not the provider (adapters).
+type SymbolRepository interface {
+	ListActive(ctx context.Context) ([]entity.Symbol, error)
+	ListActiveCodes(ctx context.Context) ([]string, error)
 }
 
-func NewSymbolUsecase(r repository.SymbolRepository) *SymbolUsecase {
+type SymbolUsecase struct {
+	repo SymbolRepository
+}
+
+func NewSymbolUsecase(r SymbolRepository) *SymbolUsecase {
 	return &SymbolUsecase{repo: r}
 }
 

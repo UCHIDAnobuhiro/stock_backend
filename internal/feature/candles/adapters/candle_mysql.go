@@ -3,7 +3,7 @@ package adapters
 import (
 	"context"
 	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/feature/candles/domain/repository"
+	"stock_backend/internal/feature/candles/usecase"
 	"time"
 
 	"gorm.io/gorm"
@@ -14,9 +14,9 @@ type candleMySQL struct {
 	db *gorm.DB
 }
 
-var _ repository.CandleRepository = (*candleMySQL)(nil)
+var _ usecase.CandleRepository = (*candleMySQL)(nil)
 
-func NewCandleRepository(db *gorm.DB) repository.CandleRepository {
+func NewCandleRepository(db *gorm.DB) *candleMySQL {
 	return &candleMySQL{db: db}
 }
 

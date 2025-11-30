@@ -7,28 +7,23 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Generator defines the interface for JWT token generation.
-type Generator interface {
-	// GenerateToken creates a signed JWT token for the given user.
-	GenerateToken(userID uint, email string) (string, error)
-}
-
-// generator implements the Generator interface.
-type generator struct {
+// Generator implements JWT token generation.
+// It implements the JWTGenerator interface defined by consumers (e.g., auth/usecase).
+type Generator struct {
 	secret     []byte
 	expiration time.Duration
 }
 
 // NewGenerator creates a new JWT generator with the provided secret and expiration duration.
-func NewGenerator(secret string, expiration time.Duration) Generator {
-	return &generator{
+func NewGenerator(secret string, expiration time.Duration) *Generator {
+	return &Generator{
 		secret:     []byte(secret),
 		expiration: expiration,
 	}
 }
 
 // GenerateToken creates a signed JWT token with standard claims.
-func (g *generator) GenerateToken(userID uint, email string) (string, error) {
+func (g *Generator) GenerateToken(userID uint, email string) (string, error) {
 	claims := jwt.MapClaims{
 		"sub":   userID,
 		"exp":   time.Now().Add(g.expiration).Unix(),

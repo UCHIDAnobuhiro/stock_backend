@@ -2,19 +2,26 @@
 package handler
 
 import (
+	"context"
 	"net/http"
+	"stock_backend/internal/feature/candles/domain/entity"
 	"stock_backend/internal/feature/candles/transport/http/dto"
-	"stock_backend/internal/feature/candles/usecase"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-type CandlesHandler struct {
-	uc usecase.CandlesUsecase
+// CandlesUsecase はロウソク足データに関するユースケースのインターフェースです。
+// Following Go convention: interfaces are defined by the consumer (handler), not the provider (usecase).
+type CandlesUsecase interface {
+	GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 }
 
-func NewCandlesHandler(uc usecase.CandlesUsecase) *CandlesHandler {
+type CandlesHandler struct {
+	uc CandlesUsecase
+}
+
+func NewCandlesHandler(uc CandlesUsecase) *CandlesHandler {
 	return &CandlesHandler{uc: uc}
 }
 

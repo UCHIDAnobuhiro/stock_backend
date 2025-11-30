@@ -3,7 +3,7 @@ package adapters
 
 import (
 	"stock_backend/internal/feature/auth/domain/entity"
-	"stock_backend/internal/feature/auth/domain/repository"
+	"stock_backend/internal/feature/auth/usecase"
 
 	"gorm.io/gorm"
 )
@@ -15,7 +15,7 @@ type userMySQL struct {
 }
 
 // Compile-time check to ensure userMySQL implements UserRepository.
-var _ repository.UserRepository = (*userMySQL)(nil)
+var _ usecase.UserRepository = (*userMySQL)(nil)
 
 // NewUserMySQL creates a new instance of userMySQL with the given gorm.DB connection.
 // This is a constructor for dependency injection.

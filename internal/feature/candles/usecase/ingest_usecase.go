@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 	"log/slog"
-	candlesrepo "stock_backend/internal/feature/candles/domain/repository"
+	"stock_backend/internal/feature/candles/domain/entity"
 	"stock_backend/internal/shared/ratelimiter"
 )
 
@@ -14,15 +14,22 @@ const (
 // ingestIntervals はデータ取得の対象となる時間足のリストです。
 var ingestIntervals = []string{"1day", "1week", "1month"}
 
+// MarketRepository は株価データを取得するリポジトリのインターフェイスです。
+// 外部 API の実装を抽象化します。
+// Following Go convention: interfaces are defined by the consumer (usecase), not the provider (adapters).
+type MarketRepository interface {
+	GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+}
+
 // IngestUsecase は外部APIからデータを取得し、データベースに永続化するユースケースを定義します。
 type IngestUsecase struct {
-	market      candlesrepo.MarketRepository
-	candle      candlesrepo.CandleRepository
+	market      MarketRepository
+	candle      CandleRepository
 	rateLimiter ratelimiter.RateLimiterInterface
 }
 
 // NewIngestUsecase は新しい IngestUsecase を作成します。
-func NewIngestUsecase(market candlesrepo.MarketRepository, candle candlesrepo.CandleRepository, rateLimiter ratelimiter.RateLimiterInterface) *IngestUsecase {
+func NewIngestUsecase(market MarketRepository, candle CandleRepository, rateLimiter ratelimiter.RateLimiterInterface) *IngestUsecase {
 	return &IngestUsecase{market: market, candle: candle, rateLimiter: rateLimiter}
 }
 
