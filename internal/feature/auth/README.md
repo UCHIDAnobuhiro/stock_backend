@@ -313,7 +313,7 @@ go test ./internal/feature/auth/... -v -race -cover
 |----------|-------------|----------|
 | `JWT_SECRET` | Secret key for signing JWT tokens | ✅ |
 
-**Configuration Example** (`.docker.env`):
+**Configuration Example** (`.env.docker`):
 ```
 JWT_SECRET=your-super-secret-key-change-this-in-production
 ```
