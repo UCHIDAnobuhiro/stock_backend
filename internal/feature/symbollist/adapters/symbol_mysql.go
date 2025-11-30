@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"stock_backend/internal/feature/symbollist/domain/entity"
-	"stock_backend/internal/feature/symbollist/domain/repository"
+	"stock_backend/internal/feature/symbollist/usecase"
 
 	"gorm.io/gorm"
 )
@@ -13,9 +13,9 @@ type symbolMySQL struct {
 	db *gorm.DB
 }
 
-var _ repository.SymbolRepository = (*symbolMySQL)(nil)
+var _ usecase.SymbolRepository = (*symbolMySQL)(nil)
 
-func NewSymbolRepository(db *gorm.DB) repository.SymbolRepository {
+func NewSymbolRepository(db *gorm.DB) *symbolMySQL {
 	return &symbolMySQL{db: db}
 }
 

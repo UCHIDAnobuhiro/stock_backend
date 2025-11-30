@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/feature/candles/domain/repository"
 )
 
 const (
@@ -12,18 +11,23 @@ const (
 	MaxOutputSize     = 5000
 )
 
-// CandlesUsecase はロウソク足データに関するユースケースのインターフェースです。
-type CandlesUsecase interface {
-	GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+// CandleRepository はロウソク足の永続化を抽象化します。
+// Following Go convention: interfaces are defined by the consumer (usecase), not the provider (adapters).
+type CandleRepository interface {
+	// Find はデータベースを検索します。
+	Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+
+	// UpsertBatch は (symbol, interval, time) をユニークキーとしてUpsertします。
+	UpsertBatch(ctx context.Context, candles []entity.Candle) error
 }
 
-// CandlesUsecase はロウソク足データに関するユースケースを定義します。
+// candlesUsecase はロウソク足データに関するユースケースを定義します。
 type candlesUsecase struct {
-	candle repository.CandleRepository
+	candle CandleRepository
 }
 
-// NewCandlesUsecase は新しい CandlesUsecase を作成します。
-func NewCandlesUsecase(candle repository.CandleRepository) CandlesUsecase {
+// NewCandlesUsecase は新しい candlesUsecase を作成します。
+func NewCandlesUsecase(candle CandleRepository) *candlesUsecase {
 	return &candlesUsecase{candle: candle}
 }
 

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/feature/candles/domain/repository"
+	"stock_backend/internal/feature/candles/usecase"
 	"stock_backend/internal/platform/externalapi/twelvedata/dto"
 	"strconv"
 	"time"
@@ -19,7 +19,10 @@ type TwelveDataMarket struct {
 	client *http.Client
 }
 
-func NewTwelveDataMarket(cfg Config, client *http.Client) repository.MarketRepository {
+// Compile-time check to ensure TwelveDataMarket implements MarketRepository.
+var _ usecase.MarketRepository = (*TwelveDataMarket)(nil)
+
+func NewTwelveDataMarket(cfg Config, client *http.Client) *TwelveDataMarket {
 	return &TwelveDataMarket{cfg: cfg, client: client}
 }
 

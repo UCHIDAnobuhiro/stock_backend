@@ -5,20 +5,28 @@ import (
 	"net/http"
 
 	"stock_backend/internal/feature/auth/transport/http/dto"
-	"stock_backend/internal/feature/auth/usecase"
 
 	"github.com/gin-gonic/gin"
 )
 
+// AuthUsecase defines use cases for authentication operations.
+// Following Go convention: interfaces are defined by the consumer (handler), not the provider (usecase).
+type AuthUsecase interface {
+	// Signup registers a new user with the given email and password.
+	Signup(email, password string) error
+	// Login authenticates a user and returns a JWT token on success.
+	Login(email, password string) (string, error)
+}
+
 // AuthHandler handles HTTP requests for authentication operations.
-// It depends on the AuthUsecase from the usecase layer and handles JSON requests/responses.
+// It depends on the AuthUsecase interface and handles JSON requests/responses.
 type AuthHandler struct {
-	auth usecase.AuthUsecase
+	auth AuthUsecase
 }
 
 // NewAuthHandler creates a new AuthHandler instance.
 // This is a constructor for dependency injection, injecting AuthUsecase from outside.
-func NewAuthHandler(auth usecase.AuthUsecase) *AuthHandler {
+func NewAuthHandler(auth AuthUsecase) *AuthHandler {
 	return &AuthHandler{auth: auth}
 }
 
