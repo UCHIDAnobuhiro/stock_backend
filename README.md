@@ -42,7 +42,7 @@ REST API として、ユーザー認証、株価データ提供、キャッシ�
 | DB            | MySQL / Cloud SQL                                                  |
 | Cache         | Redis                                                              |
 | Auth          | JWT / bcrypt                                                       |
-| Config        | **.docker.env（ローカル） / Secret Manager（本番） + os.Getenv()** |
+| Config        | **.env.docker（ローカル） / Secret Manager（本番） + os.Getenv()** |
 | Container     | Docker / Docker Compose                                            |
 | Cloud         | Google Cloud Run / Cloud SQL / Secret Manager / Artifact Registry  |
 | CI/CD         | GitHub Actions                                                     |
@@ -109,7 +109,7 @@ REST API として、ユーザー認証、株価データ提供、キャッシ�
 │   ├── docker-compose.dev.yml  # ローカル開発用オーバーライド構成
 │   └── mysql/                  # MySQL初期化スクリプト
 │
-├── .docker.env                 # ローカル環境変数（gitignore推奨）
+├── .env.docker                 # ローカル環境変数（gitignore推奨）
 ├── go.mod
 ├── go.sum
 └── .github/
@@ -179,7 +179,7 @@ REST API として、ユーザー認証、株価データ提供、キャッシ�
 - **Redis（Cloud Memorystore）**：キャッシュ管理
 - **Secret Manager**：API キー・DB パスワード・JWT 秘密鍵を安全に管理
 - 起動時に `os.Getenv()` + Secret Manager API でロード
-- **ローカル開発時は `.docker.env` から読み込み**
+- **ローカル開発時は `.env.docker` から読み込み**
 
 ## 🧪 CI/CD
 
@@ -194,7 +194,7 @@ REST API として、ユーザー認証、株価データ提供、キャッシ�
 
 - Docker / Docker Compose がインストール済み
 - Go は不要（すべて Docker で起動）
-- `.docker.env` にローカル環境変数を設定
+- `.env.docker` にローカル環境変数を設定
 
 ---
 
@@ -216,7 +216,7 @@ cp example.env.docker .env.docker
 
 1. Twelve Data の公式サイトでアカウントを作成
 2. 「Dashboard > API Keys」からキーを発行
-3. .docker.env の TWELVE_DATA_API_KEY にコピーして設定  
+3. .env.docker の TWELVE_DATA_API_KEY にコピーして設定
    例: `TWELVE_DATA_API_KEY=your_api_key_here`
 
 ### ⚠️ Twelve Data 無料プランの制約

@@ -35,7 +35,7 @@ go build ./...
 ```
 
 ### Environment Setup
-- Copy `example.env.docker` to `.docker.env` and configure:
+- Copy `example.env.docker` to `.env.docker` and configure:
   - `TWELVE_DATA_API_KEY`: Get from https://twelvedata.com/ (free tier: 8 req/min)
   - `JWT_SECRET`: Set a strong secret for production
   - DB and Redis configurations for local development
