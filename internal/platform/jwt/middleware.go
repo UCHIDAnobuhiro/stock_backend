@@ -24,7 +24,7 @@ func AuthRequired() gin.HandlerFunc {
 		tokenStr := strings.TrimPrefix(auth, "Bearer ")
 
 		// 2. 秘密鍵の読み込み（環境変数から）
-		secret := os.Getenv("JWT_SECRET")
+		secret := os.Getenv(EnvKeyJWTSecret)
 		if secret == "" {
 			// サーバー側の設定ミス（JWT_SECRET未設定）
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "server misconfigured"})
