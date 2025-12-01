@@ -107,6 +107,8 @@ func verifyBcryptHash(t *testing.T, hashedPassword, plainPassword string) {
 }
 
 func TestAuthUsecase_Signup(t *testing.T) {
+	t.Parallel() // enable parallel execution for test function
+
 	tests := []struct {
 		name              string
 		email             string
@@ -162,6 +164,8 @@ func TestAuthUsecase_Signup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel() // enable parallel execution for subtests
+
 			mockRepo := &mockUserRepository{
 				CreateFunc: func(user *entity.User) error {
 					if tt.verifyBcryptHash {
@@ -192,6 +196,8 @@ func TestAuthUsecase_Signup(t *testing.T) {
 }
 
 func TestAuthUsecase_Login(t *testing.T) {
+	t.Parallel() // enable parallel execution for test function
+
 	// Create test user using helper function
 	testUser := createTestUser(t, 1, "test@example.com", "password123")
 
@@ -245,6 +251,8 @@ func TestAuthUsecase_Login(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel() // enable parallel execution for subtests
+
 			mockRepo := &mockUserRepository{
 				FindByEmailFunc: func(email string) (*entity.User, error) {
 					if tt.findByEmailErr != nil {
