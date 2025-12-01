@@ -61,6 +61,51 @@ func (m *mockUserRepository) FindByID(id uint) (*entity.User, error) {
 	return nil, errors.New("user not found")
 }
 
+// createTestUser creates a test user with hashed password for testing.
+// This helper reduces code duplication and makes tests more maintainable.
+func createTestUser(t *testing.T, id uint, email, password string) *entity.User {
+	t.Helper()
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	return &entity.User{
+		ID:       id,
+		Email:    email,
+		Password: string(hashedPassword),
+	}
+}
+
+// assertError checks if an error matches expectations.
+// This helper standardizes error assertions across all tests.
+func assertError(t *testing.T, err error, wantErr bool, errMsg string) {
+	t.Helper()
+	if wantErr {
+		if err == nil {
+			t.Fatal("expected error but got nil")
+		}
+		if errMsg != "" && err.Error() != errMsg {
+			t.Errorf("expected error '%s', got: '%s'", errMsg, err.Error())
+		}
+	} else {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+}
+
+// verifyBcryptHash checks if a hashed password matches the plaintext password.
+// This helper encapsulates the bcrypt verification logic.
+func verifyBcryptHash(t *testing.T, hashedPassword, plainPassword string) {
+	t.Helper()
+	if len(hashedPassword) == 0 || hashedPassword == plainPassword {
+		t.Error("password is not hashed")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(plainPassword)); err != nil {
+		t.Errorf("invalid bcrypt hash: %v", err)
+	}
+}
+
 func TestAuthUsecase_Signup(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -120,14 +165,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			mockRepo := &mockUserRepository{
 				CreateFunc: func(user *entity.User) error {
 					if tt.verifyBcryptHash {
-						// Verify that the password is hashed
-						if len(user.Password) == 0 || user.Password == tt.password {
-							t.Errorf("password is not hashed")
-						}
-						// Verify that it's a valid bcrypt hash
-						if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(tt.password)); err != nil {
-							t.Errorf("invalid bcrypt hash: %v", err)
-						}
+						verifyBcryptHash(t, user.Password, tt.password)
 					}
 					if tt.repositoryErr != nil {
 						return tt.repositoryErr
@@ -140,34 +178,22 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			uc := NewAuthUsecase(mockRepo, mockJWT)
 			err := uc.Signup(tt.email, tt.password)
 
+			// Use helper function for error assertions
 			if tt.wantErr {
-				if err == nil {
-					t.Fatal("expected error but got nil")
-				}
-				if tt.errMsg != "" && err.Error() != tt.errMsg {
-					t.Errorf("expected error '%s', got: '%s'", tt.errMsg, err.Error())
-				}
+				assertError(t, err, true, tt.errMsg)
 				if tt.repositoryErr != nil && !errors.Is(err, tt.repositoryErr) {
 					t.Errorf("expected error '%v', got: %v", tt.repositoryErr, err)
 				}
 			} else {
-				if err != nil {
-					t.Errorf("unexpected error: %v", err)
-				}
+				assertError(t, err, false, "")
 			}
 		})
 	}
 }
 
 func TestAuthUsecase_Login(t *testing.T) {
-	// Hashed password for testing
-	password := "password123"
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
-	testUser := &entity.User{
-		ID:       1,
-		Email:    "test@example.com",
-		Password: string(hashedPassword),
-	}
+	// Create test user using helper function
+	testUser := createTestUser(t, 1, "test@example.com", "password123")
 
 	tests := []struct {
 		name              string
@@ -244,17 +270,11 @@ func TestAuthUsecase_Login(t *testing.T) {
 			uc := NewAuthUsecase(mockRepo, mockJWT)
 			token, err := uc.Login(tt.email, tt.password)
 
-			if tt.wantErr {
-				if err == nil {
-					t.Fatal("expected error but got nil")
-				}
-				if tt.errMsg != "" && err.Error() != tt.errMsg {
-					t.Errorf("expected error message '%s', got: '%s'", tt.errMsg, err.Error())
-				}
-			} else {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
+			// Use helper function for error assertions
+			assertError(t, err, tt.wantErr, tt.errMsg)
+
+			// Additional success case validations
+			if !tt.wantErr {
 				if token == "" {
 					t.Error("token is empty")
 				}
