@@ -2,10 +2,10 @@
 package usecase
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 
+	"stock_backend/internal/feature/auth/domain"
 	"stock_backend/internal/feature/auth/domain/entity"
 
 	"golang.org/x/crypto/bcrypt"
@@ -79,6 +79,7 @@ func (u *authUsecase) Signup(email, password string) error {
 // Login authenticates a user and returns a JWT token on success.
 // It verifies the email and password, then generates a signed JWT token.
 // To prevent timing attacks, bcrypt comparison is performed even when user doesn't exist.
+// Returns domain.ErrInvalidCredentials if authentication fails.
 func (u *authUsecase) Login(email, password string) (string, error) {
 	// Find user by email
 	user, err := u.users.FindByEmail(email)
@@ -94,10 +95,10 @@ func (u *authUsecase) Login(email, password string) (string, error) {
 	// First argument is the hashed password, second is the plaintext password
 	compareErr := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password))
 
-	// If user not found or password incorrect, return generic error
+	// If user not found or password incorrect, return domain error
 	if err != nil || compareErr != nil {
 		slog.Debug("login failed", "email", email)
-		return "", errors.New("invalid email or password")
+		return "", domain.ErrInvalidCredentials
 	}
 
 	// Generate JWT token using injected generator

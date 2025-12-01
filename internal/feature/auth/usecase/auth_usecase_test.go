@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"errors"
+	"stock_backend/internal/feature/auth/domain"
 	"stock_backend/internal/feature/auth/domain/entity"
 	"testing"
 
@@ -49,7 +50,7 @@ func (m *mockUserRepository) FindByEmail(email string) (*entity.User, error) {
 		return m.FindByEmailFunc(email)
 	}
 	// Default: return user not found error
-	return nil, errors.New("user not found")
+	return nil, domain.ErrUserNotFound
 }
 
 // FindByID is the mock implementation of the FindByID method.
@@ -58,7 +59,7 @@ func (m *mockUserRepository) FindByID(id uint) (*entity.User, error) {
 		return m.FindByIDFunc(id)
 	}
 	// Default: return user not found error
-	return nil, errors.New("user not found")
+	return nil, domain.ErrUserNotFound
 }
 
 // createTestUser creates a test user with hashed password for testing.
@@ -202,7 +203,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 		email             string
 		password          string
 		wantErr           bool
-		errMsg            string
+		expectedErr       error
 		expectedToken     string
 		findByEmailResult *entity.User
 		findByEmailErr    error
@@ -223,15 +224,15 @@ func TestAuthUsecase_Login(t *testing.T) {
 			email:          "wrong@example.com",
 			password:       "password123",
 			wantErr:        true,
-			errMsg:         "invalid email or password",
-			findByEmailErr: errors.New("user not found"),
+			expectedErr:    domain.ErrInvalidCredentials,
+			findByEmailErr: domain.ErrUserNotFound,
 		},
 		{
 			name:              "incorrect password",
 			email:             "test@example.com",
 			password:          "wrong-password",
 			wantErr:           true,
-			errMsg:            "invalid email or password",
+			expectedErr:       domain.ErrInvalidCredentials,
 			findByEmailResult: testUser,
 		},
 		{
@@ -239,7 +240,6 @@ func TestAuthUsecase_Login(t *testing.T) {
 			email:             "test@example.com",
 			password:          "password123",
 			wantErr:           true,
-			errMsg:            "failed to generate token: failed to sign token",
 			findByEmailResult: testUser,
 			jwtGenerateErr:    errors.New("failed to sign token"),
 		},
@@ -275,7 +275,19 @@ func TestAuthUsecase_Login(t *testing.T) {
 			token, err := uc.Login(tt.email, tt.password)
 
 			// Assert error expectations
-			assertError(t, err, tt.wantErr, tt.errMsg)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+				}
+				// Verify domain error if specified
+				if tt.expectedErr != nil && !errors.Is(err, tt.expectedErr) {
+					t.Errorf("expected error '%v', got: '%v'", tt.expectedErr, err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			}
 
 			// Assert success case expectations
 			if !tt.wantErr {

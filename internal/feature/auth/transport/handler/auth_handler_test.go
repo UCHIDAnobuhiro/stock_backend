@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"stock_backend/internal/feature/auth/domain"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
@@ -68,9 +70,16 @@ func TestAuthHandler_Signup(t *testing.T) {
 		{
 			name:           "failure: duplicate email (usecase error)",
 			requestBody:    gin.H{"email": "existing@example.com", "password": "password123"},
-			mockSignupFunc: func(email, password string) error { return errors.New("email already exists") },
+			mockSignupFunc: func(email, password string) error { return domain.ErrUserAlreadyExists },
 			expectedStatus: http.StatusConflict,
-			expectedBody:   gin.H{"error": "email already exists"},
+			expectedBody:   gin.H{"error": "user with this email already exists"},
+		},
+		{
+			name:           "failure: internal server error",
+			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
+			mockSignupFunc: func(email, password string) error { return errors.New("database connection failed") },
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   gin.H{"error": "internal server error"},
 		},
 	}
 
@@ -139,18 +148,18 @@ func TestAuthHandler_Login(t *testing.T) {
 		{
 			name:           "failure: invalid credentials (usecase error)",
 			requestBody:    gin.H{"email": "wrong@example.com", "password": "wrong-password"},
-			mockLoginFunc:  func(email, password string) (string, error) { return "", errors.New("invalid email or password") },
+			mockLoginFunc:  func(email, password string) (string, error) { return "", domain.ErrInvalidCredentials },
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody:   gin.H{"error": "invalid email or password"},
 		},
 		{
-			name:        "failure: JWT secret not set (usecase error)",
+			name:        "failure: JWT generation error (internal error)",
 			requestBody: gin.H{"email": "test@example.com", "password": "password123"},
 			mockLoginFunc: func(email, password string) (string, error) {
-				return "", errors.New("server misconfigured: JWT_SECRET missing")
+				return "", errors.New("failed to generate token: JWT_SECRET missing")
 			},
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   gin.H{"error": "invalid email or password"}, // Usecase error message is hidden
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   gin.H{"error": "internal server error"},
 		},
 	}
 

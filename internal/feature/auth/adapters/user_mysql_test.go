@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"stock_backend/internal/feature/auth/domain"
 	"stock_backend/internal/feature/auth/domain/entity"
 	"testing"
 	"time"
@@ -71,6 +72,7 @@ func TestUserMySQL_Create(t *testing.T) {
 		err = repo.Create(user2)
 
 		assert.Error(t, err, "should return duplicate error")
+		assert.ErrorIs(t, err, domain.ErrUserAlreadyExists, "should return ErrUserAlreadyExists")
 	})
 
 	t.Run("nil user error", func(t *testing.T) {
@@ -114,7 +116,7 @@ func TestUserMySQL_FindByEmail(t *testing.T) {
 
 		assert.Error(t, err, "should return error")
 		assert.Nil(t, found, "user should be nil")
-		assert.ErrorIs(t, err, gorm.ErrRecordNotFound, "should return ErrRecordNotFound")
+		assert.ErrorIs(t, err, domain.ErrUserNotFound, "should return ErrUserNotFound")
 	})
 
 	t.Run("empty email error", func(t *testing.T) {
@@ -184,7 +186,7 @@ func TestUserMySQL_FindByID(t *testing.T) {
 
 		assert.Error(t, err, "should return error")
 		assert.Nil(t, found, "user should be nil")
-		assert.ErrorIs(t, err, gorm.ErrRecordNotFound, "should return ErrRecordNotFound")
+		assert.ErrorIs(t, err, domain.ErrUserNotFound, "should return ErrUserNotFound")
 	})
 
 	t.Run("ID 0 error", func(t *testing.T) {
