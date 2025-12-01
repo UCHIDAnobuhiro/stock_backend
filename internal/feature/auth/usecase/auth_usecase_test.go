@@ -182,14 +182,10 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			uc := NewAuthUsecase(mockRepo, mockJWT)
 			err := uc.Signup(tt.email, tt.password)
 
-			// Use helper function for error assertions
-			if tt.wantErr {
-				assertError(t, err, true, tt.errMsg)
-				if tt.repositoryErr != nil && !errors.Is(err, tt.repositoryErr) {
-					t.Errorf("expected error '%v', got: %v", tt.repositoryErr, err)
-				}
-			} else {
-				assertError(t, err, false, "")
+			// Assert error expectations
+			assertError(t, err, tt.wantErr, tt.errMsg)
+			if tt.repositoryErr != nil && !errors.Is(err, tt.repositoryErr) {
+				t.Errorf("expected error '%v', got: %v", tt.repositoryErr, err)
 			}
 		})
 	}
@@ -278,10 +274,10 @@ func TestAuthUsecase_Login(t *testing.T) {
 			uc := NewAuthUsecase(mockRepo, mockJWT)
 			token, err := uc.Login(tt.email, tt.password)
 
-			// Use helper function for error assertions
+			// Assert error expectations
 			assertError(t, err, tt.wantErr, tt.errMsg)
 
-			// Additional success case validations
+			// Assert success case expectations
 			if !tt.wantErr {
 				if token == "" {
 					t.Error("token is empty")
