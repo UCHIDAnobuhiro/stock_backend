@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"stock_backend/internal/feature/auth/transport/http/dto"
@@ -13,9 +14,9 @@ import (
 // Following Go convention: interfaces are defined by the consumer (handler), not the provider (usecase).
 type AuthUsecase interface {
 	// Signup registers a new user with the given email and password.
-	Signup(email, password string) error
+	Signup(ctx context.Context, email, password string) error
 	// Login authenticates a user and returns a JWT token on success.
-	Login(email, password string) (string, error)
+	Login(ctx context.Context, email, password string) (string, error)
 }
 
 // AuthHandler handles HTTP requests for authentication operations.
@@ -41,7 +42,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := h.auth.Signup(req.Email, req.Password); err != nil {
+	if err := h.auth.Signup(c.Request.Context(), req.Email, req.Password); err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
@@ -59,7 +60,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	token, err := h.auth.Login(req.Email, req.Password)
+	token, err := h.auth.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
 		return

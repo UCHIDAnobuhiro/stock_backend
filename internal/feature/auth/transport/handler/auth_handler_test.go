@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -14,22 +15,22 @@ import (
 
 // mockAuthUsecase is a mock implementation of the usecase.AuthUsecase interface.
 type mockAuthUsecase struct {
-	SignupFunc func(email, password string) error
-	LoginFunc  func(email, password string) (string, error)
+	SignupFunc func(ctx context.Context, email, password string) error
+	LoginFunc  func(ctx context.Context, email, password string) (string, error)
 }
 
 // Signup is the mock implementation of the Signup method.
-func (m *mockAuthUsecase) Signup(email, password string) error {
+func (m *mockAuthUsecase) Signup(ctx context.Context, email, password string) error {
 	if m.SignupFunc != nil {
-		return m.SignupFunc(email, password)
+		return m.SignupFunc(ctx, email, password)
 	}
 	return nil // Default: success
 }
 
 // Login is the mock implementation of the Login method.
-func (m *mockAuthUsecase) Login(email, password string) (string, error) {
+func (m *mockAuthUsecase) Login(ctx context.Context, email, password string) (string, error) {
 	if m.LoginFunc != nil {
-		return m.LoginFunc(email, password)
+		return m.LoginFunc(ctx, email, password)
 	}
 	return "", errors.New("login failed") // Default: failure
 }
@@ -40,14 +41,14 @@ func TestAuthHandler_Signup(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    gin.H
-		mockSignupFunc func(email, password string) error
+		mockSignupFunc func(ctx context.Context, email, password string) error
 		expectedStatus int
 		expectedBody   gin.H
 	}{
 		{
 			name:           "success: user registration",
 			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
-			mockSignupFunc: func(email, password string) error { return nil },
+			mockSignupFunc: func(ctx context.Context, email, password string) error { return nil },
 			expectedStatus: http.StatusCreated,
 			expectedBody:   gin.H{"message": "ok"},
 		},
@@ -68,7 +69,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 		{
 			name:           "failure: duplicate email (usecase error)",
 			requestBody:    gin.H{"email": "existing@example.com", "password": "password123"},
-			mockSignupFunc: func(email, password string) error { return errors.New("email already exists") },
+			mockSignupFunc: func(ctx context.Context, email, password string) error { return errors.New("email already exists") },
 			expectedStatus: http.StatusConflict,
 			expectedBody:   gin.H{"error": "email already exists"},
 		},
@@ -111,14 +112,14 @@ func TestAuthHandler_Login(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    gin.H
-		mockLoginFunc  func(email, password string) (string, error)
+		mockLoginFunc  func(ctx context.Context, email, password string) (string, error)
 		expectedStatus int
 		expectedBody   gin.H
 	}{
 		{
 			name:           "success: user login",
 			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
-			mockLoginFunc:  func(email, password string) (string, error) { return "dummy-jwt-token", nil },
+			mockLoginFunc:  func(ctx context.Context, email, password string) (string, error) { return "dummy-jwt-token", nil },
 			expectedStatus: http.StatusOK,
 			expectedBody:   gin.H{"token": "dummy-jwt-token"},
 		},
@@ -139,14 +140,14 @@ func TestAuthHandler_Login(t *testing.T) {
 		{
 			name:           "failure: invalid credentials (usecase error)",
 			requestBody:    gin.H{"email": "wrong@example.com", "password": "wrong-password"},
-			mockLoginFunc:  func(email, password string) (string, error) { return "", errors.New("invalid email or password") },
+			mockLoginFunc:  func(ctx context.Context, email, password string) (string, error) { return "", errors.New("invalid email or password") },
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody:   gin.H{"error": "invalid email or password"},
 		},
 		{
 			name:        "failure: JWT secret not set (usecase error)",
 			requestBody: gin.H{"email": "test@example.com", "password": "password123"},
-			mockLoginFunc: func(email, password string) (string, error) {
+			mockLoginFunc: func(ctx context.Context, email, password string) (string, error) {
 				return "", errors.New("server misconfigured: JWT_SECRET missing")
 			},
 			expectedStatus: http.StatusUnauthorized,

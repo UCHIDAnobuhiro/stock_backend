@@ -2,6 +2,8 @@
 package adapters
 
 import (
+	"context"
+
 	"stock_backend/internal/feature/auth/domain/entity"
 	"stock_backend/internal/feature/auth/usecase"
 
@@ -24,15 +26,15 @@ func NewUserMySQL(db *gorm.DB) *userMySQL {
 }
 
 // Create adds a user to the database.
-func (r *userMySQL) Create(u *entity.User) error {
-	return r.db.Create(u).Error
+func (r *userMySQL) Create(ctx context.Context, u *entity.User) error {
+	return r.db.WithContext(ctx).Create(u).Error
 }
 
 // FindByEmail retrieves a user by email address.
 // It returns an error if the user does not exist.
-func (r *userMySQL) FindByEmail(email string) (*entity.User, error) {
+func (r *userMySQL) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
 	var u entity.User
-	if err := r.db.Where("email = ?", email).First(&u).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("email = ?", email).First(&u).Error; err != nil {
 		return nil, err
 	}
 	return &u, nil
@@ -40,9 +42,9 @@ func (r *userMySQL) FindByEmail(email string) (*entity.User, error) {
 
 // FindByID retrieves a user by ID.
 // It returns an error if the user does not exist.
-func (r *userMySQL) FindByID(id uint) (*entity.User, error) {
+func (r *userMySQL) FindByID(ctx context.Context, id uint) (*entity.User, error) {
 	var u entity.User
-	if err := r.db.First(&u, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&u, id).Error; err != nil {
 		return nil, err
 	}
 	return &u, nil
