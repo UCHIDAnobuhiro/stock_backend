@@ -68,6 +68,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 	token, err := h.auth.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
+		// Don't expose the actual error to prevent user enumeration attacks
 		slog.Warn("login failed", "error", err, "email", req.Email, "remote_addr", c.ClientIP())
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
 		return
