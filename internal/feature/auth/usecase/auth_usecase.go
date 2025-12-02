@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"stock_backend/internal/feature/auth/domain/entity"
 
@@ -97,7 +96,6 @@ func (u *authUsecase) Login(ctx context.Context, email, password string) (string
 
 	// If user not found or password incorrect, return generic error
 	if err != nil || compareErr != nil {
-		slog.Debug("login failed", "email", email)
 		return "", errors.New("invalid email or password")
 	}
 
@@ -107,6 +105,5 @@ func (u *authUsecase) Login(ctx context.Context, email, password string) (string
 		return "", fmt.Errorf("failed to generate token: %w", tokenErr)
 	}
 
-	slog.Info("login successful", "user_id", user.ID)
 	return token, nil
 }
