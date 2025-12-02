@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // mockAuthUsecase is a mock implementation of the usecase.AuthUsecase interface.
@@ -35,8 +36,44 @@ func (m *mockAuthUsecase) Login(ctx context.Context, email, password string) (st
 	return "", errors.New("login failed") // Default: failure
 }
 
-func TestAuthHandler_Signup(t *testing.T) {
+// TestMain sets up the test environment once for all tests.
+func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
+	m.Run()
+}
+
+// makeRequest is a helper function to create and execute an HTTP request.
+func makeRequest(t *testing.T, router *gin.Engine, method, path string, body gin.H) *httptest.ResponseRecorder {
+	t.Helper()
+
+	bodyBytes, err := json.Marshal(body)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(method, path, bytes.NewBuffer(bodyBytes))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	return w
+}
+
+// assertJSONResponse is a helper function to validate JSON response status and body.
+func assertJSONResponse(t *testing.T, w *httptest.ResponseRecorder, expectedStatus int, expectedBody gin.H) {
+	t.Helper()
+
+	assert.Equal(t, expectedStatus, w.Code)
+
+	var responseBody gin.H
+	err := json.Unmarshal(w.Body.Bytes(), &responseBody)
+	require.NoError(t, err)
+
+	assert.Equal(t, expectedBody, responseBody)
+}
+
+func TestAuthHandler_Signup(t *testing.T) {
+	t.Parallel()
 
 	tests := []struct {
 		name           string
@@ -77,32 +114,22 @@ func TestAuthHandler_Signup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mockUC := &mockAuthUsecase{SignupFunc: tt.mockSignupFunc}
 			handler := NewAuthHandler(mockUC)
 
 			router := gin.New()
 			router.POST("/signup", handler.Signup)
 
-			body, _ := json.Marshal(tt.requestBody)
-			req, _ := http.NewRequest(http.MethodPost, "/signup", bytes.NewBuffer(body))
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			var responseBody gin.H
-			err := json.Unmarshal(w.Body.Bytes(), &responseBody)
-			assert.NoError(t, err)
-
-			assert.Equal(t, tt.expectedBody, responseBody)
+			w := makeRequest(t, router, http.MethodPost, "/signup", tt.requestBody)
+			assertJSONResponse(t, w, tt.expectedStatus, tt.expectedBody)
 		})
 	}
 }
 
 func TestAuthHandler_Login(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+	t.Parallel()
 
 	tests := []struct {
 		name           string
@@ -152,26 +179,16 @@ func TestAuthHandler_Login(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mockUC := &mockAuthUsecase{LoginFunc: tt.mockLoginFunc}
 			handler := NewAuthHandler(mockUC)
 
 			router := gin.New()
 			router.POST("/login", handler.Login)
 
-			body, _ := json.Marshal(tt.requestBody)
-			req, _ := http.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(body))
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-			router.ServeHTTP(w, req)
-
-			assert.Equal(t, tt.expectedStatus, w.Code)
-
-			var responseBody gin.H
-			err := json.Unmarshal(w.Body.Bytes(), &responseBody)
-			assert.NoError(t, err)
-
-			assert.Equal(t, tt.expectedBody, responseBody)
+			w := makeRequest(t, router, http.MethodPost, "/login", tt.requestBody)
+			assertJSONResponse(t, w, tt.expectedStatus, tt.expectedBody)
 		})
 	}
 }
