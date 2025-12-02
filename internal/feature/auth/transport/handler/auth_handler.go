@@ -45,7 +45,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		return
 	}
 	if err := h.auth.Signup(c.Request.Context(), req.Email, req.Password); err != nil {
-		slog.Error("signup failed", "error", err, "email", req.Email, "remote_addr", c.ClientIP())
+		slog.Warn("signup failed", "error", err, "email", req.Email, "remote_addr", c.ClientIP())
 		c.JSON(http.StatusConflict, gin.H{"error": "signup failed"})
 		return
 	}
