@@ -283,28 +283,138 @@ auth/
 
 ## Testing
 
-### Usecase Tests
+All tests in the auth feature follow a **table-driven testing pattern** for consistency and maintainability.
 
+### Test Structure and Patterns
+
+#### Common Patterns Across All Tests
+
+1. **Table-Driven Tests**: All test functions use a `tests` slice with struct fields:
+   - `name`: Test case description (e.g., `"success: user creation"`, `"failure: duplicate email"`)
+   - `wantErr`: Boolean flag indicating if an error is expected
+   - Additional fields specific to each test type (see below)
+
+2. **Parallel Execution**: All tests use `t.Parallel()` to enable concurrent execution:
+   ```go
+   func TestSomething(t *testing.T) {
+       t.Parallel()  // Enable parallel execution
+
+       tests := []struct { /* ... */ }{/* ... */}
+
+       for _, tt := range tests {
+           t.Run(tt.name, func(t *testing.T) {
+               t.Parallel()  // Enable parallel subtests
+               // Test logic...
+           })
+       }
+   }
+   ```
+
+3. **Helper Functions**: Each test file includes helper functions to reduce code duplication:
+   - Usecase: `createTestUser()`, `assertError()`, `verifyBcryptHash()`
+   - Handler: `makeRequest()`, `assertJSONResponse()`
+   - Repository: `setupTestDB()`, `seedUser()`
+
+#### Usecase Tests ([usecase/auth_usecase_test.go](usecase/auth_usecase_test.go))
+
+Uses **mock repositories** to test business logic in isolation.
+
+**Test Case Structure:**
+```go
+tests := []struct {
+    name              string
+    email             string
+    password          string
+    wantErr           bool
+    errMsg            string           // Expected error message
+    verifyBcryptHash  bool             // Should verify password hashing
+    repositoryErr     error            // Mock repository error
+}{/* ... */}
+```
+
+**Key Features:**
+- Mock implementations with customizable behavior via function fields
+- bcrypt password verification
+- JWT token generation validation
+
+**Run Command:**
 ```bash
 go test ./internal/feature/auth/usecase/... -v
 ```
 
-### Handler Tests
+#### Handler Tests ([transport/handler/auth_handler_test.go](transport/handler/auth_handler_test.go))
 
+Uses **mock usecases** to test HTTP request/response handling.
+
+**Test Case Structure:**
+```go
+tests := []struct {
+    name           string
+    requestBody    gin.H
+    mockSignupFunc func(ctx context.Context, email, password string) error
+    expectedStatus int
+    expectedBody   gin.H
+}{/* ... */}
+```
+
+**Key Features:**
+- HTTP request/response validation
+- DTO validation testing
+- Status code verification
+- JSON response body matching
+
+**Run Command:**
 ```bash
 go test ./internal/feature/auth/transport/handler/... -v
 ```
 
-### Repository Tests
+#### Repository Tests ([adapters/user_mysql_test.go](adapters/user_mysql_test.go))
 
+Uses **in-memory SQLite database** for integration testing.
+
+**Test Case Structure:**
+```go
+tests := []struct {
+    name         string
+    email        string          // (or user, userID depending on the test)
+    wantErr      bool
+    expectedErr  error           // Specific error type (e.g., usecase.ErrUserNotFound)
+    setupFunc    func(t *testing.T, db *gorm.DB) *entity.User  // Setup test data
+    validateFunc func(t *testing.T, expected, found *entity.User)  // Validate results
+}{/* ... */}
+```
+
+**Key Features:**
+- Each test gets a fresh in-memory SQLite database
+- `setupFunc`: Prepares test data before execution
+- `validateFunc`: Custom validation logic for success cases
+- Tests database constraints (unique email, timestamps, etc.)
+
+**Run Command:**
 ```bash
 go test ./internal/feature/auth/adapters/... -v
 ```
 
-### All Tests
+### Run All Tests
 
 ```bash
 go test ./internal/feature/auth/... -v -race -cover
+```
+
+### Example Test Output
+
+```
+=== RUN   TestAuthUsecase_Signup
+=== PAUSE TestAuthUsecase_Signup
+=== CONT  TestAuthUsecase_Signup
+=== RUN   TestAuthUsecase_Signup/success:_user_creation
+=== PAUSE TestAuthUsecase_Signup/success:_user_creation
+=== RUN   TestAuthUsecase_Signup/failure:_password_too_short
+=== PAUSE TestAuthUsecase_Signup/failure:_password_too_short
+...
+--- PASS: TestAuthUsecase_Signup (0.01s)
+    --- PASS: TestAuthUsecase_Signup/success:_user_creation (0.00s)
+    --- PASS: TestAuthUsecase_Signup/failure:_password_too_short (0.00s)
 ```
 
 ## Environment Variables
