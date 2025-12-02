@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"context"
 	"stock_backend/internal/feature/auth/domain/entity"
 	"testing"
 	"time"
@@ -44,7 +45,7 @@ func TestUserMySQL_Create(t *testing.T) {
 			Password: "hashed_password",
 		}
 
-		err := repo.Create(user)
+		err := repo.Create(context.Background(), user)
 
 		assert.NoError(t, err, "failed to create user")
 		assert.NotZero(t, user.ID, "ID is not set")
@@ -60,7 +61,7 @@ func TestUserMySQL_Create(t *testing.T) {
 			Email:    "duplicate@example.com",
 			Password: "password1",
 		}
-		err := repo.Create(user1)
+		err := repo.Create(context.Background(), user1)
 		require.NoError(t, err, "failed to create first user")
 
 		// Create second user with the same email
@@ -68,7 +69,7 @@ func TestUserMySQL_Create(t *testing.T) {
 			Email:    "duplicate@example.com",
 			Password: "password2",
 		}
-		err = repo.Create(user2)
+		err = repo.Create(context.Background(), user2)
 
 		assert.Error(t, err, "should return duplicate error")
 	})
@@ -77,7 +78,7 @@ func TestUserMySQL_Create(t *testing.T) {
 		db := setupTestDB(t)
 		repo := NewUserMySQL(db)
 
-		err := repo.Create(nil)
+		err := repo.Create(context.Background(), nil)
 
 		assert.Error(t, err, "should return error for nil user")
 	})
@@ -93,11 +94,11 @@ func TestUserMySQL_FindByEmail(t *testing.T) {
 			Email:    "find@example.com",
 			Password: "hashed_password",
 		}
-		err := repo.Create(expected)
+		err := repo.Create(context.Background(), expected)
 		require.NoError(t, err, "failed to create test data")
 
 		// Execute search
-		found, err := repo.FindByEmail("find@example.com")
+		found, err := repo.FindByEmail(context.Background(), "find@example.com")
 
 		assert.NoError(t, err, "failed to find user")
 		assert.NotNil(t, found, "user is nil")
@@ -110,7 +111,7 @@ func TestUserMySQL_FindByEmail(t *testing.T) {
 		db := setupTestDB(t)
 		repo := NewUserMySQL(db)
 
-		found, err := repo.FindByEmail("notfound@example.com")
+		found, err := repo.FindByEmail(context.Background(), "notfound@example.com")
 
 		assert.Error(t, err, "should return error")
 		assert.Nil(t, found, "user should be nil")
@@ -121,7 +122,7 @@ func TestUserMySQL_FindByEmail(t *testing.T) {
 		db := setupTestDB(t)
 		repo := NewUserMySQL(db)
 
-		found, err := repo.FindByEmail("")
+		found, err := repo.FindByEmail(context.Background(), "")
 
 		assert.Error(t, err, "should return error")
 		assert.Nil(t, found, "user should be nil")
@@ -138,12 +139,12 @@ func TestUserMySQL_FindByEmail(t *testing.T) {
 			{Email: "user3@example.com", Password: "pass3"},
 		}
 		for _, u := range users {
-			err := repo.Create(u)
+			err := repo.Create(context.Background(), u)
 			require.NoError(t, err, "failed to create test data")
 		}
 
 		// Find user2
-		found, err := repo.FindByEmail("user2@example.com")
+		found, err := repo.FindByEmail(context.Background(), "user2@example.com")
 
 		assert.NoError(t, err, "failed to find user")
 		assert.NotNil(t, found, "user is nil")
@@ -163,11 +164,11 @@ func TestUserMySQL_FindByID(t *testing.T) {
 			Email:    "findbyid@example.com",
 			Password: "hashed_password",
 		}
-		err := repo.Create(expected)
+		err := repo.Create(context.Background(), expected)
 		require.NoError(t, err, "failed to create test data")
 
 		// Execute search
-		found, err := repo.FindByID(expected.ID)
+		found, err := repo.FindByID(context.Background(), expected.ID)
 
 		assert.NoError(t, err, "failed to find user")
 		assert.NotNil(t, found, "user is nil")
@@ -180,7 +181,7 @@ func TestUserMySQL_FindByID(t *testing.T) {
 		db := setupTestDB(t)
 		repo := NewUserMySQL(db)
 
-		found, err := repo.FindByID(999)
+		found, err := repo.FindByID(context.Background(), 999)
 
 		assert.Error(t, err, "should return error")
 		assert.Nil(t, found, "user should be nil")
@@ -191,7 +192,7 @@ func TestUserMySQL_FindByID(t *testing.T) {
 		db := setupTestDB(t)
 		repo := NewUserMySQL(db)
 
-		found, err := repo.FindByID(0)
+		found, err := repo.FindByID(context.Background(), 0)
 
 		assert.Error(t, err, "should return error")
 		assert.Nil(t, found, "user should be nil")
@@ -208,12 +209,12 @@ func TestUserMySQL_FindByID(t *testing.T) {
 			{Email: "user3@example.com", Password: "pass3"},
 		}
 		for _, u := range users {
-			err := repo.Create(u)
+			err := repo.Create(context.Background(), u)
 			require.NoError(t, err, "failed to create test data")
 		}
 
 		// Find user2
-		found, err := repo.FindByID(users[1].ID)
+		found, err := repo.FindByID(context.Background(), users[1].ID)
 
 		assert.NoError(t, err, "failed to find user")
 		assert.NotNil(t, found, "user is nil")
@@ -234,7 +235,7 @@ func TestUserMySQL_Timestamps(t *testing.T) {
 			Password: "password",
 		}
 
-		err := repo.Create(user)
+		err := repo.Create(context.Background(), user)
 		require.NoError(t, err, "failed to create user")
 
 		afterCreate := time.Now()
@@ -247,7 +248,7 @@ func TestUserMySQL_Timestamps(t *testing.T) {
 			"CreatedAt is after creation time")
 
 		// Timestamps are preserved after retrieval
-		found, err := repo.FindByID(user.ID)
+		found, err := repo.FindByID(context.Background(), user.ID)
 		require.NoError(t, err, "failed to find user")
 
 		assert.Equal(t, user.CreatedAt.Unix(), found.CreatedAt.Unix(), "CreatedAt does not match")

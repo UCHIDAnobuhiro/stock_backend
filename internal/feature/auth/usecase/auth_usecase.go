@@ -2,6 +2,7 @@
 package usecase
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -21,15 +22,15 @@ const (
 type UserRepository interface {
 	// Create persists a new user to the storage.
 	// It returns an error if a user with the same email already exists.
-	Create(user *entity.User) error
+	Create(ctx context.Context, user *entity.User) error
 
 	// FindByEmail retrieves a user matching the specified email address.
 	// It returns an error if the user does not exist.
-	FindByEmail(email string) (*entity.User, error)
+	FindByEmail(ctx context.Context, email string) (*entity.User, error)
 
 	// FindByID retrieves a user matching the specified ID.
 	// It returns an error if the user does not exist.
-	FindByID(id uint) (*entity.User, error)
+	FindByID(ctx context.Context, id uint) (*entity.User, error)
 }
 
 // JWTGenerator defines the interface for generating JWT tokens.
@@ -62,7 +63,7 @@ func validatePassword(password string) error {
 }
 
 // Signup registers a new user with a hashed password.
-func (u *authUsecase) Signup(email, password string) error {
+func (u *authUsecase) Signup(ctx context.Context, email, password string) error {
 	// Validate password strength
 	if err := validatePassword(password); err != nil {
 		return err
@@ -73,15 +74,15 @@ func (u *authUsecase) Signup(email, password string) error {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 	user := &entity.User{Email: email, Password: string(hashed)}
-	return u.users.Create(user)
+	return u.users.Create(ctx, user)
 }
 
 // Login authenticates a user and returns a JWT token on success.
 // It verifies the email and password, then generates a signed JWT token.
 // To prevent timing attacks, bcrypt comparison is performed even when user doesn't exist.
-func (u *authUsecase) Login(email, password string) (string, error) {
+func (u *authUsecase) Login(ctx context.Context, email, password string) (string, error) {
 	// Find user by email
-	user, err := u.users.FindByEmail(email)
+	user, err := u.users.FindByEmail(ctx, email)
 
 	// Use a dummy hash for timing attack mitigation when user doesn't exist
 	// This ensures bcrypt.CompareHashAndPassword is always called

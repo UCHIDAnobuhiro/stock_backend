@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"errors"
 	"stock_backend/internal/feature/auth/domain/entity"
 	"testing"
@@ -12,11 +13,11 @@ import (
 // It simulates database operations during testing.
 type mockUserRepository struct {
 	// CreateFunc is called when the Create method is invoked.
-	CreateFunc func(user *entity.User) error
+	CreateFunc func(ctx context.Context, user *entity.User) error
 	// FindByEmailFunc is called when the FindByEmail method is invoked.
-	FindByEmailFunc func(email string) (*entity.User, error)
+	FindByEmailFunc func(ctx context.Context, email string) (*entity.User, error)
 	// FindByIDFunc is called when the FindByID method is invoked.
-	FindByIDFunc func(id uint) (*entity.User, error)
+	FindByIDFunc func(ctx context.Context, id uint) (*entity.User, error)
 }
 
 // mockJWTGenerator is a mock implementation of JWTGenerator interface.
@@ -36,26 +37,26 @@ func (m *mockJWTGenerator) GenerateToken(userID uint, email string) (string, err
 }
 
 // Create is the mock implementation of the Create method.
-func (m *mockUserRepository) Create(user *entity.User) error {
+func (m *mockUserRepository) Create(ctx context.Context, user *entity.User) error {
 	if m.CreateFunc != nil {
-		return m.CreateFunc(user)
+		return m.CreateFunc(ctx, user)
 	}
 	return nil // Default: success
 }
 
 // FindByEmail is the mock implementation of the FindByEmail method.
-func (m *mockUserRepository) FindByEmail(email string) (*entity.User, error) {
+func (m *mockUserRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
 	if m.FindByEmailFunc != nil {
-		return m.FindByEmailFunc(email)
+		return m.FindByEmailFunc(ctx, email)
 	}
 	// Default: return user not found error
 	return nil, errors.New("user not found")
 }
 
 // FindByID is the mock implementation of the FindByID method.
-func (m *mockUserRepository) FindByID(id uint) (*entity.User, error) {
+func (m *mockUserRepository) FindByID(ctx context.Context, id uint) (*entity.User, error) {
 	if m.FindByIDFunc != nil {
-		return m.FindByIDFunc(id)
+		return m.FindByIDFunc(ctx, id)
 	}
 	// Default: return user not found error
 	return nil, errors.New("user not found")
@@ -167,7 +168,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			t.Parallel() // enable parallel execution for subtests
 
 			mockRepo := &mockUserRepository{
-				CreateFunc: func(user *entity.User) error {
+				CreateFunc: func(ctx context.Context, user *entity.User) error {
 					if tt.verifyBcryptHash {
 						verifyBcryptHash(t, user.Password, tt.password)
 					}
@@ -180,7 +181,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			mockJWT := &mockJWTGenerator{}
 
 			uc := NewAuthUsecase(mockRepo, mockJWT)
-			err := uc.Signup(tt.email, tt.password)
+			err := uc.Signup(context.Background(), tt.email, tt.password)
 
 			// Assert error expectations
 			assertError(t, err, tt.wantErr, tt.errMsg)
@@ -250,7 +251,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 			t.Parallel() // enable parallel execution for subtests
 
 			mockRepo := &mockUserRepository{
-				FindByEmailFunc: func(email string) (*entity.User, error) {
+				FindByEmailFunc: func(ctx context.Context, email string) (*entity.User, error) {
 					if tt.findByEmailErr != nil {
 						return nil, tt.findByEmailErr
 					}
@@ -272,7 +273,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 			}
 
 			uc := NewAuthUsecase(mockRepo, mockJWT)
-			token, err := uc.Login(tt.email, tt.password)
+			token, err := uc.Login(context.Background(), tt.email, tt.password)
 
 			// Assert error expectations
 			assertError(t, err, tt.wantErr, tt.errMsg)
