@@ -57,14 +57,14 @@ func TestAuthHandler_Signup(t *testing.T) {
 			requestBody:    gin.H{"email": "invalid-email", "password": "password123"},
 			mockSignupFunc: nil, // Usecase is not called
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "Key: 'SignupReq.Email' Error:Field validation for 'Email' failed on the 'email' tag"},
+			expectedBody:   gin.H{"error": "invalid request"},
 		},
 		{
 			name:           "failure: short password",
 			requestBody:    gin.H{"email": "test@example.com", "password": "short"},
 			mockSignupFunc: nil, // Usecase is not called
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "Key: 'SignupReq.Password' Error:Field validation for 'Password' failed on the 'min' tag"},
+			expectedBody:   gin.H{"error": "invalid request"},
 		},
 		{
 			name:           "failure: duplicate email (usecase error)",
@@ -96,12 +96,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &responseBody)
 			assert.NoError(t, err)
 
-			// Error messages include Gin validation error details, so check partial match
-			if tt.expectedStatus == http.StatusBadRequest {
-				assert.Contains(t, responseBody["error"], tt.expectedBody["error"])
-			} else {
-				assert.Equal(t, tt.expectedBody, responseBody)
-			}
+			assert.Equal(t, tt.expectedBody, responseBody)
 		})
 	}
 }
@@ -128,14 +123,14 @@ func TestAuthHandler_Login(t *testing.T) {
 			requestBody:    gin.H{"email": "invalid-email", "password": "password123"},
 			mockLoginFunc:  nil, // Usecase is not called
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "Key: 'LoginReq.Email' Error:Field validation for 'Email' failed on the 'email' tag"},
+			expectedBody:   gin.H{"error": "invalid request"},
 		},
 		{
 			name:           "failure: missing password",
 			requestBody:    gin.H{"email": "test@example.com"},
 			mockLoginFunc:  nil, // Usecase is not called
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "Key: 'LoginReq.Password' Error:Field validation for 'Password' failed on the 'required' tag"},
+			expectedBody:   gin.H{"error": "invalid request"},
 		},
 		{
 			name:           "failure: invalid credentials (usecase error)",
@@ -176,12 +171,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &responseBody)
 			assert.NoError(t, err)
 
-			// Error messages include Gin validation error details, so check partial match
-			if tt.expectedStatus == http.StatusBadRequest {
-				assert.Contains(t, responseBody["error"], tt.expectedBody["error"])
-			} else {
-				assert.Equal(t, tt.expectedBody, responseBody)
-			}
+			assert.Equal(t, tt.expectedBody, responseBody)
 		})
 	}
 }

@@ -41,7 +41,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 	var req dto.SignupReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Warn("signup validation failed", "error", err, "remote_addr", c.ClientIP())
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 	if err := h.auth.Signup(c.Request.Context(), req.Email, req.Password); err != nil {
@@ -62,7 +62,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Warn("login validation failed", "error", err, "remote_addr", c.ClientIP())
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 	token, err := h.auth.Login(c.Request.Context(), req.Email, req.Password)
