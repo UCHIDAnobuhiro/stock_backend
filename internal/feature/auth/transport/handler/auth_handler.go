@@ -3,6 +3,7 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"stock_backend/internal/feature/auth/transport/http/dto"
@@ -39,13 +40,16 @@ func NewAuthHandler(auth AuthUsecase) *AuthHandler {
 func (h *AuthHandler) Signup(c *gin.Context) {
 	var req dto.SignupReq
 	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Warn("signup validation failed", "error", err, "remote_addr", c.ClientIP())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := h.auth.Signup(c.Request.Context(), req.Email, req.Password); err != nil {
+		slog.Error("signup failed", "error", err, "email", req.Email, "remote_addr", c.ClientIP())
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
+	slog.Info("user signup successful", "email", req.Email, "remote_addr", c.ClientIP())
 	c.JSON(http.StatusCreated, gin.H{"message": "ok"})
 }
 
@@ -57,13 +61,17 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.Warn("login validation failed", "error", err, "remote_addr", c.ClientIP())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	token, err := h.auth.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
+		// Don't log the actual error message to avoid leaking user existence info
+		slog.Warn("login failed", "email", req.Email, "remote_addr", c.ClientIP())
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
 		return
 	}
+	slog.Info("user login successful", "email", req.Email, "remote_addr", c.ClientIP())
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
