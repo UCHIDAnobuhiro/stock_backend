@@ -71,7 +71,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 			requestBody:    gin.H{"email": "existing@example.com", "password": "password123"},
 			mockSignupFunc: func(ctx context.Context, email, password string) error { return errors.New("email already exists") },
 			expectedStatus: http.StatusConflict,
-			expectedBody:   gin.H{"error": "email already exists"},
+			expectedBody:   gin.H{"error": "signup failed"},
 		},
 	}
 
