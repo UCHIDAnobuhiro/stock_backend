@@ -3,6 +3,8 @@ package adapters
 
 import (
 	"context"
+	"errors"
+	"strings"
 
 	"stock_backend/internal/feature/auth/domain/entity"
 	"stock_backend/internal/feature/auth/usecase"
@@ -26,25 +28,39 @@ func NewUserMySQL(db *gorm.DB) *userMySQL {
 }
 
 // Create adds a user to the database.
+// Returns usecase.ErrEmailAlreadyExists if a user with the same email already exists.
 func (r *userMySQL) Create(ctx context.Context, u *entity.User) error {
-	return r.db.WithContext(ctx).Create(u).Error
+	if err := r.db.WithContext(ctx).Create(u).Error; err != nil {
+		// MySQL error 1062: Duplicate entry for unique key
+		if strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "duplicate key") {
+			return usecase.ErrEmailAlreadyExists
+		}
+		return err
+	}
+	return nil
 }
 
 // FindByEmail retrieves a user by email address.
-// It returns an error if the user does not exist.
+// Returns usecase.ErrUserNotFound if the user does not exist.
 func (r *userMySQL) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
 	var u entity.User
 	if err := r.db.WithContext(ctx).Where("email = ?", email).First(&u).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, usecase.ErrUserNotFound
+		}
 		return nil, err
 	}
 	return &u, nil
 }
 
 // FindByID retrieves a user by ID.
-// It returns an error if the user does not exist.
+// Returns usecase.ErrUserNotFound if the user does not exist.
 func (r *userMySQL) FindByID(ctx context.Context, id uint) (*entity.User, error) {
 	var u entity.User
-	if err := r.db.WithContext(ctx).First(&u, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&u).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, usecase.ErrUserNotFound
+		}
 		return nil, err
 	}
 	return &u, nil

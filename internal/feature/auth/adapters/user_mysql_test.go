@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"stock_backend/internal/feature/auth/domain/entity"
+	"stock_backend/internal/feature/auth/usecase"
 	"testing"
 	"time"
 
@@ -115,7 +116,7 @@ func TestUserMySQL_FindByEmail(t *testing.T) {
 
 		assert.Error(t, err, "should return error")
 		assert.Nil(t, found, "user should be nil")
-		assert.ErrorIs(t, err, gorm.ErrRecordNotFound, "should return ErrRecordNotFound")
+		assert.ErrorIs(t, err, usecase.ErrUserNotFound, "should return ErrUserNotFound")
 	})
 
 	t.Run("empty email error", func(t *testing.T) {
@@ -185,7 +186,7 @@ func TestUserMySQL_FindByID(t *testing.T) {
 
 		assert.Error(t, err, "should return error")
 		assert.Nil(t, found, "user should be nil")
-		assert.ErrorIs(t, err, gorm.ErrRecordNotFound, "should return ErrRecordNotFound")
+		assert.ErrorIs(t, err, usecase.ErrUserNotFound, "should return ErrUserNotFound")
 	})
 
 	t.Run("ID 0 error", func(t *testing.T) {
