@@ -192,7 +192,11 @@ graph TB
 
     subgraph "Domain Layer"
         Entity[User Entity<br/>domain/entity]
-        RepoInterface[UserRepository Interface<br/>domain/repository]
+    end
+
+    subgraph "Usecase Interfaces"
+        RepoInterface[UserRepository Interface<br/>usecase/auth_usecase.go]
+        Errors[Domain Errors<br/>usecase/errors.go]
     end
 
     subgraph "Adapters Layer"
@@ -207,7 +211,8 @@ graph TB
 
     Handler -->|depends on| Usecase
     Handler -->|uses| DTO
-    Usecase -->|depends on| RepoInterface
+    Usecase -->|defines| RepoInterface
+    Usecase -->|defines| Errors
     Usecase -->|uses| Entity
     Usecase -->|uses| BCrypt
     Usecase -->|uses| JWT
@@ -218,7 +223,8 @@ graph TB
     style Handler fill:#e1f5ff
     style Usecase fill:#fff4e1
     style Entity fill:#e8f5e9
-    style RepoInterface fill:#e8f5e9
+    style RepoInterface fill:#fff4e1
+    style Errors fill:#fff4e1
     style RepoImpl fill:#f3e5f5
     style DB fill:#ffebee
 ```
@@ -231,18 +237,27 @@ graph TB
   - [SignupReq](transport/http/dto/signup_request.go): User registration request
   - [LoginReq](transport/http/dto/login_request.go): Login request
 
-#### Usecase Layer ([usecase/auth_usecase.go](usecase/auth_usecase.go))
-- **AuthUsecase**: Implements authentication business logic
+#### Usecase Layer
+- **AuthUsecase** ([usecase/auth_usecase.go](usecase/auth_usecase.go)): Implements authentication business logic
   - Password hashing (bcrypt)
   - Password verification
   - JWT token generation and signing
+  - Defines UserRepository interface (following Go's "consumer defines interface" convention)
+- **Domain Errors** ([usecase/errors.go](usecase/errors.go)): Centralized error definitions
+  - `ErrUserNotFound`: Returned when user lookup fails
+  - `ErrEmailAlreadyExists`: Returned when email is already registered
 
 #### Domain Layer
 - **User Entity** ([domain/entity/user.go](domain/entity/user.go)): User domain model
-- **UserRepository Interface** ([domain/repository/user_repository.go](domain/repository/user_repository.go)): Abstract repository interface
+
+#### Usecase Layer (Continued)
+- **UserRepository Interface** ([usecase/auth_usecase.go](usecase/auth_usecase.go)): Repository interface defined in usecase layer (following Go convention: "interfaces are defined by the consumer")
   - `Create(user)`: Create user
   - `FindByEmail(email)`: Find user by email address
   - `FindByID(id)`: Find user by ID
+- **Error Definitions** ([usecase/errors.go](usecase/errors.go)): Domain errors
+  - `ErrUserNotFound`: User not found error
+  - `ErrEmailAlreadyExists`: Duplicate email error
 
 #### Adapters Layer ([adapters/user_mysql.go](adapters/user_mysql.go))
 - **UserMySQL**: MySQL implementation of UserRepository (using GORM)
@@ -250,8 +265,9 @@ graph TB
 ### Architectural Characteristics
 
 1. **Clean Architecture**: Domain layer is independent of infrastructure layer
-2. **Dependency Inversion**: Usecase depends on Repository interface, not concrete implementations
-3. **Security**:
+2. **Dependency Inversion**: Usecase defines and depends on UserRepository interface, not concrete implementations (following Go's "consumer defines interface" principle)
+3. **Interface Ownership**: Repository interfaces are defined in the usecase layer where they are used, not in a separate repository package (Go best practice)
+4. **Security**:
    - Passwords are hashed with bcrypt before storage
    - JWT tokens are signed with HS256 algorithm
    - Signing uses `JWT_SECRET` environment variable
@@ -262,13 +278,12 @@ graph TB
 auth/
 ├── README.md                          # This file
 ├── domain/
-│   ├── entity/
-│   │   └── user.go                   # User entity definition
-│   └── repository/
-│       └── user_repository.go        # UserRepository interface
+│   └── entity/
+│       └── user.go                   # User entity definition
 ├── usecase/
-│   ├── auth_usecase.go               # Authentication business logic
-│   └── auth_usecase_test.go          # Usecase tests
+│   ├── auth_usecase.go               # Authentication business logic + UserRepository interface
+│   ├── auth_usecase_test.go          # Usecase tests
+│   └── errors.go                     # Domain error definitions
 ├── adapters/
 │   ├── user_mysql.go                 # MySQL repository implementation
 │   └── user_mysql_test.go            # Repository tests
