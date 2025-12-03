@@ -244,6 +244,14 @@ func TestAuthUsecase_Login(t *testing.T) {
 			findByEmailResult: testUser,
 			jwtGenerateErr:    errors.New("failed to sign token"),
 		},
+		{
+			name:              "edge case: empty password with valid user",
+			email:             "test@example.com",
+			password:          "",
+			wantErr:           true,
+			errMsg:            "invalid email or password",
+			findByEmailResult: testUser,
+		},
 	}
 
 	for _, tt := range tests {
