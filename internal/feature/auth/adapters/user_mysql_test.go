@@ -5,7 +5,6 @@ import (
 	"stock_backend/internal/feature/auth/domain/entity"
 	"stock_backend/internal/feature/auth/usecase"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,6 +26,21 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
+// seedUser creates a test user in the database for testing.
+// This helper reduces code duplication and makes tests more maintainable.
+func seedUser(t *testing.T, db *gorm.DB, email, password string) *entity.User {
+	t.Helper()
+
+	user := &entity.User{
+		Email:    email,
+		Password: password,
+	}
+	err := db.Create(user).Error
+	require.NoError(t, err, "failed to seed user")
+
+	return user
+}
+
 func TestNewUserMySQL(t *testing.T) {
 	db := setupTestDB(t)
 
@@ -37,222 +51,278 @@ func TestNewUserMySQL(t *testing.T) {
 }
 
 func TestUserMySQL_Create(t *testing.T) {
-	t.Run("successful user creation", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewUserMySQL(db)
+	t.Parallel()
 
-		user := &entity.User{
-			Email:    "test@example.com",
-			Password: "hashed_password",
-		}
+	tests := []struct {
+		name          string
+		user          *entity.User
+		wantErr       bool
+		setupFunc     func(t *testing.T, db *gorm.DB)
+		validateFunc  func(t *testing.T, user *entity.User)
+	}{
+		{
+			name: "success: user creation",
+			user: &entity.User{
+				Email:    "test@example.com",
+				Password: "hashed_password",
+			},
+			wantErr: false,
+			validateFunc: func(t *testing.T, user *entity.User) {
+				assert.NotZero(t, user.ID, "ID is not set")
+				assert.False(t, user.CreatedAt.IsZero(), "CreatedAt is not set")
+				assert.False(t, user.UpdatedAt.IsZero(), "UpdatedAt is not set")
+			},
+		},
+		{
+			name: "failure: duplicate email",
+			user: &entity.User{
+				Email:    "duplicate@example.com",
+				Password: "password2",
+			},
+			wantErr: true,
+			setupFunc: func(t *testing.T, db *gorm.DB) {
+				seedUser(t, db, "duplicate@example.com", "password1")
+			},
+		},
+		{
+			name:    "failure: nil user",
+			user:    nil,
+			wantErr: true,
+		},
+	}
 
-		err := repo.Create(context.Background(), user)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-		assert.NoError(t, err, "failed to create user")
-		assert.NotZero(t, user.ID, "ID is not set")
-		assert.False(t, user.CreatedAt.IsZero(), "CreatedAt is not set")
-		assert.False(t, user.UpdatedAt.IsZero(), "UpdatedAt is not set")
-	})
+			db := setupTestDB(t)
+			repo := NewUserMySQL(db)
 
-	t.Run("duplicate email error", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewUserMySQL(db)
+			if tt.setupFunc != nil {
+				tt.setupFunc(t, db)
+			}
 
-		user1 := &entity.User{
-			Email:    "duplicate@example.com",
-			Password: "password1",
-		}
-		err := repo.Create(context.Background(), user1)
-		require.NoError(t, err, "failed to create first user")
+			err := repo.Create(context.Background(), tt.user)
 
-		// Create second user with the same email
-		user2 := &entity.User{
-			Email:    "duplicate@example.com",
-			Password: "password2",
-		}
-		err = repo.Create(context.Background(), user2)
-
-		assert.Error(t, err, "should return duplicate error")
-	})
-
-	t.Run("nil user error", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewUserMySQL(db)
-
-		err := repo.Create(context.Background(), nil)
-
-		assert.Error(t, err, "should return error for nil user")
-	})
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				if tt.validateFunc != nil {
+					tt.validateFunc(t, tt.user)
+				}
+			}
+		})
+	}
 }
 
 func TestUserMySQL_FindByEmail(t *testing.T) {
-	t.Run("find user by email successfully", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewUserMySQL(db)
+	t.Parallel()
 
-		// Create test data
-		expected := &entity.User{
-			Email:    "find@example.com",
-			Password: "hashed_password",
-		}
-		err := repo.Create(context.Background(), expected)
-		require.NoError(t, err, "failed to create test data")
+	tests := []struct {
+		name         string
+		email        string
+		wantErr      bool
+		expectedErr  error
+		setupFunc    func(t *testing.T, db *gorm.DB) *entity.User
+		validateFunc func(t *testing.T, expected, found *entity.User)
+	}{
+		{
+			name:    "success: find user by email",
+			email:   "find@example.com",
+			wantErr: false,
+			setupFunc: func(t *testing.T, db *gorm.DB) *entity.User {
+				return seedUser(t, db, "find@example.com", "hashed_password")
+			},
+			validateFunc: func(t *testing.T, expected, found *entity.User) {
+				assert.NotNil(t, found, "user is nil")
+				assert.Equal(t, expected.ID, found.ID, "ID does not match")
+				assert.Equal(t, expected.Email, found.Email, "email does not match")
+				assert.Equal(t, expected.Password, found.Password, "password does not match")
+			},
+		},
+		{
+			name:        "failure: user not found",
+			email:       "notfound@example.com",
+			wantErr:     true,
+			expectedErr: usecase.ErrUserNotFound,
+		},
+		{
+			name:    "failure: empty email",
+			email:   "",
+			wantErr: true,
+		},
+		{
+			name:    "success: find correct user when multiple users exist",
+			email:   "user2@example.com",
+			wantErr: false,
+			setupFunc: func(t *testing.T, db *gorm.DB) *entity.User {
+				seedUser(t, db, "user1@example.com", "pass1")
+				user2 := seedUser(t, db, "user2@example.com", "pass2")
+				seedUser(t, db, "user3@example.com", "pass3")
+				return user2
+			},
+			validateFunc: func(t *testing.T, expected, found *entity.User) {
+				assert.NotNil(t, found, "user is nil")
+				assert.Equal(t, expected.ID, found.ID, "ID does not match")
+				assert.Equal(t, "user2@example.com", found.Email, "email does not match")
+				assert.Equal(t, "pass2", found.Password, "password does not match")
+			},
+		},
+	}
 
-		// Execute search
-		found, err := repo.FindByEmail(context.Background(), "find@example.com")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-		assert.NoError(t, err, "failed to find user")
-		assert.NotNil(t, found, "user is nil")
-		assert.Equal(t, expected.ID, found.ID, "ID does not match")
-		assert.Equal(t, expected.Email, found.Email, "email does not match")
-		assert.Equal(t, expected.Password, found.Password, "password does not match")
-	})
+			db := setupTestDB(t)
+			repo := NewUserMySQL(db)
 
-	t.Run("email not found error", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewUserMySQL(db)
+			var expected *entity.User
+			if tt.setupFunc != nil {
+				expected = tt.setupFunc(t, db)
+			}
 
-		found, err := repo.FindByEmail(context.Background(), "notfound@example.com")
+			found, err := repo.FindByEmail(context.Background(), tt.email)
 
-		assert.Error(t, err, "should return error")
-		assert.Nil(t, found, "user should be nil")
-		assert.ErrorIs(t, err, usecase.ErrUserNotFound, "should return ErrUserNotFound")
-	})
-
-	t.Run("empty email error", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewUserMySQL(db)
-
-		found, err := repo.FindByEmail(context.Background(), "")
-
-		assert.Error(t, err, "should return error")
-		assert.Nil(t, found, "user should be nil")
-	})
-
-	t.Run("find correct user when multiple users exist", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewUserMySQL(db)
-
-		// Create multiple users
-		users := []*entity.User{
-			{Email: "user1@example.com", Password: "pass1"},
-			{Email: "user2@example.com", Password: "pass2"},
-			{Email: "user3@example.com", Password: "pass3"},
-		}
-		for _, u := range users {
-			err := repo.Create(context.Background(), u)
-			require.NoError(t, err, "failed to create test data")
-		}
-
-		// Find user2
-		found, err := repo.FindByEmail(context.Background(), "user2@example.com")
-
-		assert.NoError(t, err, "failed to find user")
-		assert.NotNil(t, found, "user is nil")
-		assert.Equal(t, users[1].ID, found.ID, "ID does not match")
-		assert.Equal(t, "user2@example.com", found.Email, "email does not match")
-		assert.Equal(t, "pass2", found.Password, "password does not match")
-	})
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Nil(t, found, "user should be nil")
+				if tt.expectedErr != nil {
+					assert.ErrorIs(t, err, tt.expectedErr)
+				}
+			} else {
+				assert.NoError(t, err)
+				if tt.validateFunc != nil {
+					tt.validateFunc(t, expected, found)
+				}
+			}
+		})
+	}
 }
 
 func TestUserMySQL_FindByID(t *testing.T) {
-	t.Run("find user by ID successfully", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewUserMySQL(db)
+	t.Parallel()
 
-		// Create test data
-		expected := &entity.User{
-			Email:    "findbyid@example.com",
-			Password: "hashed_password",
-		}
-		err := repo.Create(context.Background(), expected)
-		require.NoError(t, err, "failed to create test data")
+	tests := []struct {
+		name         string
+		userID       uint
+		wantErr      bool
+		expectedErr  error
+		setupFunc    func(t *testing.T, db *gorm.DB) *entity.User
+		validateFunc func(t *testing.T, expected, found *entity.User)
+	}{
+		{
+			name:    "success: find user by ID",
+			wantErr: false,
+			setupFunc: func(t *testing.T, db *gorm.DB) *entity.User {
+				return seedUser(t, db, "findbyid@example.com", "hashed_password")
+			},
+			validateFunc: func(t *testing.T, expected, found *entity.User) {
+				assert.NotNil(t, found, "user is nil")
+				assert.Equal(t, expected.ID, found.ID, "ID does not match")
+				assert.Equal(t, expected.Email, found.Email, "email does not match")
+				assert.Equal(t, expected.Password, found.Password, "password does not match")
+			},
+		},
+		{
+			name:        "failure: user not found",
+			userID:      999,
+			wantErr:     true,
+			expectedErr: usecase.ErrUserNotFound,
+		},
+		{
+			name:    "failure: ID 0",
+			userID:  0,
+			wantErr: true,
+		},
+		{
+			name:    "success: find correct user when multiple users exist",
+			wantErr: false,
+			setupFunc: func(t *testing.T, db *gorm.DB) *entity.User {
+				seedUser(t, db, "user1@example.com", "pass1")
+				user2 := seedUser(t, db, "user2@example.com", "pass2")
+				seedUser(t, db, "user3@example.com", "pass3")
+				return user2
+			},
+			validateFunc: func(t *testing.T, expected, found *entity.User) {
+				assert.NotNil(t, found, "user is nil")
+				assert.Equal(t, expected.ID, found.ID, "ID does not match")
+				assert.Equal(t, "user2@example.com", found.Email, "email does not match")
+				assert.Equal(t, "pass2", found.Password, "password does not match")
+			},
+		},
+	}
 
-		// Execute search
-		found, err := repo.FindByID(context.Background(), expected.ID)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-		assert.NoError(t, err, "failed to find user")
-		assert.NotNil(t, found, "user is nil")
-		assert.Equal(t, expected.ID, found.ID, "ID does not match")
-		assert.Equal(t, expected.Email, found.Email, "email does not match")
-		assert.Equal(t, expected.Password, found.Password, "password does not match")
-	})
+			db := setupTestDB(t)
+			repo := NewUserMySQL(db)
 
-	t.Run("ID not found error", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewUserMySQL(db)
+			var expected *entity.User
+			var targetID uint
+			if tt.setupFunc != nil {
+				expected = tt.setupFunc(t, db)
+				targetID = expected.ID
+			} else {
+				targetID = tt.userID
+			}
 
-		found, err := repo.FindByID(context.Background(), 999)
+			found, err := repo.FindByID(context.Background(), targetID)
 
-		assert.Error(t, err, "should return error")
-		assert.Nil(t, found, "user should be nil")
-		assert.ErrorIs(t, err, usecase.ErrUserNotFound, "should return ErrUserNotFound")
-	})
-
-	t.Run("ID 0 error", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewUserMySQL(db)
-
-		found, err := repo.FindByID(context.Background(), 0)
-
-		assert.Error(t, err, "should return error")
-		assert.Nil(t, found, "user should be nil")
-	})
-
-	t.Run("find correct user when multiple users exist", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewUserMySQL(db)
-
-		// Create multiple users
-		users := []*entity.User{
-			{Email: "user1@example.com", Password: "pass1"},
-			{Email: "user2@example.com", Password: "pass2"},
-			{Email: "user3@example.com", Password: "pass3"},
-		}
-		for _, u := range users {
-			err := repo.Create(context.Background(), u)
-			require.NoError(t, err, "failed to create test data")
-		}
-
-		// Find user2
-		found, err := repo.FindByID(context.Background(), users[1].ID)
-
-		assert.NoError(t, err, "failed to find user")
-		assert.NotNil(t, found, "user is nil")
-		assert.Equal(t, users[1].ID, found.ID, "ID does not match")
-		assert.Equal(t, "user2@example.com", found.Email, "email does not match")
-		assert.Equal(t, "pass2", found.Password, "password does not match")
-	})
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Nil(t, found, "user should be nil")
+				if tt.expectedErr != nil {
+					assert.ErrorIs(t, err, tt.expectedErr)
+				}
+			} else {
+				assert.NoError(t, err)
+				if tt.validateFunc != nil {
+					tt.validateFunc(t, expected, found)
+				}
+			}
+		})
+	}
 }
 
 func TestUserMySQL_Timestamps(t *testing.T) {
-	t.Run("CreatedAt and UpdatedAt are automatically set", func(t *testing.T) {
-		db := setupTestDB(t)
-		repo := NewUserMySQL(db)
+	t.Parallel()
 
-		beforeCreate := time.Now()
-		user := &entity.User{
-			Email:    "timestamp@example.com",
-			Password: "password",
-		}
+	tests := []struct {
+		name string
+	}{
+		{
+			name: "success: CreatedAt and UpdatedAt are automatically set and preserved",
+		},
+	}
 
-		err := repo.Create(context.Background(), user)
-		require.NoError(t, err, "failed to create user")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-		afterCreate := time.Now()
+			db := setupTestDB(t)
+			repo := NewUserMySQL(db)
 
-		assert.False(t, user.CreatedAt.IsZero(), "CreatedAt is not set")
-		assert.False(t, user.UpdatedAt.IsZero(), "UpdatedAt is not set")
-		assert.True(t, user.CreatedAt.After(beforeCreate) || user.CreatedAt.Equal(beforeCreate),
-			"CreatedAt is before creation time")
-		assert.True(t, user.CreatedAt.Before(afterCreate) || user.CreatedAt.Equal(afterCreate),
-			"CreatedAt is after creation time")
+			user := &entity.User{
+				Email:    "timestamp@example.com",
+				Password: "password",
+			}
 
-		// Timestamps are preserved after retrieval
-		found, err := repo.FindByID(context.Background(), user.ID)
-		require.NoError(t, err, "failed to find user")
+			err := repo.Create(context.Background(), user)
+			require.NoError(t, err, "failed to create user")
 
-		assert.Equal(t, user.CreatedAt.Unix(), found.CreatedAt.Unix(), "CreatedAt does not match")
-		assert.Equal(t, user.UpdatedAt.Unix(), found.UpdatedAt.Unix(), "UpdatedAt does not match")
-	})
+			assert.False(t, user.CreatedAt.IsZero(), "CreatedAt is not set")
+			assert.False(t, user.UpdatedAt.IsZero(), "UpdatedAt is not set")
+
+			// Timestamps are preserved after retrieval
+			found, err := repo.FindByID(context.Background(), user.ID)
+			require.NoError(t, err, "failed to find user")
+
+			assert.Equal(t, user.CreatedAt.Unix(), found.CreatedAt.Unix(), "CreatedAt does not match")
+			assert.Equal(t, user.UpdatedAt.Unix(), found.UpdatedAt.Unix(), "UpdatedAt does not match")
+		})
+	}
 }
