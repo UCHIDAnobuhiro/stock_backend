@@ -7,6 +7,7 @@ import (
 
 	redisv9 "github.com/redis/go-redis/v9"
 
+	"stock_backend/internal/app/di"
 	"stock_backend/internal/app/router"
 	authadapters "stock_backend/internal/feature/auth/adapters"
 	authhandler "stock_backend/internal/feature/auth/transport/handler"
@@ -60,16 +61,19 @@ func main() {
 	ttl := cache.TimeUntilNext8AM()
 	cachedCandleRepo := cache.NewCachingCandleRepository(rdb, ttl, candleRepo, "candles")
 
-	// JWT Generator
+	// JWT Generator (15 minutes for access token)
 	jwtSecret := os.Getenv(jwtmw.EnvKeyJWTSecret)
 	if jwtSecret == "" {
 		slog.Error("JWT_SECRET environment variable is required")
 		os.Exit(1)
 	}
-	jwtGen := jwtmw.NewGenerator(jwtSecret, 1*time.Hour)
+	jwtGen := jwtmw.NewGenerator(jwtSecret, 15*time.Minute)
+
+	// Session Repository (Redis primary, MySQL fallback)
+	sessionRepo := di.NewSessionRepository(rdb, db)
 
 	// Usecase
-	authUC := authusecase.NewAuthUsecase(userRepo, jwtGen)
+	authUC := authusecase.NewAuthUsecase(userRepo, sessionRepo, jwtGen)
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
 	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
 
