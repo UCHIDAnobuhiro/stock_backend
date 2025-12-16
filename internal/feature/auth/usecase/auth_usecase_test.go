@@ -27,6 +27,74 @@ type mockJWTGenerator struct {
 	GenerateTokenFunc func(userID uint, email string) (string, error)
 }
 
+// mockSessionRepository is a mock implementation of SessionRepository interface.
+type mockSessionRepository struct {
+	CreateFunc            func(ctx context.Context, session *entity.Session) error
+	FindByIDFunc          func(ctx context.Context, id string) (*entity.Session, error)
+	FindByUserIDFunc      func(ctx context.Context, userID uint) ([]*entity.Session, error)
+	RevokeFunc            func(ctx context.Context, id string) error
+	RevokeAllByUserIDFunc func(ctx context.Context, userID uint) error
+	DeleteExpiredFunc     func(ctx context.Context) (int64, error)
+	CountByUserIDFunc     func(ctx context.Context, userID uint) (int64, error)
+	DeleteOldestByUserIDFunc func(ctx context.Context, userID uint) error
+}
+
+func (m *mockSessionRepository) Create(ctx context.Context, session *entity.Session) error {
+	if m.CreateFunc != nil {
+		return m.CreateFunc(ctx, session)
+	}
+	return nil
+}
+
+func (m *mockSessionRepository) FindByID(ctx context.Context, id string) (*entity.Session, error) {
+	if m.FindByIDFunc != nil {
+		return m.FindByIDFunc(ctx, id)
+	}
+	return nil, ErrSessionNotFound
+}
+
+func (m *mockSessionRepository) FindByUserID(ctx context.Context, userID uint) ([]*entity.Session, error) {
+	if m.FindByUserIDFunc != nil {
+		return m.FindByUserIDFunc(ctx, userID)
+	}
+	return nil, nil
+}
+
+func (m *mockSessionRepository) Revoke(ctx context.Context, id string) error {
+	if m.RevokeFunc != nil {
+		return m.RevokeFunc(ctx, id)
+	}
+	return nil
+}
+
+func (m *mockSessionRepository) RevokeAllByUserID(ctx context.Context, userID uint) error {
+	if m.RevokeAllByUserIDFunc != nil {
+		return m.RevokeAllByUserIDFunc(ctx, userID)
+	}
+	return nil
+}
+
+func (m *mockSessionRepository) DeleteExpired(ctx context.Context) (int64, error) {
+	if m.DeleteExpiredFunc != nil {
+		return m.DeleteExpiredFunc(ctx)
+	}
+	return 0, nil
+}
+
+func (m *mockSessionRepository) CountByUserID(ctx context.Context, userID uint) (int64, error) {
+	if m.CountByUserIDFunc != nil {
+		return m.CountByUserIDFunc(ctx, userID)
+	}
+	return 0, nil
+}
+
+func (m *mockSessionRepository) DeleteOldestByUserID(ctx context.Context, userID uint) error {
+	if m.DeleteOldestByUserIDFunc != nil {
+		return m.DeleteOldestByUserIDFunc(ctx, userID)
+	}
+	return nil
+}
+
 // GenerateToken is the mock implementation of the GenerateToken method.
 func (m *mockJWTGenerator) GenerateToken(userID uint, email string) (string, error) {
 	if m.GenerateTokenFunc != nil {
@@ -179,8 +247,9 @@ func TestAuthUsecase_Signup(t *testing.T) {
 				},
 			}
 			mockJWT := &mockJWTGenerator{}
+			mockSession := &mockSessionRepository{}
 
-			uc := NewAuthUsecase(mockRepo, mockJWT)
+			uc := NewAuthUsecase(mockRepo, mockSession, mockJWT)
 			err := uc.Signup(context.Background(), tt.email, tt.password)
 
 			// Assert error expectations
@@ -204,7 +273,6 @@ func TestAuthUsecase_Login(t *testing.T) {
 		password          string
 		wantErr           bool
 		errMsg            string
-		expectedToken     string
 		findByEmailResult *entity.User
 		findByEmailErr    error
 		jwtGenerateErr    error
@@ -215,7 +283,6 @@ func TestAuthUsecase_Login(t *testing.T) {
 			email:             "test@example.com",
 			password:          "password123",
 			wantErr:           false,
-			expectedToken:     "mock-jwt-token",
 			findByEmailResult: testUser,
 			verifyJWTParams:   true,
 		},
@@ -276,23 +343,30 @@ func TestAuthUsecase_Login(t *testing.T) {
 					if tt.jwtGenerateErr != nil {
 						return "", tt.jwtGenerateErr
 					}
-					return tt.expectedToken, nil
+					return "mock-jwt-token", nil
 				},
 			}
+			mockSession := &mockSessionRepository{}
 
-			uc := NewAuthUsecase(mockRepo, mockJWT)
-			token, err := uc.Login(context.Background(), tt.email, tt.password)
+			uc := NewAuthUsecase(mockRepo, mockSession, mockJWT)
+			result, err := uc.Login(context.Background(), tt.email, tt.password, "test-agent", "127.0.0.1")
 
 			// Assert error expectations
 			assertError(t, err, tt.wantErr, tt.errMsg)
 
 			// Assert success case expectations
 			if !tt.wantErr {
-				if token == "" {
-					t.Error("token is empty")
+				if result == nil {
+					t.Fatal("result is nil")
 				}
-				if tt.expectedToken != "" && token != tt.expectedToken {
-					t.Errorf("expected token '%s', got: '%s'", tt.expectedToken, token)
+				if result.AccessToken == "" {
+					t.Error("access token is empty")
+				}
+				if result.RefreshToken == "" {
+					t.Error("refresh token is empty")
+				}
+				if result.TokenType != "Bearer" {
+					t.Errorf("expected token type 'Bearer', got: '%s'", result.TokenType)
 				}
 			}
 		})

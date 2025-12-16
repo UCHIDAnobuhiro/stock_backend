@@ -21,6 +21,10 @@ func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.Can
 	r.POST("/signup", authHandler.Signup)
 	// Login (JWT issuance)
 	r.POST("/login", authHandler.Login)
+	// Token refresh
+	r.POST("/refresh", authHandler.Refresh)
+	// Logout
+	r.POST("/logout", authHandler.Logout)
 
 	// Protected routes (authentication required)
 	// Create route group with r.Group("/")

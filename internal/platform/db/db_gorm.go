@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	authadapters "stock_backend/internal/feature/auth/adapters"
 	"stock_backend/internal/feature/auth/domain/entity"
 	candleadapters "stock_backend/internal/feature/candles/adapters"
 	"time"
@@ -50,9 +51,10 @@ func OpenDB() *gorm.DB {
 	}
 
 	if os.Getenv("RUN_MIGRATIONS") == "true" {
-		// Run migrations (User, Candle, etc.)
+		// Run migrations (User, Session, Candle, etc.)
 		if err := db.AutoMigrate(
 			&entity.User{},
+			&authadapters.SessionModel{},
 			&candleadapters.CandleModel{},
 		); err != nil {
 			slog.Error("failed to migrate", "error", err)
