@@ -1,3 +1,4 @@
+// Package router configures HTTP routes for the application.
 package router
 
 import (
@@ -10,6 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// NewRouter creates and configures a Gin router with all application routes.
+// It sets up public routes (signup, login) and protected routes (candles, symbols)
+// with JWT authentication middleware.
 func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.CandlesHandler,
 	symbol *symbollisthandler.SymbolHandler) *gin.Engine {
 	r := gin.Default()

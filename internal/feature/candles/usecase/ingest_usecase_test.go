@@ -10,7 +10,7 @@ import (
 
 var ErrMarketAPI = errors.New("market API error")
 
-// mockMarketRepository は repository.MarketRepository インターフェースのモック実装です。
+// mockMarketRepository is a mock implementation of the MarketRepository interface.
 type mockMarketRepository struct {
 	GetTimeSeriesFunc  func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 	GetTimeSeriesCalls int
@@ -24,14 +24,14 @@ func (m *mockMarketRepository) GetTimeSeries(ctx context.Context, symbol, interv
 	return nil, errors.New("GetTimeSeriesFunc is not implemented")
 }
 
-// mockRateLimiter は ratelimiter.RateLimiterInterface のモック実装です。
+// mockRateLimiter is a mock implementation of the RateLimiterInterface.
 type mockRateLimiter struct {
 	WaitIfNeededCalls int
 }
 
 func (m *mockRateLimiter) WaitIfNeeded() {
 	m.WaitIfNeededCalls++
-	// テスト用なので何もせず即座にリターン
+	// For testing purposes, return immediately without waiting
 }
 
 func TestIngestUsecase_ingestOne(t *testing.T) {
@@ -53,13 +53,13 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 		verifyCandles        func(t *testing.T, candles []entity.Candle)
 	}{
 		{
-			name:            "正常系: データの取得と保存が成功",
+			name:            "success: data fetch and save succeed",
 			inputSymbol:     "AAPL",
 			inputInterval:   "1day",
 			inputOutputsize: 200,
 			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 				if symbol != "AAPL" || interval != "1day" || outputsize != 200 {
-					t.Errorf("GetTimeSeriesに予期しないパラメータが渡されました。got symbol=%s, interval=%s, outputsize=%d", symbol, interval, outputsize)
+					t.Errorf("GetTimeSeries called with unexpected params: got symbol=%s, interval=%s, outputsize=%d", symbol, interval, outputsize)
 				}
 				return mockCandles, nil
 			},
@@ -69,20 +69,20 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 			expectedErr: nil,
 			verifyCandles: func(t *testing.T, candles []entity.Candle) {
 				if len(candles) != 2 {
-					t.Errorf("candlesの数が期待と異なります。got %d, want 2", len(candles))
+					t.Errorf("candles count mismatch: got %d, want 2", len(candles))
 				}
 				for _, c := range candles {
 					if c.Symbol != "AAPL" {
-						t.Errorf("candleのSymbolが設定されていません。got %s, want AAPL", c.Symbol)
+						t.Errorf("candle Symbol not set: got %s, want AAPL", c.Symbol)
 					}
 					if c.Interval != "1day" {
-						t.Errorf("candleのIntervalが設定されていません。got %s, want 1day", c.Interval)
+						t.Errorf("candle Interval not set: got %s, want 1day", c.Interval)
 					}
 				}
 			},
 		},
 		{
-			name:            "異常系: MarketRepositoryがエラーを返す",
+			name:            "error: MarketRepository returns error",
 			inputSymbol:     "GOOG",
 			inputInterval:   "1week",
 			inputOutputsize: 100,
@@ -90,13 +90,13 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 				return nil, ErrMarketAPI
 			},
 			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
-				t.Error("UpsertBatchが呼ばれるべきではありません")
+				t.Error("UpsertBatch should not be called")
 				return nil
 			},
 			expectedErr: ErrMarketAPI,
 		},
 		{
-			name:            "異常系: CandleRepositoryがエラーを返す",
+			name:            "error: CandleRepository returns error",
 			inputSymbol:     "MSFT",
 			inputInterval:   "1month",
 			inputOutputsize: 50,
@@ -140,7 +140,7 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 			}
 
 			if mockMarket.GetTimeSeriesCalls != 1 {
-				t.Errorf("GetTimeSeriesが%d回呼ばれました（期待: 1）", mockMarket.GetTimeSeriesCalls)
+				t.Errorf("GetTimeSeries was called %d times, expected 1", mockMarket.GetTimeSeriesCalls)
 			}
 		})
 	}
@@ -162,7 +162,7 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 		expectedGetTimeSeriesCalls int
 	}{
 		{
-			name:         "正常系: 複数銘柄×複数時間足の全取得が成功",
+			name:         "success: fetch all symbols and intervals",
 			inputSymbols: []string{"AAPL", "GOOG"},
 			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 				return mockCandles, nil
@@ -171,11 +171,11 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 				return nil
 			},
 			expectedErr: nil,
-			// 2銘柄 × 3時間足(1day, 1week, 1month) = 6回
+			// 2 symbols × 3 intervals (1day, 1week, 1month) = 6 calls
 			expectedGetTimeSeriesCalls: 6,
 		},
 		{
-			name:         "正常系: 単一銘柄の全取得が成功",
+			name:         "success: single symbol fetch succeeds",
 			inputSymbols: []string{"TSLA"},
 			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 				return mockCandles, nil
@@ -184,25 +184,25 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 				return nil
 			},
 			expectedErr: nil,
-			// 1銘柄 × 3時間足 = 3回
+			// 1 symbol × 3 intervals = 3 calls
 			expectedGetTimeSeriesCalls: 3,
 		},
 		{
-			name:         "正常系: 空の銘柄リスト",
+			name:         "success: empty symbol list",
 			inputSymbols: []string{},
 			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
-				t.Error("GetTimeSeriesが呼ばれるべきではありません")
+				t.Error("GetTimeSeries should not be called")
 				return nil, errors.New("should not be called")
 			},
 			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
-				t.Error("UpsertBatchが呼ばれるべきではありません")
+				t.Error("UpsertBatch should not be called")
 				return nil
 			},
 			expectedErr:                nil,
 			expectedGetTimeSeriesCalls: 0,
 		},
 		{
-			name:         "正常系: 一部の銘柄でエラーが発生しても処理は継続",
+			name:         "success: continues processing even when some symbols fail",
 			inputSymbols: []string{"AAPL", "INVALID", "GOOG"},
 			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 				if symbol == "INVALID" {
@@ -213,12 +213,12 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
 				return nil
 			},
-			expectedErr: nil, // IngestAllはエラーを返さずに続行する
-			// 3銘柄 × 3時間足 = 9回（エラーが発生しても呼び出しは行われる）
+			expectedErr: nil, // IngestAll continues without returning error
+			// 3 symbols × 3 intervals = 9 calls (even with errors, all calls are attempted)
 			expectedGetTimeSeriesCalls: 9,
 		},
 		{
-			name:         "正常系: UpsertBatchでエラーが発生しても処理は継続",
+			name:         "success: continues processing even when UpsertBatch fails",
 			inputSymbols: []string{"AAPL", "GOOG"},
 			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 				return mockCandles, nil
@@ -229,8 +229,8 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 				}
 				return nil
 			},
-			expectedErr: nil, // IngestAllはエラーを返さずに続行する
-			// 2銘柄 × 3時間足 = 6回
+			expectedErr: nil, // IngestAll continues without returning error
+			// 2 symbols × 3 intervals = 6 calls
 			expectedGetTimeSeriesCalls: 6,
 		},
 	}
@@ -257,7 +257,7 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			}
 
 			if mockMarket.GetTimeSeriesCalls != tc.expectedGetTimeSeriesCalls {
-				t.Errorf("GetTimeSeriesが%d回呼ばれました（期待: %d）", mockMarket.GetTimeSeriesCalls, tc.expectedGetTimeSeriesCalls)
+				t.Errorf("GetTimeSeries was called %d times, expected %d", mockMarket.GetTimeSeriesCalls, tc.expectedGetTimeSeriesCalls)
 			}
 		})
 	}
@@ -294,12 +294,12 @@ func TestIngestUsecase_IngestAll_Intervals(t *testing.T) {
 
 	expectedIntervals := []string{"1day", "1week", "1month"}
 	if len(calledIntervals) != len(expectedIntervals) {
-		t.Fatalf("呼び出されたintervalsの数が異なります。got %d, want %d", len(calledIntervals), len(expectedIntervals))
+		t.Fatalf("intervals count mismatch: got %d, want %d", len(calledIntervals), len(expectedIntervals))
 	}
 
 	for i, expected := range expectedIntervals {
 		if calledIntervals[i] != expected {
-			t.Errorf("interval[%d]が異なります。got %s, want %s", i, calledIntervals[i], expected)
+			t.Errorf("interval[%d] mismatch: got %s, want %s", i, calledIntervals[i], expected)
 		}
 	}
 }

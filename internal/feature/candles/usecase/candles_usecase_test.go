@@ -9,10 +9,10 @@ import (
 	"time"
 )
 
-// sentinel error（モックと期待値で共有）
+// ErrDB is a sentinel error shared between mocks and expected values.
 var ErrDB = errors.New("database error")
 
-// mockCandleRepository は repository.CandleRepository インターフェースのモック実装です。
+// mockCandleRepository is a mock implementation of the CandleRepository interface.
 type mockCandleRepository struct {
 	FindFunc        func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 	UpsertBatchFunc func(ctx context.Context, candles []entity.Candle) error
@@ -48,11 +48,11 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 		mockFindFunc       func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 		expectedCandles    []entity.Candle
 		expectedErr        error
-		expectedInterval   string // モックに渡されることを期待するinterval
-		expectedOutputsize int    // モックに渡されることを期待するoutputsize
+		expectedInterval   string // expected interval to be passed to the mock
+		expectedOutputsize int    // expected outputsize to be passed to the mock
 	}{
 		{
-			name:            "正常系: パラメータを全て指定",
+			name:            "success: all parameters specified",
 			inputSymbol:     "AAPL",
 			inputInterval:   "1week",
 			inputOutputsize: 50,
@@ -65,7 +65,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 			expectedOutputsize: 50,
 		},
 		{
-			name:            "正常系: intervalが空文字の場合、デフォルト値が使われる",
+			name:            "success: default value used when interval is empty",
 			inputSymbol:     "GOOG",
 			inputInterval:   "",
 			inputOutputsize: 100,
@@ -74,11 +74,11 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 			},
 			expectedCandles:    expectedCandles,
 			expectedErr:        nil,
-			expectedInterval:   DefaultInterval, // 例: "1day"
+			expectedInterval:   DefaultInterval, // e.g., "1day"
 			expectedOutputsize: 100,
 		},
 		{
-			name:            "正常系: outputsizeが0の場合、デフォルト値が使われる",
+			name:            "success: default value used when outputsize is 0",
 			inputSymbol:     "MSFT",
 			inputInterval:   "1month",
 			inputOutputsize: 0,
@@ -88,10 +88,10 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 			expectedCandles:    expectedCandles,
 			expectedErr:        nil,
 			expectedInterval:   "1month",
-			expectedOutputsize: DefaultOutputSize, // 例: 200
+			expectedOutputsize: DefaultOutputSize, // e.g., 200
 		},
 		{
-			name:            "正常系: outputsizeが最大値を超える場合、デフォルト値が使われる",
+			name:            "success: default value used when outputsize exceeds max",
 			inputSymbol:     "TSLA",
 			inputInterval:   "1day",
 			inputOutputsize: MaxOutputSize + 1,
@@ -101,10 +101,10 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 			expectedCandles:    expectedCandles,
 			expectedErr:        nil,
 			expectedInterval:   "1day",
-			expectedOutputsize: DefaultOutputSize, // 例: 200
+			expectedOutputsize: DefaultOutputSize, // e.g., 200
 		},
 		{
-			name:            "異常系: リポジトリがエラーを返す",
+			name:            "error: repository returns error",
 			inputSymbol:     "AMZN",
 			inputInterval:   "1day",
 			inputOutputsize: 10,
@@ -122,9 +122,9 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockRepo := &mockCandleRepository{
 				FindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
-					// ユースケースが正しいパラメータでリポジトリを呼び出したか検証
+					// Verify that the usecase calls the repository with correct parameters
 					if symbol != tc.inputSymbol || interval != tc.expectedInterval || outputsize != tc.expectedOutputsize {
-						t.Errorf("Findに予期しないパラメータが渡されました。got symbol=%s, interval=%s, outputsize=%d, want symbol=%s, interval=%s, outputsize=%d",
+						t.Errorf("Find called with unexpected params: got symbol=%s, interval=%s, outputsize=%d, want symbol=%s, interval=%s, outputsize=%d",
 							symbol, interval, outputsize, tc.inputSymbol, tc.expectedInterval, tc.expectedOutputsize)
 					}
 					return tc.mockFindFunc(ctx, symbol, interval, outputsize)
@@ -134,7 +134,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 
 			candles, err := uc.GetCandles(ctx, tc.inputSymbol, tc.inputInterval, tc.inputOutputsize)
 
-			// エラー判定（sentinelで簡潔に）
+			// Verify error using sentinel comparison
 			if tc.expectedErr == nil {
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
@@ -143,14 +143,14 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 				t.Fatalf("expected %v, got %v", tc.expectedErr, err)
 			}
 
-			// 結果比較
+			// Compare results
 			if !reflect.DeepEqual(candles, tc.expectedCandles) {
-				t.Errorf("期待した結果と異なる結果が返されました。got %v, want %v", candles, tc.expectedCandles)
+				t.Errorf("result mismatch: got %v, want %v", candles, tc.expectedCandles)
 			}
 
-			// 呼び出し回数
+			// Verify call count
 			if mockRepo.FindCalls != 1 {
-				t.Errorf("Findが%d回呼ばれました（期待: 1）", mockRepo.FindCalls)
+				t.Errorf("Find was called %d times, expected 1", mockRepo.FindCalls)
 			}
 		})
 	}

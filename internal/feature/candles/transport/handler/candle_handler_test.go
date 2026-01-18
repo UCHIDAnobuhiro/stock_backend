@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// mockCandlesUsecase は candlesUsecase インターフェースのモック実装です。
+// mockCandlesUsecase is a mock implementation of the candlesUsecase interface.
 type mockCandlesUsecase struct {
 	GetCandlesFunc func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 }
@@ -27,7 +27,7 @@ func (m *mockCandlesUsecase) GetCandles(ctx context.Context, symbol, interval st
 func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	// テスト用の固定時刻
+	// Fixed time for testing
 	testTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	tests := []struct {
@@ -35,10 +35,10 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 		url            string
 		mockGetCandles func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 		expectedStatus int
-		expectedBody   string // JSON文字列で比較
+		expectedBody   string // Compare as JSON string
 	}{
 		{
-			name: "成功: 全てのパラメータを指定",
+			name: "success: all parameters specified",
 			url:  "/candles/7203.T?interval=1day&outputsize=10",
 			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 				assert.Equal(t, "7203.T", symbol)
@@ -52,19 +52,19 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 			expectedBody:   `[{"time":"2023-01-01","open":100,"high":110,"low":90,"close":105,"volume":1000}]`,
 		},
 		{
-			name: "成功: パラメータがデフォルト値",
+			name: "success: default parameter values",
 			url:  "/candles/7203.T",
 			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 				assert.Equal(t, "7203.T", symbol)
-				assert.Equal(t, "1day", interval) // デフォルト値
-				assert.Equal(t, 200, outputsize)  // デフォルト値
+				assert.Equal(t, "1day", interval) // default value
+				assert.Equal(t, 200, outputsize)  // default value
 				return []entity.Candle{}, nil
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `[]`,
 		},
 		{
-			name: "失敗: Usecaseがエラーを返す",
+			name: "error: usecase returns error",
 			url:  "/candles/9999.T",
 			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 				return nil, errors.New("internal server error")
@@ -73,11 +73,11 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 			expectedBody:   `{"error":"internal server error"}`,
 		},
 		{
-			name: "準正常: outputsizeが不正な文字列の場合、デフォルト値が使われる",
+			name: "edge case: invalid outputsize string uses default value",
 			url:  "/candles/7203.T?outputsize=invalid",
 			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
-				// ハンドラは strconv.Atoi("invalid") の結果である 0 をUsecaseに渡すのが責務。
-				// デフォルト値への変換はUsecase層で行われる。
+				// Handler passes 0 (result of strconv.Atoi("invalid")) to usecase.
+				// Conversion to default value is handled by the usecase layer.
 				assert.Equal(t, 0, outputsize)
 				return []entity.Candle{}, nil
 			},
@@ -88,7 +88,7 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// モックUsecaseをインスタンス化
+			// Instantiate mock usecase
 			mockUC := &mockCandlesUsecase{
 				GetCandlesFunc: tt.mockGetCandles,
 			}

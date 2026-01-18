@@ -1,3 +1,4 @@
+// Package adapters provides repository implementations for the candles feature.
 package adapters
 
 import (
@@ -10,16 +11,21 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// candleMySQL is a MySQL implementation of the CandleRepository interface.
 type candleMySQL struct {
 	db *gorm.DB
 }
 
+// Compile-time check to ensure candleMySQL implements CandleRepository.
 var _ usecase.CandleRepository = (*candleMySQL)(nil)
 
+// NewCandleRepository creates a new candleMySQL repository with the given database connection.
 func NewCandleRepository(db *gorm.DB) *candleMySQL {
 	return &candleMySQL{db: db}
 }
 
+// CandleModel represents the database model for candlestick data.
+// It uses a composite unique index on (symbol, interval, time) for upsert operations.
 type CandleModel struct {
 	ID       uint      `gorm:"primaryKey"`
 	Symbol   string    `gorm:"size:32;not null;uniqueIndex:candle_sym_int_time,priority:1"`
@@ -33,10 +39,12 @@ type CandleModel struct {
 	Volume int64   `gorm:"not null;default:0"`
 }
 
+// TableName returns the database table name for this model.
 func (CandleModel) TableName() string {
 	return "candles"
 }
 
+// toModel converts a domain entity to a database model.
 func toModel(e entity.Candle) CandleModel {
 	return CandleModel{
 		Symbol:   e.Symbol,
@@ -50,6 +58,8 @@ func toModel(e entity.Candle) CandleModel {
 	}
 }
 
+// UpsertBatch inserts or updates candlestick data in batch.
+// It uses MySQL's ON DUPLICATE KEY UPDATE for efficient upserts.
 func (r *candleMySQL) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
 	if len(candles) == 0 {
 		return nil
@@ -65,6 +75,8 @@ func (r *candleMySQL) UpsertBatch(ctx context.Context, candles []entity.Candle) 
 	}).Create(&ms).Error
 }
 
+// Find retrieves candlestick data for a given symbol and interval.
+// Results are ordered by time descending and limited by outputsize.
 func (r *candleMySQL) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	var rows []CandleModel
 	q := r.db.WithContext(ctx).

@@ -1,3 +1,4 @@
+// Package usecase implements the business logic for candlestick data operations.
 package usecase
 
 import (
@@ -6,9 +7,12 @@ import (
 )
 
 const (
-	DefaultInterval   = "1day"
+	// DefaultInterval is the default time interval for candle queries.
+	DefaultInterval = "1day"
+	// DefaultOutputSize is the default number of candles to return.
 	DefaultOutputSize = 200
-	MaxOutputSize     = 5000
+	// MaxOutputSize is the maximum number of candles that can be returned.
+	MaxOutputSize = 5000
 )
 
 // CandleRepository abstracts the persistence layer for candlestick data.
