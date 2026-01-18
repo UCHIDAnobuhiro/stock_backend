@@ -1,3 +1,0 @@
--- Schema is managed by GORM AutoMigrate.
--- See internal/platform/db/db_gorm.go RunMigrations() for model definitions.
--- This file is kept for potential seed data or manual overrides.
