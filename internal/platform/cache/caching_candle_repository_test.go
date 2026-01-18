@@ -211,7 +211,7 @@ func TestCachingCandleRepository_Find_CorruptedCache(t *testing.T) {
 	t.Parallel()
 
 	rdb, mock := redismock.NewClientMock()
-	defer rdb.Close()
+	defer func() { _ = rdb.Close() }()
 
 	expectedCandles := []entity.Candle{
 		{Symbol: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
@@ -293,7 +293,7 @@ func TestCachingCandleRepository_UpsertBatch_EmptyCandles(t *testing.T) {
 	t.Parallel()
 
 	rdb, _ := redismock.NewClientMock()
-	defer rdb.Close()
+	defer func() { _ = rdb.Close() }()
 
 	inner := &mockCandleRepository{
 		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
@@ -313,7 +313,7 @@ func TestCachingCandleRepository_UpsertBatch_CacheInvalidation(t *testing.T) {
 	t.Parallel()
 
 	rdb, mock := redismock.NewClientMock()
-	defer rdb.Close()
+	defer func() { _ = rdb.Close() }()
 
 	inner := &mockCandleRepository{
 		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
@@ -342,7 +342,7 @@ func TestCachingCandleRepository_UpsertBatch_DeduplicatesInvalidation(t *testing
 	t.Parallel()
 
 	rdb, mock := redismock.NewClientMock()
-	defer rdb.Close()
+	defer func() { _ = rdb.Close() }()
 
 	inner := &mockCandleRepository{
 		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
