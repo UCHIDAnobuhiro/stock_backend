@@ -1,3 +1,4 @@
+// Package handler provides HTTP handlers for the symbollist feature.
 package handler
 
 import (
