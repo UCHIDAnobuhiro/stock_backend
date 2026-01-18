@@ -18,8 +18,7 @@ func TestMain(m *testing.M) {
 
 func TestAuthRequired_MissingBearerToken(t *testing.T) {
 	// Set up environment for this test
-	os.Setenv(EnvKeyJWTSecret, "test-secret")
-	defer os.Unsetenv(EnvKeyJWTSecret)
+	t.Setenv(EnvKeyJWTSecret, "test-secret")
 
 	tests := []struct {
 		name       string
@@ -55,8 +54,8 @@ func TestAuthRequired_MissingBearerToken(t *testing.T) {
 }
 
 func TestAuthRequired_MissingJWTSecret(t *testing.T) {
-	// Ensure JWT_SECRET is not set
-	os.Unsetenv(EnvKeyJWTSecret)
+	// Ensure JWT_SECRET is not set (t.Setenv with empty string)
+	t.Setenv(EnvKeyJWTSecret, "")
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -73,8 +72,7 @@ func TestAuthRequired_MissingJWTSecret(t *testing.T) {
 
 func TestAuthRequired_InvalidToken(t *testing.T) {
 	const testSecret = "test-secret-key-for-invalid"
-	os.Setenv(EnvKeyJWTSecret, testSecret)
-	defer os.Unsetenv(EnvKeyJWTSecret)
+	t.Setenv(EnvKeyJWTSecret, testSecret)
 
 	tests := []struct {
 		name  string
@@ -105,8 +103,7 @@ func TestAuthRequired_InvalidToken(t *testing.T) {
 
 func TestAuthRequired_ValidToken(t *testing.T) {
 	const testSecret = "test-secret-key-for-valid"
-	os.Setenv(EnvKeyJWTSecret, testSecret)
-	defer os.Unsetenv(EnvKeyJWTSecret)
+	t.Setenv(EnvKeyJWTSecret, testSecret)
 
 	tests := []struct {
 		name           string
@@ -149,8 +146,7 @@ func TestAuthRequired_ValidToken(t *testing.T) {
 
 func TestAuthRequired_InvalidSigningMethod(t *testing.T) {
 	const testSecret = "test-secret-key-for-signing"
-	os.Setenv(EnvKeyJWTSecret, testSecret)
-	defer os.Unsetenv(EnvKeyJWTSecret)
+	t.Setenv(EnvKeyJWTSecret, testSecret)
 
 	// Create token with "none" algorithm (unsigned)
 	token := jwt.NewWithClaims(jwt.SigningMethodNone, jwt.MapClaims{

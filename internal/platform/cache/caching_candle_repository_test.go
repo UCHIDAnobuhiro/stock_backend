@@ -110,7 +110,7 @@ func TestCachingCandleRepository_Find_CacheHit(t *testing.T) {
 	t.Parallel()
 
 	rdb, mock := redismock.NewClientMock()
-	defer rdb.Close()
+	defer func() { _ = rdb.Close() }()
 
 	cachedCandles := []entity.Candle{
 		{Symbol: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
@@ -148,7 +148,7 @@ func TestCachingCandleRepository_Find_CacheMiss(t *testing.T) {
 	t.Parallel()
 
 	rdb, mock := redismock.NewClientMock()
-	defer rdb.Close()
+	defer func() { _ = rdb.Close() }()
 
 	expectedCandles := []entity.Candle{
 		{Symbol: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
@@ -184,7 +184,7 @@ func TestCachingCandleRepository_Find_InnerError(t *testing.T) {
 	t.Parallel()
 
 	rdb, mock := redismock.NewClientMock()
-	defer rdb.Close()
+	defer func() { _ = rdb.Close() }()
 
 	expectedErr := errors.New("database error")
 
