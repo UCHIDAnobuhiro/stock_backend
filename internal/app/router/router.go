@@ -14,23 +14,23 @@ func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.Can
 	symbol *symbollisthandler.SymbolHandler) *gin.Engine {
 	r := gin.Default()
 
-	// Public routes (no authentication required)
-	// Health check endpoint
+	// Health check endpoint (unversioned)
 	r.GET("/healthz", handler.Health)
-	// New user registration
-	r.POST("/signup", authHandler.Signup)
-	// Login (JWT issuance)
-	r.POST("/login", authHandler.Login)
 
-	// Protected routes (authentication required)
-	// Create route group with r.Group("/")
-	auth := r.Group("/")
-	// Apply jwtmw.AuthRequired() middleware
-	// This requires JWT in the request header
-	auth.Use(jwtmw.AuthRequired())
+	// API v1 routes
+	v1 := r.Group("/v1")
 	{
-		auth.GET("/candles/:code", candles.GetCandlesHandler)
-		auth.GET("/symbols", symbol.List)
+		// Public routes (no authentication required)
+		v1.POST("/signup", authHandler.Signup)
+		v1.POST("/login", authHandler.Login)
+
+		// Protected routes (authentication required)
+		auth := v1.Group("/")
+		auth.Use(jwtmw.AuthRequired())
+		{
+			auth.GET("/candles/:code", candles.GetCandlesHandler)
+			auth.GET("/symbols", symbol.List)
+		}
 	}
 
 	return r
