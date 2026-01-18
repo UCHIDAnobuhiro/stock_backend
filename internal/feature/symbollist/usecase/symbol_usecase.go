@@ -1,3 +1,4 @@
+// Package usecase implements the business logic for symbol-related operations.
 package usecase
 
 import (
@@ -12,14 +13,17 @@ type SymbolRepository interface {
 	ListActiveCodes(ctx context.Context) ([]string, error)
 }
 
+// SymbolUsecase provides business logic for symbol operations.
 type SymbolUsecase struct {
 	repo SymbolRepository
 }
 
+// NewSymbolUsecase creates a new SymbolUsecase with the given repository.
 func NewSymbolUsecase(r SymbolRepository) *SymbolUsecase {
 	return &SymbolUsecase{repo: r}
 }
 
+// ListActiveSymbols returns all active symbols from the repository.
 func (u *SymbolUsecase) ListActiveSymbols(ctx context.Context) ([]entity.Symbol, error) {
 	// Future enhancement: add validation, sorting, filtering, or other business logic here
 	return u.repo.ListActive(ctx)

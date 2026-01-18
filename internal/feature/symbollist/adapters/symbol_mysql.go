@@ -1,3 +1,4 @@
+// Package adapters provides repository implementations for the symbollist feature.
 package adapters
 
 import (
@@ -9,16 +10,19 @@ import (
 	"gorm.io/gorm"
 )
 
+// symbolMySQL is a MySQL implementation of the SymbolRepository interface.
 type symbolMySQL struct {
 	db *gorm.DB
 }
 
 var _ usecase.SymbolRepository = (*symbolMySQL)(nil)
 
+// NewSymbolRepository creates a new symbolMySQL repository with the given database connection.
 func NewSymbolRepository(db *gorm.DB) *symbolMySQL {
 	return &symbolMySQL{db: db}
 }
 
+// ListActive returns all active symbols ordered by sort_key.
 func (r *symbolMySQL) ListActive(ctx context.Context) ([]entity.Symbol, error) {
 	var symbols []entity.Symbol
 	if err := r.db.WithContext(ctx).
@@ -30,6 +34,7 @@ func (r *symbolMySQL) ListActive(ctx context.Context) ([]entity.Symbol, error) {
 	return symbols, nil
 }
 
+// ListActiveCodes returns only the codes of active symbols ordered by sort_key.
 func (r *symbolMySQL) ListActiveCodes(ctx context.Context) ([]string, error) {
 	var codes []string
 	if err := r.db.WithContext(ctx).
