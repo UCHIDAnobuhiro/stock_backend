@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+// TwelveDataMarket is a MarketRepository implementation that fetches stock data
+// from the Twelve Data external API.
 type TwelveDataMarket struct {
 	cfg    Config
 	client *http.Client
@@ -22,6 +24,7 @@ type TwelveDataMarket struct {
 // Compile-time check to ensure TwelveDataMarket implements MarketRepository.
 var _ usecase.MarketRepository = (*TwelveDataMarket)(nil)
 
+// NewTwelveDataMarket creates a new TwelveDataMarket with the given config and HTTP client.
 func NewTwelveDataMarket(cfg Config, client *http.Client) *TwelveDataMarket {
 	return &TwelveDataMarket{cfg: cfg, client: client}
 }

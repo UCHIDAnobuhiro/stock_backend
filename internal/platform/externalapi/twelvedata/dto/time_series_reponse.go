@@ -1,5 +1,7 @@
+// Package dto defines data transfer objects for the Twelve Data API responses.
 package dto
 
+// TimeSeriesResponse represents the JSON response from the Twelve Data time_series endpoint.
 type TimeSeriesResponse struct {
 	Status   string `json:"status"`
 	Message  string `json:"message,omitempty"`

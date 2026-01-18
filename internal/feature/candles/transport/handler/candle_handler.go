@@ -1,4 +1,4 @@
-// internal/handler/candles.go
+// Package handler provides HTTP handlers for the candles feature.
 package handler
 
 import (
@@ -17,10 +17,12 @@ type CandlesUsecase interface {
 	GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 }
 
+// CandlesHandler handles HTTP requests for candlestick data.
 type CandlesHandler struct {
 	uc CandlesUsecase
 }
 
+// NewCandlesHandler creates a new CandlesHandler with the given usecase.
 func NewCandlesHandler(uc CandlesUsecase) *CandlesHandler {
 	return &CandlesHandler{uc: uc}
 }

@@ -1,3 +1,4 @@
+// Package redis provides Redis client initialization and configuration.
 package redis
 
 import (
@@ -8,6 +9,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// NewRedisClient creates a new Redis client using environment variables for configuration.
+// It verifies the connection with a PING command before returning.
+// Required environment variables: REDIS_HOST, REDIS_PORT, REDIS_PASSWORD (optional).
 func NewRedisClient() (*redis.Client, error) {
 	addr := os.Getenv("REDIS_HOST") + ":" + os.Getenv("REDIS_PORT")
 	password := os.Getenv("REDIS_PASSWORD")

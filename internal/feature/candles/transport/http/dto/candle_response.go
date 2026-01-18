@@ -1,3 +1,4 @@
+// Package dto defines data transfer objects for the candles HTTP API.
 package dto
 
 // CandleResponse is the response DTO for candlestick data.
