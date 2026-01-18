@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"stock_backend/internal/feature/auth/domain/entity"
-	candleadapters "stock_backend/internal/feature/candles/adapters"
 	"time"
+
+	authentity "stock_backend/internal/feature/auth/domain/entity"
+	candleadapters "stock_backend/internal/feature/candles/adapters"
+	symbolentity "stock_backend/internal/feature/symbollist/domain/entity"
 
 	gmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -75,8 +77,9 @@ func ConnectWithRetry(dsn string, timeout time.Duration, opener Opener) (*gorm.D
 // RunMigrations runs database migrations for all registered models.
 func RunMigrations(db *gorm.DB) error {
 	return db.AutoMigrate(
-		&entity.User{},
+		&authentity.User{},
 		&candleadapters.CandleModel{},
+		&symbolentity.Symbol{},
 	)
 }
 
