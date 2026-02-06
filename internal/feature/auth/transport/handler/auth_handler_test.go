@@ -1,4 +1,4 @@
-package handler
+package handler_test
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"stock_backend/internal/feature/auth/transport/handler"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -118,10 +119,10 @@ func TestAuthHandler_Signup(t *testing.T) {
 			t.Parallel()
 
 			mockUC := &mockAuthUsecase{SignupFunc: tt.mockSignupFunc}
-			handler := NewAuthHandler(mockUC)
+			h := handler.NewAuthHandler(mockUC)
 
 			router := gin.New()
-			router.POST("/signup", handler.Signup)
+			router.POST("/signup", h.Signup)
 
 			w := makeRequest(t, router, http.MethodPost, "/signup", tt.requestBody)
 			assertJSONResponse(t, w, tt.expectedStatus, tt.expectedBody)
@@ -184,10 +185,10 @@ func TestAuthHandler_Login(t *testing.T) {
 			t.Parallel()
 
 			mockUC := &mockAuthUsecase{LoginFunc: tt.mockLoginFunc}
-			handler := NewAuthHandler(mockUC)
+			h := handler.NewAuthHandler(mockUC)
 
 			router := gin.New()
-			router.POST("/login", handler.Login)
+			router.POST("/login", h.Login)
 
 			w := makeRequest(t, router, http.MethodPost, "/login", tt.requestBody)
 			assertJSONResponse(t, w, tt.expectedStatus, tt.expectedBody)

@@ -1,10 +1,11 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
 	"errors"
 	"reflect"
 	"stock_backend/internal/feature/candles/domain/entity"
+	"stock_backend/internal/feature/candles/usecase"
 	"testing"
 	"time"
 )
@@ -77,7 +78,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 			},
 			expectedCandles:    expectedCandles,
 			expectedErr:        nil,
-			expectedInterval:   DefaultInterval, // 例: "1day"
+			expectedInterval:   "1day",
 			expectedOutputsize: 100,
 		},
 		{
@@ -91,20 +92,20 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 			expectedCandles:    expectedCandles,
 			expectedErr:        nil,
 			expectedInterval:   "1month",
-			expectedOutputsize: DefaultOutputSize, // 例: 200
+			expectedOutputsize: 200,
 		},
 		{
 			name:            "success: default value used when outputsize exceeds max",
 			inputSymbol:     "TSLA",
 			inputInterval:   "1day",
-			inputOutputsize: MaxOutputSize + 1,
+			inputOutputsize: 5001,
 			mockFindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 				return expectedCandles, nil
 			},
 			expectedCandles:    expectedCandles,
 			expectedErr:        nil,
 			expectedInterval:   "1day",
-			expectedOutputsize: DefaultOutputSize, // 例: 200
+			expectedOutputsize: 200,
 		},
 		{
 			name:            "error: repository returns error",
@@ -133,7 +134,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 					return tc.mockFindFunc(ctx, symbol, interval, outputsize)
 				},
 			}
-			uc := NewCandlesUsecase(mockRepo)
+			uc := usecase.NewCandlesUsecase(mockRepo)
 
 			candles, err := uc.GetCandles(ctx, tc.inputSymbol, tc.inputInterval, tc.inputOutputsize)
 

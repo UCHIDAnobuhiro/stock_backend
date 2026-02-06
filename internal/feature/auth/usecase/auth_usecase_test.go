@@ -1,9 +1,10 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
 	"errors"
 	"stock_backend/internal/feature/auth/domain/entity"
+	"stock_backend/internal/feature/auth/usecase"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
@@ -181,7 +182,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			}
 			mockJWT := &mockJWTGenerator{}
 
-			uc := NewAuthUsecase(mockRepo, mockJWT)
+			uc := usecase.NewAuthUsecase(mockRepo, mockJWT)
 			err := uc.Signup(context.Background(), tt.email, tt.password)
 
 			// Assert error expectations
@@ -281,7 +282,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 				},
 			}
 
-			uc := NewAuthUsecase(mockRepo, mockJWT)
+			uc := usecase.NewAuthUsecase(mockRepo, mockJWT)
 			token, err := uc.Login(context.Background(), tt.email, tt.password)
 
 			// エラーの期待値を検証
