@@ -1,6 +1,6 @@
 package jwtmw
 
 const (
-	// EnvKeyJWTSecret is the environment variable key for JWT signing secret.
+	// EnvKeyJWTSecret はJWT署名シークレットの環境変数キーです。
 	EnvKeyJWTSecret = "JWT_SECRET"
 )
