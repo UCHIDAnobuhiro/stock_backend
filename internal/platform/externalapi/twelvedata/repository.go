@@ -14,41 +14,40 @@ import (
 	"time"
 )
 
-// TwelveDataMarket is a MarketRepository implementation that fetches stock data
-// from the Twelve Data external API.
+// TwelveDataMarket はTwelve Data外部APIから株価データを取得するMarketRepository実装です。
 type TwelveDataMarket struct {
 	cfg    Config
 	client *http.Client
 }
 
-// Compile-time check to ensure TwelveDataMarket implements MarketRepository.
+// TwelveDataMarketがMarketRepositoryを実装していることをコンパイル時に検証します。
 var _ usecase.MarketRepository = (*TwelveDataMarket)(nil)
 
-// NewTwelveDataMarket creates a new TwelveDataMarket with the given config and HTTP client.
+// NewTwelveDataMarket は指定された設定とHTTPクライアントでTwelveDataMarketの新しいインスタンスを生成します。
 func NewTwelveDataMarket(cfg Config, client *http.Client) *TwelveDataMarket {
 	return &TwelveDataMarket{cfg: cfg, client: client}
 }
 
-// GetTimeSeries retrieves time series stock data from the Twelve Data API
-// and returns it as a slice of domain.Candle.
+// GetTimeSeries はTwelve Data APIから時系列株価データを取得し、
+// domain.Candleのスライスとして返します。
 func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	q := url.Values{}
-	// Add query parameters
+	// クエリパラメータを追加
 	q.Set("symbol", symbol)
 	q.Set("interval", interval)
 	q.Set("outputsize", strconv.Itoa(outputsize))
 	q.Set("apikey", t.cfg.TwelveDataAPIKey)
 
-	// Generate URL
+	// URLを生成
 	u := fmt.Sprintf("%s/time_series?%s", t.cfg.BaseURL, q.Encode())
 
-	// Create request object
+	// リクエストオブジェクトを作成
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	// Execute request
+	// リクエストを実行
 	res, err := t.client.Do(req)
 	if err != nil {
 		return nil, err
@@ -63,7 +62,7 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 		return nil, fmt.Errorf("twelvedata http %d", res.StatusCode)
 	}
 
-	// Decode JSON response into DTO
+	// JSONレスポンスをDTOにデコード
 	var body dto.TimeSeriesResponse
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		return nil, err
@@ -75,7 +74,7 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 	candles := make([]entity.Candle, 0, len(body.Values))
 	for _, v := range body.Values {
 
-		// Parse timestamp
+		// タイムスタンプをパース
 		tm, err := time.Parse("2006-01-02 15:04:05", v.Datetime)
 		if err != nil {
 			tm, err = time.Parse("2006-01-02", v.Datetime)
@@ -83,33 +82,33 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 				return nil, fmt.Errorf("parse time %q: %w", v.Datetime, err)
 			}
 		}
-		// Parse open price
+		// 始値をパース
 		o, err := strconv.ParseFloat(v.Open, 64)
 		if err != nil {
 			return nil, fmt.Errorf("parse open %q: %w", v.Open, err)
 		}
-		// Parse high price
+		// 高値をパース
 		h, err := strconv.ParseFloat(v.High, 64)
 		if err != nil {
 			return nil, fmt.Errorf("parse high %q: %w", v.High, err)
 		}
-		// Parse low price
+		// 安値をパース
 		l, err := strconv.ParseFloat(v.Low, 64)
 		if err != nil {
 			return nil, fmt.Errorf("parse low %q: %w", v.Low, err)
 		}
-		// Parse close price
+		// 終値をパース
 		c, err := strconv.ParseFloat(v.Close, 64)
 		if err != nil {
 			return nil, fmt.Errorf("parse close %q: %w", v.Close, err)
 		}
-		// Parse volume
+		// 出来高をパース
 		vol64, err := strconv.ParseInt(v.Volume, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("parse volume %q: %w", v.Volume, err)
 		}
 
-		// Convert to domain entity
+		// ドメインエンティティに変換
 		candles = append(candles, entity.Candle{
 			Time:   tm,
 			Open:   o,
