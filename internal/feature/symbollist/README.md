@@ -1,18 +1,18 @@
-# Symbollist Feature
+# Symbollistフィーチャー
 
-## Overview
+## 概要
 
-The Symbollist feature provides stock ticker symbol management functionality. It handles retrieving the list of active trading symbols that users can track.
+Symbollistフィーチャーは株式銘柄コードの管理機能を提供します。ユーザーがトラッキングできるアクティブな取引銘柄の一覧取得を処理します。
 
-### Key Features
+### 主な機能
 
-- **List Active Symbols**: Retrieve all active stock symbols available for tracking
-- **Sorted Results**: Symbols are returned in a defined order based on `sort_key`
-- **Active Filtering**: Only active symbols (`is_active = true`) are returned to clients
+- **アクティブ銘柄一覧**: トラッキング可能なすべてのアクティブな銘柄を取得
+- **ソート済み結果**: 銘柄は `sort_key` に基づいた定義済みの順序で返却
+- **アクティブフィルタリング**: アクティブな銘柄（`is_active = true`）のみがクライアントに返却
 
-## Sequence Diagram
+## シーケンス図
 
-### List Symbols Flow
+### 銘柄一覧取得フロー
 
 ```mermaid
 sequenceDiagram
@@ -40,17 +40,17 @@ sequenceDiagram
     end
 ```
 
-## API Specification
+## API仕様
 
 ### GET /symbols
 
-Retrieves the list of active stock symbols.
+アクティブな株式銘柄の一覧を取得します。
 
-**Authentication**: Required (JWT Bearer token)
+**認証**: 必須（JWT Bearerトークン）
 
-**Response**
+**レスポンス**
 
-- **200 OK** - Success
+- **200 OK** - 成功
   ```json
   [
     {
@@ -68,14 +68,14 @@ Retrieves the list of active stock symbols.
   ]
   ```
 
-- **500 Internal Server Error** - Database error
+- **500 Internal Server Error** - データベースエラー
   ```json
   {
     "error": "database connection failed"
   }
   ```
 
-## Dependency Diagram
+## 依存関係図
 
 ```mermaid
 graph TB
@@ -120,127 +120,128 @@ graph TB
     style DB fill:#ffebee
 ```
 
-### Dependency Explanation
+### 依存関係の説明
 
-#### Transport Layer ([transport/handler/symbol_handler.go](transport/handler/symbol_handler.go))
-- **SymbolHandler**: Processes HTTP requests and calls SymbolUsecase
-- **SymbolItem DTO** ([transport/http/dto/symbol_list.go](transport/http/dto/symbol_list.go)): Response data structure containing only `code` and `name`
+#### Transport層 ([transport/handler/symbol_handler.go](transport/handler/symbol_handler.go))
+- **SymbolHandler**: HTTPリクエストを処理し、SymbolUsecaseを呼び出す
+- **SymbolItem DTO** ([transport/http/dto/symbol_list.go](transport/http/dto/symbol_list.go)): `code` と `name` のみを含むレスポンスデータ構造
 
-#### Usecase Layer ([usecase/symbol_usecase.go](usecase/symbol_usecase.go))
-- **SymbolUsecase**: Implements business logic for symbol operations
-  - Defines SymbolRepository interface (following Go's "consumer defines interface" convention)
-- **SymbolRepository Interface**: Repository interface with:
-  - `ListActive(ctx)`: Returns all active symbols
-  - `ListActiveCodes(ctx)`: Returns only the codes of active symbols (used by batch ingest)
+#### Usecase層 ([usecase/symbol_usecase.go](usecase/symbol_usecase.go))
+- **SymbolUsecase**: 銘柄操作のビジネスロジックを実装
+  - SymbolRepositoryインターフェースを定義（Goの「インターフェースは利用者が定義する」慣例に従う）
+- **SymbolRepositoryインターフェース**: リポジトリインターフェース:
+  - `ListActive(ctx)`: すべてのアクティブな銘柄を返す
+  - `ListActiveCodes(ctx)`: アクティブな銘柄のコードのみを返す（バッチ取り込みで使用）
 
-#### Domain Layer ([domain/entity/symbol.go](domain/entity/symbol.go))
-- **Symbol Entity**: Stock symbol domain model with fields:
-  - `ID`: Primary key
-  - `Code`: Unique stock ticker code (e.g., "AAPL")
-  - `Name`: Full company name
-  - `Market`: Market identifier (e.g., "NASDAQ")
-  - `IsActive`: Whether the symbol is active for tracking
-  - `SortKey`: Display ordering priority
-  - `UpdatedAt`: Last update timestamp
+#### Domain層 ([domain/entity/symbol.go](domain/entity/symbol.go))
+- **Symbolエンティティ**: 株式銘柄のドメインモデル。以下のフィールドを持つ:
+  - `ID`: 主キー
+  - `Code`: 一意の銘柄コード（例: "AAPL"）
+  - `Name`: 企業名
+  - `Market`: 市場識別子（例: "NASDAQ"）
+  - `IsActive`: トラッキング対象かどうか
+  - `SortKey`: 表示順序の優先度
+  - `UpdatedAt`: 最終更新日時
 
-#### Adapters Layer ([adapters/symbol_mysql.go](adapters/symbol_mysql.go))
-- **symbolMySQL**: MySQL implementation of SymbolRepository (using GORM)
+#### Adapters層 ([adapters/symbol_mysql.go](adapters/symbol_mysql.go))
+- **symbolMySQL**: SymbolRepositoryのMySQL実装（GORMを使用）
 
-### Architectural Characteristics
+### アーキテクチャ特性
 
-1. **Clean Architecture**: Domain layer is independent of infrastructure layer
-2. **Dependency Inversion**: Usecase defines and depends on SymbolRepository interface, not concrete implementations
-3. **Interface Ownership**: Repository interfaces are defined in the usecase layer where they are used (Go best practice)
-4. **DTO Transformation**: Handler transforms domain entities to DTOs, exposing only necessary fields to clients
+1. **クリーンアーキテクチャ**: ドメイン層はインフラストラクチャ層から独立
+2. **依存性逆転**: Usecaseは具象実装ではなくSymbolRepositoryインターフェースを定義・依存
+3. **インターフェースの所有権**: リポジトリインターフェースは使用されるusecase層で定義（Goのベストプラクティス）
+4. **DTO変換**: Handlerがドメインエンティティをクライアントに必要なフィールドのみ公開するDTOに変換
 
-## Directory Structure
+## ディレクトリ構成
 
 ```
 symbollist/
-├── README.md                          # This file
+├── README.md                          # このファイル
 ├── domain/
 │   └── entity/
-│       └── symbol.go                 # Symbol entity definition
+│       └── symbol.go                 # Symbolエンティティ定義
 ├── usecase/
-│   ├── symbol_usecase.go             # Business logic + SymbolRepository interface
-│   └── symbol_usecase_test.go        # Usecase tests
+│   ├── symbol_usecase.go             # ビジネスロジック + SymbolRepositoryインターフェース
+│   └── symbol_usecase_test.go        # Usecaseテスト
 ├── adapters/
-│   ├── symbol_mysql.go               # MySQL repository implementation
-│   └── symbol_mysql_test.go          # Repository tests
+│   ├── symbol_mysql.go               # MySQLリポジトリ実装
+│   └── symbol_mysql_test.go          # リポジトリテスト
 └── transport/
     ├── handler/
-    │   ├── symbol_handler.go         # HTTP handlers
-    │   └── symbol_handler_test.go    # Handler tests
-    └── http/dto/
-        └── symbol_list.go            # Response DTO
+    │   ├── symbol_handler.go         # HTTPハンドラー
+    │   └── symbol_handler_test.go    # ハンドラーテスト
+    └── http/
+        └── dto/
+            └── symbol_list.go        # レスポンスDTO
 ```
 
-## Testing
+## テスト
 
-All tests in the symbollist feature follow a **table-driven testing pattern** for consistency and maintainability.
+symbollistフィーチャーのすべてのテストは、一貫性と保守性のために**テーブル駆動テストパターン**に従います。
 
-### Test Structure and Patterns
+### テスト構造とパターン
 
-#### Common Patterns Across All Tests
+#### 全テスト共通のパターン
 
-1. **Table-Driven Tests**: All test functions use a `tests` slice with struct fields:
-   - `name`: Test case description (e.g., `"success: returns active symbols"`)
-   - `wantErr`: Boolean flag indicating if an error is expected
-   - Additional fields specific to each test type
+1. **テーブル駆動テスト**: すべてのテスト関数は構造体フィールドを持つ `tests` スライスを使用:
+   - `name`: テストケースの説明（例: `"success: returns active symbols"`）
+   - `wantErr`: エラーが期待されるかどうかのboolフラグ
+   - 各テストタイプ固有の追加フィールド
 
-2. **Parallel Execution**: All tests use `t.Parallel()` to enable concurrent execution
+2. **並列実行**: すべてのテストは `t.Parallel()` を使用して並行実行を有効化
 
-3. **Helper Functions**: Each test file includes helper functions to reduce code duplication
+3. **ヘルパー関数**: 各テストファイルにはコードの重複を削減するヘルパー関数を含む
 
-#### Usecase Tests ([usecase/symbol_usecase_test.go](usecase/symbol_usecase_test.go))
+#### Usecaseテスト ([usecase/symbol_usecase_test.go](usecase/symbol_usecase_test.go))
 
-Uses **mock repositories** to test business logic in isolation.
+**モックリポジトリ**を使用してビジネスロジックを単体でテストします。
 
-**Run Command:**
+**実行コマンド:**
 ```bash
 go test ./internal/feature/symbollist/usecase/... -v
 ```
 
-#### Handler Tests ([transport/handler/symbol_handler_test.go](transport/handler/symbol_handler_test.go))
+#### Handlerテスト ([transport/handler/symbol_handler_test.go](transport/handler/symbol_handler_test.go))
 
-Uses **mock usecases** to test HTTP request/response handling.
+**モックユースケース**を使用してHTTPリクエスト/レスポンス処理をテストします。
 
-**Run Command:**
+**実行コマンド:**
 ```bash
 go test ./internal/feature/symbollist/transport/handler/... -v
 ```
 
-#### Repository Tests ([adapters/symbol_mysql_test.go](adapters/symbol_mysql_test.go))
+#### リポジトリテスト ([adapters/symbol_mysql_test.go](adapters/symbol_mysql_test.go))
 
-Uses **in-memory SQLite database** for integration testing.
+**インメモリSQLiteデータベース**を使用して結合テストを実施します。
 
-**Run Command:**
+**実行コマンド:**
 ```bash
 go test ./internal/feature/symbollist/adapters/... -v
 ```
 
-### Run All Tests
+### 全テスト実行
 
 ```bash
 go test ./internal/feature/symbollist/... -v -race -cover
 ```
 
-## Usage in Batch Ingest
+## バッチ取り込みでの使用
 
-The `ListActiveCodes` method is used by the batch ingest process (`cmd/ingest/main.go`) to determine which symbols to fetch market data for. This allows administrators to control which symbols are actively tracked by setting `is_active` in the database.
+`ListActiveCodes` メソッドはバッチ取り込みプロセス（`cmd/ingest/main.go`）で使用され、どの銘柄の市場データを取得するかを決定します。これにより、管理者はデータベースの `is_active` を設定することで、アクティブにトラッキングする銘柄を制御できます。
 
 ```go
-// In batch ingest
+// バッチ取り込み内
 codes, err := symbolRepo.ListActiveCodes(ctx)
 for _, code := range codes {
-    // Fetch market data for each active symbol
+    // 各アクティブ銘柄の市場データを取得
 }
 ```
 
-## Future Enhancements
+## 今後の拡張予定
 
-- Symbol search functionality
-- Symbol categories/sectors
-- User-specific symbol watchlists
-- Symbol metadata (description, industry, etc.)
-- Admin endpoints for symbol management (CRUD operations)
+- 銘柄検索機能
+- 銘柄カテゴリ/セクター
+- ユーザー固有の銘柄ウォッチリスト
+- 銘柄メタデータ（説明、業種など）
+- 銘柄管理用の管理者エンドポイント（CRUD操作）
