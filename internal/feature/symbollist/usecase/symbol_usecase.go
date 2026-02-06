@@ -1,4 +1,4 @@
-// Package usecase implements the business logic for symbol-related operations.
+// Package usecase は銘柄関連操作のビジネスロジックを実装します。
 package usecase
 
 import (
@@ -6,25 +6,26 @@ import (
 	"stock_backend/internal/feature/symbollist/domain/entity"
 )
 
-// SymbolRepository abstracts the persistence layer for symbol (stock ticker) data.
-// Following Go convention: interfaces are defined by the consumer (usecase), not the provider (adapters).
+// SymbolRepository は銘柄（株式コード）データの永続化レイヤーを抽象化します。
+// Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
 type SymbolRepository interface {
+	// ListActive はすべてのアクティブな銘柄を返します。
 	ListActive(ctx context.Context) ([]entity.Symbol, error)
+	// ListActiveCodes はアクティブな銘柄のコードのみを返します。
 	ListActiveCodes(ctx context.Context) ([]string, error)
 }
 
-// SymbolUsecase provides business logic for symbol operations.
+// SymbolUsecase は銘柄操作のビジネスロジックを提供します。
 type SymbolUsecase struct {
 	repo SymbolRepository
 }
 
-// NewSymbolUsecase creates a new SymbolUsecase with the given repository.
+// NewSymbolUsecase は指定されたリポジトリでSymbolUsecaseの新しいインスタンスを生成します。
 func NewSymbolUsecase(r SymbolRepository) *SymbolUsecase {
 	return &SymbolUsecase{repo: r}
 }
 
-// ListActiveSymbols returns all active symbols from the repository.
+// ListActiveSymbols はリポジトリからすべてのアクティブな銘柄を取得して返します。
 func (u *SymbolUsecase) ListActiveSymbols(ctx context.Context) ([]entity.Symbol, error) {
-	// Future enhancement: add validation, sorting, filtering, or other business logic here
 	return u.repo.ListActive(ctx)
 }

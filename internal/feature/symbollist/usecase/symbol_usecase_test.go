@@ -9,12 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// mockSymbolRepository is a mock implementation of SymbolRepository interface.
+// mockSymbolRepository はSymbolRepositoryインターフェースのモック実装です。
 type mockSymbolRepository struct {
 	ListActiveFunc      func(ctx context.Context) ([]entity.Symbol, error)
 	ListActiveCodesFunc func(ctx context.Context) ([]string, error)
 }
 
+// ListActive はモックのListActive関数を呼び出します。
 func (m *mockSymbolRepository) ListActive(ctx context.Context) ([]entity.Symbol, error) {
 	if m.ListActiveFunc != nil {
 		return m.ListActiveFunc(ctx)
@@ -22,6 +23,7 @@ func (m *mockSymbolRepository) ListActive(ctx context.Context) ([]entity.Symbol,
 	return nil, nil
 }
 
+// ListActiveCodes はモックのListActiveCodes関数を呼び出します。
 func (m *mockSymbolRepository) ListActiveCodes(ctx context.Context) ([]string, error) {
 	if m.ListActiveCodesFunc != nil {
 		return m.ListActiveCodesFunc(ctx)
@@ -29,6 +31,7 @@ func (m *mockSymbolRepository) ListActiveCodes(ctx context.Context) ([]string, e
 	return nil, nil
 }
 
+// TestNewSymbolUsecase はNewSymbolUsecaseコンストラクタが正しくインスタンスを生成することを検証します。
 func TestNewSymbolUsecase(t *testing.T) {
 	t.Parallel()
 
@@ -39,6 +42,7 @@ func TestNewSymbolUsecase(t *testing.T) {
 	assert.NotNil(t, uc.repo, "repository should not be nil")
 }
 
+// TestSymbolUsecase_ListActiveSymbols はListActiveSymbolsメソッドの各種シナリオをテーブル駆動テストで検証します。
 func TestSymbolUsecase_ListActiveSymbols(t *testing.T) {
 	t.Parallel()
 
@@ -127,6 +131,7 @@ func TestSymbolUsecase_ListActiveSymbols(t *testing.T) {
 	}
 }
 
+// TestSymbolUsecase_ListActiveSymbols_ContextCancellation はコンテキストがキャンセルされた場合にエラーが返されることを検証します。
 func TestSymbolUsecase_ListActiveSymbols_ContextCancellation(t *testing.T) {
 	t.Parallel()
 
