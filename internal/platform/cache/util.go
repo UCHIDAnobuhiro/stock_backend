@@ -4,15 +4,15 @@ import (
 	"time"
 )
 
-// TimeUntilNext8AM returns the duration until the next 8:00 AM (Asia/Tokyo time).
+// TimeUntilNext8AM は次の午前8時（日本時間）までの期間を返します。
 func TimeUntilNext8AM() time.Duration {
 	now := time.Now()
 	loc, _ := time.LoadLocation("Asia/Tokyo")
 
-	// Calculate next 8:00 AM
+	// 次の午前8時を計算
 	next8am := time.Date(now.Year(), now.Month(), now.Day(), 8, 0, 0, 0, loc)
 
-	// If 8:00 AM has already passed today, use tomorrow's 8:00 AM
+	// 今日の午前8時が既に過ぎている場合は明日の午前8時を使用
 	if now.After(next8am) {
 		next8am = next8am.Add(24 * time.Hour)
 	}

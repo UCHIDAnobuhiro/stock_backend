@@ -1,4 +1,4 @@
-// Package cache provides caching implementations for repository interfaces.
+// Package cache はリポジトリインターフェースのキャッシュ実装を提供します。
 package cache
 
 import (
@@ -14,9 +14,8 @@ import (
 	"stock_backend/internal/feature/candles/usecase"
 )
 
-// CachingCandleRepository decorates a CandleRepository with Redis caching.
-// It implements the decorator pattern, transparently adding caching without
-// modifying the underlying repository.
+// CachingCandleRepository はCandleRepositoryにRedisキャッシュをデコレータパターンで追加します。
+// 基盤となるリポジトリを変更せずに、透過的にキャッシュを追加します。
 type CachingCandleRepository struct {
 	inner     usecase.CandleRepository
 	rdb       *redis.Client
@@ -24,8 +23,8 @@ type CachingCandleRepository struct {
 	namespace string
 }
 
-// NewCachingCandleRepository decorates a CandleRepository with Redis caching.
-// If ttl is 0, it defaults to 5 minutes. If namespace is empty, it uses "candles".
+// NewCachingCandleRepository はCandleRepositoryにRedisキャッシュを追加するデコレータを生成します。
+// ttlが0の場合はデフォルト5分、namespaceが空の場合は"candles"を使用します。
 func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner usecase.CandleRepository, namespace string) *CachingCandleRepository {
 	if ttl <= 0 {
 		ttl = 5 * time.Minute
@@ -41,18 +40,18 @@ func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner usec
 	}
 }
 
-// UpsertBatch inserts or updates candles and invalidates related cache entries.
+// UpsertBatch はローソク足データを挿入または更新し、関連するキャッシュエントリを無効化します。
 func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
-	// First upsert to the underlying repository (MySQL)
+	// まず基盤リポジトリ（MySQL）にUpsert
 	if err := c.inner.UpsertBatch(ctx, candles); err != nil {
 		return err
 	}
-	// Exit early if Redis is not configured or there are no candles
+	// Redisが未設定またはデータがない場合は早期リターン
 	if c.rdb == nil || len(candles) == 0 {
 		return nil
 	}
 
-	// Invalidate affected cache entries (keys per symbol+interval)
+	// 影響を受けるキャッシュエントリを無効化（symbol+intervalごとのキー）
 	seen := map[string]struct{}{}
 	for _, cd := range candles {
 		prefix := c.cacheKeyPrefix(cd.Symbol, cd.Interval)
@@ -60,37 +59,37 @@ func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []ent
 			continue
 		}
 		seen[prefix] = struct{}{}
-		_ = c.deleteByPattern(ctx, prefix+"*") // Best effort: don't fail if cache deletion fails
+		_ = c.deleteByPattern(ctx, prefix+"*") // ベストエフォート: キャッシュ削除失敗時もエラーにしない
 	}
 	return nil
 }
 
-// Find retrieves candles, checking cache first then falling back to the database.
+// Find はローソク足データを取得します。まずキャッシュを確認し、なければデータベースにフォールバックします。
 func (c *CachingCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
-	// Bypass cache if Redis is not configured
+	// Redisが未設定の場合はキャッシュをバイパス
 	if c.rdb == nil {
 		return c.inner.Find(ctx, symbol, interval, outputsize)
 	}
 
 	key := c.cacheKey(symbol, interval, outputsize)
 
-	// 1) Check cache
+	// 1) キャッシュを確認
 	if b, err := c.rdb.Get(ctx, key).Bytes(); err == nil && len(b) > 0 {
 		var out []entity.Candle
 		if err := json.Unmarshal(b, &out); err == nil {
 			return out, nil
 		}
-		// Delete corrupted cache entry
+		// 破損したキャッシュエントリを削除
 		_ = c.rdb.Del(ctx, key).Err()
 	}
 
-	// 2) Fallback to database
+	// 2) データベースにフォールバック
 	out, err := c.inner.Find(ctx, symbol, interval, outputsize)
 	if err != nil {
 		return nil, err
 	}
 
-	// 3) Store in cache (best effort)
+	// 3) キャッシュに保存（ベストエフォート）
 	if b, err := json.Marshal(out); err == nil {
 		_ = c.rdb.Set(ctx, key, b, c.ttl).Err()
 	}
@@ -98,7 +97,7 @@ func (c *CachingCandleRepository) Find(ctx context.Context, symbol, interval str
 	return out, nil
 }
 
-// cacheKey generates a cache key for a specific query.
+// cacheKey は特定のクエリ用のキャッシュキーを生成します。
 func (c *CachingCandleRepository) cacheKey(symbol, interval string, outputsize int) string {
 	return fmt.Sprintf("%s:%s:%s:%d",
 		c.namespace,
@@ -108,7 +107,7 @@ func (c *CachingCandleRepository) cacheKey(symbol, interval string, outputsize i
 	)
 }
 
-// cacheKeyPrefix generates a prefix for invalidating related cache entries.
+// cacheKeyPrefix は関連するキャッシュエントリの無効化用プレフィックスを生成します。
 func (c *CachingCandleRepository) cacheKeyPrefix(symbol, interval string) string {
 	return fmt.Sprintf("%s:%s:%s:",
 		c.namespace,
@@ -117,7 +116,7 @@ func (c *CachingCandleRepository) cacheKeyPrefix(symbol, interval string) string
 	)
 }
 
-// deleteByPattern deletes all cache keys matching a given pattern using SCAN.
+// deleteByPattern はSCANを使用して指定パターンに一致するすべてのキャッシュキーを削除します。
 func (c *CachingCandleRepository) deleteByPattern(ctx context.Context, pattern string) error {
 	var cursor uint64
 	for {
@@ -138,9 +137,9 @@ func (c *CachingCandleRepository) deleteByPattern(ctx context.Context, pattern s
 	return nil
 }
 
-// safe escapes characters that are problematic for Redis keys.
+// safe はRedisキーで問題となる文字をエスケープします。
 func safe(s string) string {
-	// Simple escaping of characters that are problematic for Redis keys
+	// Redisキーで問題となる文字の簡易エスケープ
 	s = strings.ReplaceAll(s, " ", "_")
 	s = strings.ReplaceAll(s, ":", "_")
 	return s
