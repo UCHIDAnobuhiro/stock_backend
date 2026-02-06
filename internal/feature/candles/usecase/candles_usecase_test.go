@@ -19,6 +19,7 @@ type mockCandleRepository struct {
 	FindCalls       int
 }
 
+// Find はFindFuncが設定されていればそれを呼び出し、呼び出し回数を記録します。
 func (m *mockCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	m.FindCalls++
 	if m.FindFunc != nil {
@@ -27,6 +28,7 @@ func (m *mockCandleRepository) Find(ctx context.Context, symbol, interval string
 	return nil, errors.New("FindFunc is not implemented")
 }
 
+// UpsertBatch はUpsertBatchFuncが設定されていればそれを呼び出します。
 func (m *mockCandleRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
 	if m.UpsertBatchFunc != nil {
 		return m.UpsertBatchFunc(ctx, candles)
