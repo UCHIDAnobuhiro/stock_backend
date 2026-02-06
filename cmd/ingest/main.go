@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	rateLimitPerMinute = 8 // TwelveData API rate limit per minute (free tier)
+	rateLimitPerMinute = 8 // TwelveData APIのレートリミット（無料枠: 8リクエスト/分）
 )
 
 func main() {
