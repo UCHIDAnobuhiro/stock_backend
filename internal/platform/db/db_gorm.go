@@ -1,3 +1,4 @@
+// Package db はデータベース接続の初期化、リトライ、マイグレーションを提供します。
 package db
 
 import (

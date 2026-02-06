@@ -9,6 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// ContextUserID はGinコンテキストに認証済みユーザーIDを格納するためのキーです。
 const ContextUserID = "userID"
 
 // AuthRequired はJWTトークンを検証し、認証済みユーザーのみにアクセスを制限するGinミドルウェアを返します。

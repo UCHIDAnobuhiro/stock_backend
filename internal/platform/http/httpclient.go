@@ -1,3 +1,4 @@
+// Package http は外部API呼び出し用のHTTPクライアント設定を提供します。
 package http
 
 import (

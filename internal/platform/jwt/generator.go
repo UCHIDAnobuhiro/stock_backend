@@ -1,3 +1,4 @@
+// Package jwtmw はJWTトークンの生成と認証ミドルウェアを提供します。
 package jwtmw
 
 import (
