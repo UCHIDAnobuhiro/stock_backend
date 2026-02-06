@@ -1,8 +1,8 @@
-// Package dto defines data transfer objects for the auth feature's HTTP transport layer.
+// Package dto はauthフィーチャーのHTTPトランスポート層のデータ転送オブジェクトを定義します。
 package dto
 
-// SignupReq represents the request body for the /signup endpoint.
-// It uses Gin's binding tags for validation (required, email format, password length).
+// SignupReq は/signupエンドポイントのリクエストボディを表します。
+// Ginのバインディングタグによるバリデーション（必須、メール形式、パスワード長）を使用します。
 type SignupReq struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=8"`

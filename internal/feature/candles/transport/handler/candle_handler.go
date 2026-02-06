@@ -1,4 +1,4 @@
-// Package handler provides HTTP handlers for the candles feature.
+// Package handler はcandlesフィーチャーのHTTPハンドラーを提供します。
 package handler
 
 import (
@@ -11,32 +11,32 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CandlesUsecase defines the use case interface for candlestick data operations.
-// Following Go convention: interfaces are defined by the consumer (handler), not the provider (usecase).
+// CandlesUsecase はローソク足データ操作のユースケースインターフェースを定義します。
+// Goの慣例に従い、インターフェースは利用者（handler）側で定義します。
 type CandlesUsecase interface {
 	GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 }
 
-// CandlesHandler handles HTTP requests for candlestick data.
+// CandlesHandler はローソク足データのHTTPリクエストを処理します。
 type CandlesHandler struct {
 	uc CandlesUsecase
 }
 
-// NewCandlesHandler creates a new CandlesHandler with the given usecase.
+// NewCandlesHandler は指定されたusecaseでCandlesHandlerの新しいインスタンスを生成します。
 func NewCandlesHandler(uc CandlesUsecase) *CandlesHandler {
 	return &CandlesHandler{uc: uc}
 }
 
-// GetCandlesHandler receives a stock symbol and time interval, then returns candlestick data as JSON.
+// GetCandlesHandler は銘柄コードと時間間隔を受け取り、ローソク足データをJSONで返します。
 //
-// Endpoint example:
+// エンドポイント例:
 // GET /candles/:code?interval=1day&outputsize=200
 func (h *CandlesHandler) GetCandlesHandler(c *gin.Context) {
 	code := c.Param("code")
-	// Use defaults if not specified
+	// 未指定の場合はデフォルト値を使用
 	interval := c.DefaultQuery("interval", "1day")
 	outputsizeStr := c.DefaultQuery("outputsize", "200")
-	// Convert string to integer
+	// 文字列を整数に変換
 	outputsize, _ := strconv.Atoi(outputsizeStr)
 
 	candles, err := h.uc.GetCandles(c.Request.Context(), code, interval, outputsize)
@@ -46,7 +46,7 @@ func (h *CandlesHandler) GetCandlesHandler(c *gin.Context) {
 		return
 	}
 
-	// Format data
+	// データをフォーマット
 	out := make([]dto.CandleResponse, 0, len(candles))
 	for _, x := range candles {
 		out = append(out, dto.CandleResponse{

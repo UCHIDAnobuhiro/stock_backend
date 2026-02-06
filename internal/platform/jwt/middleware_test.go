@@ -11,11 +11,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// TestMain はテスト実行前にGinをテストモードに設定します。
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
 	os.Exit(m.Run())
 }
 
+// TestAuthRequired_MissingBearerToken はBearerトークンがない場合やプレフィックスが不正な場合に401が返されることを検証します。
 func TestAuthRequired_MissingBearerToken(t *testing.T) {
 	// Set up environment for this test
 	t.Setenv(EnvKeyJWTSecret, "test-secret")
@@ -53,6 +55,7 @@ func TestAuthRequired_MissingBearerToken(t *testing.T) {
 	}
 }
 
+// TestAuthRequired_MissingJWTSecret はJWT_SECRET環境変数が未設定の場合に500が返されることを検証します。
 func TestAuthRequired_MissingJWTSecret(t *testing.T) {
 	// Ensure JWT_SECRET is not set (t.Setenv with empty string)
 	t.Setenv(EnvKeyJWTSecret, "")
@@ -70,6 +73,7 @@ func TestAuthRequired_MissingJWTSecret(t *testing.T) {
 	}
 }
 
+// TestAuthRequired_InvalidToken は不正なトークン（改ざん・期限切れ等）で401が返されることを検証します。
 func TestAuthRequired_InvalidToken(t *testing.T) {
 	const testSecret = "test-secret-key-for-invalid"
 	t.Setenv(EnvKeyJWTSecret, testSecret)
@@ -101,6 +105,7 @@ func TestAuthRequired_InvalidToken(t *testing.T) {
 	}
 }
 
+// TestAuthRequired_ValidToken は有効なトークンでリクエストが通過し、コンテキストにユーザーIDが設定されることを検証します。
 func TestAuthRequired_ValidToken(t *testing.T) {
 	const testSecret = "test-secret-key-for-valid"
 	t.Setenv(EnvKeyJWTSecret, testSecret)
@@ -144,6 +149,7 @@ func TestAuthRequired_ValidToken(t *testing.T) {
 	}
 }
 
+// TestAuthRequired_InvalidSigningMethod はnoneアルゴリズム（未署名）のトークンが拒否されることを検証します。
 func TestAuthRequired_InvalidSigningMethod(t *testing.T) {
 	const testSecret = "test-secret-key-for-signing"
 	t.Setenv(EnvKeyJWTSecret, testSecret)
@@ -169,7 +175,7 @@ func TestAuthRequired_InvalidSigningMethod(t *testing.T) {
 	}
 }
 
-// Helper function to create a valid JWT token for testing
+// createTokenWithSecret はテスト用に指定されたシークレットとユーザーIDで署名済みJWTトークンを生成します。
 func createTokenWithSecret(secret string, userID uint, expiration time.Duration) string {
 	claims := jwt.MapClaims{
 		"sub":   float64(userID),

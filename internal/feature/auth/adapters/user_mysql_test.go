@@ -12,22 +12,22 @@ import (
 	"gorm.io/gorm"
 )
 
-// setupTestDB prepares an in-memory SQLite database for testing.
+// setupTestDB はテスト用のインメモリSQLiteデータベースを準備します。
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err, "failed to initialize test database")
 
-	// Create User table
+	// Userテーブルを作成
 	err = db.AutoMigrate(&entity.User{})
 	require.NoError(t, err, "failed to migrate table")
 
 	return db
 }
 
-// seedUser creates a test user in the database for testing.
-// This helper reduces code duplication and makes tests more maintainable.
+// seedUser はテスト用のユーザーをデータベースに作成します。
+// このヘルパーはコードの重複を削減し、テストの保守性を向上させます。
 func seedUser(t *testing.T, db *gorm.DB, email, password string) *entity.User {
 	t.Helper()
 
@@ -41,6 +41,7 @@ func seedUser(t *testing.T, db *gorm.DB, email, password string) *entity.User {
 	return user
 }
 
+// TestNewUserMySQL はNewUserMySQLコンストラクタが正しくインスタンスを生成することをテストします。
 func TestNewUserMySQL(t *testing.T) {
 	db := setupTestDB(t)
 
@@ -50,6 +51,7 @@ func TestNewUserMySQL(t *testing.T) {
 	assert.NotNil(t, repo.db, "database connection is nil")
 }
 
+// TestUserMySQL_Create はユーザー作成処理（成功、メール重複、nilユーザー）をテストします。
 func TestUserMySQL_Create(t *testing.T) {
 	t.Parallel()
 
@@ -116,6 +118,7 @@ func TestUserMySQL_Create(t *testing.T) {
 	}
 }
 
+// TestUserMySQL_FindByEmail はメールアドレスによるユーザー検索をテストします。
 func TestUserMySQL_FindByEmail(t *testing.T) {
 	t.Parallel()
 
@@ -201,6 +204,7 @@ func TestUserMySQL_FindByEmail(t *testing.T) {
 	}
 }
 
+// TestUserMySQL_FindByID はIDによるユーザー検索をテストします。
 func TestUserMySQL_FindByID(t *testing.T) {
 	t.Parallel()
 
@@ -288,6 +292,7 @@ func TestUserMySQL_FindByID(t *testing.T) {
 	}
 }
 
+// TestUserMySQL_Timestamps はCreatedAtとUpdatedAtが自動設定され、取得後も保持されることをテストします。
 func TestUserMySQL_Timestamps(t *testing.T) {
 	t.Parallel()
 
@@ -317,7 +322,7 @@ func TestUserMySQL_Timestamps(t *testing.T) {
 			assert.False(t, user.CreatedAt.IsZero(), "CreatedAt is not set")
 			assert.False(t, user.UpdatedAt.IsZero(), "UpdatedAt is not set")
 
-			// Timestamps are preserved after retrieval
+			// 取得後もタイムスタンプが保持されていることを確認
 			found, err := repo.FindByID(context.Background(), user.ID)
 			require.NoError(t, err, "failed to find user")
 

@@ -1,4 +1,4 @@
-// Package handler provides HTTP handlers for the symbollist feature.
+// Package handler はsymbollistフィーチャーのHTTPハンドラーを提供します。
 package handler
 
 import (
@@ -10,26 +10,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SymbolUsecase defines the use case interface for symbol (stock ticker) operations.
-// Following Go convention: interfaces are defined by the consumer (handler), not the provider (usecase).
+// SymbolUsecase は銘柄（株式コード）操作のユースケースインターフェースを定義します。
+// Goの慣例に従い、インターフェースは利用者（handler）側で定義します。
 type SymbolUsecase interface {
 	ListActiveSymbols(ctx context.Context) ([]entity.Symbol, error)
 }
 
-// SymbolHandler handles HTTP requests related to symbol information.
+// SymbolHandler は銘柄情報に関連するHTTPリクエストを処理します。
 type SymbolHandler struct {
 	uc SymbolUsecase
 }
 
-// NewSymbolHandler creates a new SymbolHandler.
+// NewSymbolHandler はSymbolHandlerの新しいインスタンスを生成します。
 func NewSymbolHandler(uc SymbolUsecase) *SymbolHandler {
 	return &SymbolHandler{uc: uc}
 }
 
-// List retrieves the list of active symbols.
-// It calls the usecase to fetch the symbol list, converts it to DTOs,
-// and returns them as a JSON response.
-// Returns 500 Internal Server Error if the usecase returns an error.
+// List はアクティブな銘柄の一覧を取得します。
+// ユースケースを呼び出して銘柄リストを取得し、DTOに変換してJSONレスポンスとして返します。
+// ユースケースがエラーを返した場合は500 Internal Server Errorを返します。
 func (h *SymbolHandler) List(c *gin.Context) {
 	symbols, err := h.uc.ListActiveSymbols(c.Request.Context())
 	if err != nil {

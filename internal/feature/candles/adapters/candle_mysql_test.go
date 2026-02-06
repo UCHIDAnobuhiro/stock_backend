@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// setupTestDB prepares an in-memory SQLite database for testing.
+// setupTestDB はテスト用のインメモリSQLiteデータベースを準備します。
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
@@ -25,7 +25,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-// seedCandle creates a test candle in the database for testing.
+// seedCandle はテスト用のローソク足データをデータベースに作成します。
 func seedCandle(t *testing.T, db *gorm.DB, symbol, interval string, time time.Time) *CandleModel {
 	t.Helper()
 
@@ -45,6 +45,7 @@ func seedCandle(t *testing.T, db *gorm.DB, symbol, interval string, time time.Ti
 	return candle
 }
 
+// TestNewCandleRepository はNewCandleRepositoryコンストラクタが正しくインスタンスを生成することをテストします。
 func TestNewCandleRepository(t *testing.T) {
 	db := setupTestDB(t)
 
@@ -54,6 +55,7 @@ func TestNewCandleRepository(t *testing.T) {
 	assert.NotNil(t, repo.db, "database connection is nil")
 }
 
+// TestCandleMySQL_UpsertBatch はローソク足データのバッチUpsert処理（挿入、更新、空スライス）をテストします。
 func TestCandleMySQL_UpsertBatch(t *testing.T) {
 	t.Parallel()
 
@@ -221,6 +223,7 @@ func TestCandleMySQL_UpsertBatch(t *testing.T) {
 	}
 }
 
+// TestCandleMySQL_Find は銘柄・インターバルによるローソク足データの検索をテストします。
 func TestCandleMySQL_Find(t *testing.T) {
 	t.Parallel()
 
@@ -363,6 +366,7 @@ func TestCandleMySQL_Find(t *testing.T) {
 	}
 }
 
+// TestCandleMySQL_Find_EntityMapping はデータベースモデルからドメインエンティティへの変換が正しいことをテストします。
 func TestCandleMySQL_Find_EntityMapping(t *testing.T) {
 	t.Parallel()
 

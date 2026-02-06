@@ -1,248 +1,248 @@
-# 📈 Stock View API (Go / Gin / Clean Architecture)
+# Stock View API (Go / Gin / クリーンアーキテクチャ)
 
-## 🧭 Overview
+## 概要
 
-**Backend API for stock data delivery and authentication**
-Built with Go and the Gin framework, it integrates with the frontend (Kotlin / Jetpack Compose).
-As a REST API, it provides user authentication, stock data delivery, and cache optimization.
+**株式データ配信・認証用バックエンドAPI**
+GoとGinフレームワークで構築し、フロントエンド（Kotlin / Jetpack Compose）と連携します。
+REST APIとして、ユーザー認証・株式データ配信・キャッシュ最適化を提供します。
 
-## ⚙️ Key Features
+## 主な機能
 
-- **User Authentication**
+- **ユーザー認証**
 
-  - Email/Password login
-  - JWT issuance (short-lived access tokens + planned refresh token implementation)
-  - Authorization via token verification middleware
+  - メールアドレス/パスワードによるログイン
+  - JWTの発行（短期アクセストークン + リフレッシュトークン実装予定）
+  - トークン検証ミドルウェアによる認可
 
-- **Stock Data Retrieval**
+- **株式データ取得**
 
-  - Fetches stock data from external APIs (e.g., Twelve Data)
-  - Returns candlestick data for daily, weekly, and monthly intervals
-  - Caches recent data using Redis
+  - 外部API（Twelve Data）からの株式データ取得
+  - 日足・週足・月足のローソク足データを返却
+  - Redisによる直近データのキャッシュ
 
-- **Cache Optimization**
+- **キャッシュ最適化**
 
-  - Redis caching for candlestick and symbol data
-  - TTL configuration and automatic refresh
-  - On cache miss: API call + DB storage
+  - ローソク足データ・シンボルデータのRedisキャッシュ
+  - TTL設定と自動リフレッシュ
+  - キャッシュミス時: API呼び出し + DB保存
 
-- **Database Persistence**
-  - Data persistence via MySQL / Cloud SQL
-  - ORM management using GORM
+- **データベース永続化**
+  - MySQL / Cloud SQLによるデータ永続化
+  - GORM ORMによるデータ管理
 
 ---
 
-## 🛠️ Tech Stack
+## 技術スタック
 
-| Category      | Technology                                                          |
-| ------------- | ------------------------------------------------------------------- |
-| Language      | Go (1.24)                                                           |
-| Web Framework | Gin                                                                 |
-| ORM           | GORM                                                                |
-| DB            | MySQL / Cloud SQL                                                   |
-| Cache         | Redis                                                               |
-| Auth          | JWT / bcrypt                                                        |
-| Config        | **.env.docker (local) / Secret Manager (production) + os.Getenv()** |
-| Container     | Docker / Docker Compose                                             |
-| Cloud         | Google Cloud Run / Cloud SQL / Secret Manager / Artifact Registry   |
-| CI/CD         | GitHub Actions                                                      |
+| カテゴリ        | 技術                                                                |
+| --------------- | ------------------------------------------------------------------- |
+| 言語            | Go (1.24)                                                           |
+| Webフレームワーク | Gin                                                                 |
+| ORM             | GORM                                                                |
+| DB              | MySQL / Cloud SQL                                                   |
+| キャッシュ      | Redis                                                               |
+| 認証            | JWT / bcrypt                                                        |
+| 設定管理        | **.env.docker（ローカル）/ Secret Manager（本番）+ os.Getenv()**    |
+| コンテナ        | Docker / Docker Compose                                             |
+| クラウド        | Google Cloud Run / Cloud SQL / Secret Manager / Artifact Registry   |
+| CI/CD           | GitHub Actions                                                      |
 
-## 📂 Directory Structure
+## ディレクトリ構成
 
 ```text
 .
 ├── cmd/
-│   ├── ingest/                 # Data fetching and ingestion (scheduled jobs)
-│   └── server/                 # Main entry point (main.go)
+│   ├── ingest/                 # データ取得・取り込み（バッチジョブ）
+│   └── server/                 # メインエントリーポイント（main.go）
 │
 ├── internal/
-│   ├── app/                    # Application foundation
-│   │   ├── di/                 # Dependency Injection
-│   │   └── router/             # Routing configuration
+│   ├── app/                    # アプリケーション基盤
+│   │   ├── di/                 # 依存性注入
+│   │   └── router/             # ルーティング設定
 │   │
-│   ├── feature/                # Feature modules (vertical slices)
-│   │   ├── auth/               # Authentication feature
-│   │   │   ├── domain/         # Domain layer
-│   │   │   │   └── entity/     # Entities (User)
-│   │   │   ├── usecase/        # Use cases (defines repository interfaces, business logic)
-│   │   │   ├── adapters/       # Adapters (repository implementations)
-│   │   │   └── transport/      # Transport layer
-│   │   │       ├── handler/    # HTTP handlers
-│   │   │       └── http/dto/   # Request/Response DTOs
+│   ├── feature/                # フィーチャーモジュール（垂直スライス）
+│   │   ├── auth/               # 認証機能
+│   │   │   ├── domain/         # ドメイン層
+│   │   │   │   └── entity/     # エンティティ（User）
+│   │   │   ├── usecase/        # ユースケース（リポジトリインターフェース定義、ビジネスロジック）
+│   │   │   ├── adapters/       # アダプター（リポジトリ実装）
+│   │   │   └── transport/      # トランスポート層
+│   │   │       ├── handler/    # HTTPハンドラー
+│   │   │       └── http/dto/   # リクエスト/レスポンスDTO
 │   │   │
-│   │   ├── candles/            # Candlestick data feature
+│   │   ├── candles/            # ローソク足データ機能
 │   │   │   ├── domain/
-│   │   │   │   └── entity/     # Entities (Candle)
-│   │   │   ├── usecase/        # Use cases (defines repository interfaces, fetch/store logic)
-│   │   │   ├── adapters/       # MySQL implementation
+│   │   │   │   └── entity/     # エンティティ（Candle）
+│   │   │   ├── usecase/        # ユースケース（リポジトリインターフェース定義、取得/保存ロジック）
+│   │   │   ├── adapters/       # MySQL実装
 │   │   │   └── transport/
-│   │   │       ├── handler/    # HTTP handlers
-│   │   │       └── http/dto/   # Request/Response DTOs
+│   │   │       ├── handler/    # HTTPハンドラー
+│   │   │       └── http/dto/   # リクエスト/レスポンスDTO
 │   │   │
-│   │   └── symbollist/         # Symbol list feature
+│   │   └── symbollist/         # シンボルリスト機能
 │   │       ├── domain/
-│   │       │   └── entity/     # Entities (Symbol)
-│   │       ├── usecase/        # Use cases (defines repository interfaces)
-│   │       ├── adapters/       # Repository implementations
+│   │       │   └── entity/     # エンティティ（Symbol）
+│   │       ├── usecase/        # ユースケース（リポジトリインターフェース定義）
+│   │       ├── adapters/       # リポジトリ実装
 │   │       └── transport/
-│   │           ├── handler/    # HTTP handlers
-│   │           └── http/dto/   # Request/Response DTOs
+│   │           ├── handler/    # HTTPハンドラー
+│   │           └── http/dto/   # リクエスト/レスポンスDTO
 │   │
-│   ├── platform/               # Infrastructure layer (external dependencies)
-│   │   ├── cache/              # Redis caching decorator
-│   │   ├── db/                 # Database connection initialization
-│   │   ├── externalapi/        # External API clients
-│   │   │   └── twelvedata/     # Twelve Data API implementation
-│   │   ├── http/               # HTTP client configuration
-│   │   ├── jwt/                # JWT generation/verification/middleware
-│   │   └── redis/              # Redis client implementation
+│   ├── platform/               # インフラストラクチャ層（外部依存）
+│   │   ├── cache/              # Redisキャッシュデコレータ
+│   │   ├── db/                 # データベース接続初期化
+│   │   ├── externalapi/        # 外部APIクライアント
+│   │   │   └── twelvedata/     # Twelve Data API実装
+│   │   ├── http/               # HTTPクライアント設定
+│   │   ├── jwt/                # JWT生成/検証/ミドルウェア
+│   │   └── redis/              # Redisクライアント実装
 │   │
-│   └── shared/                 # Shared utilities
-│       └── ratelimiter/        # Rate limiting
+│   └── shared/                 # 共有ユーティリティ
+│       └── ratelimiter/        # レートリミット
 │
-├── docker/                     # Docker-related files
-│   ├── Dockerfile.ingest       # Dockerfile for ingest (production)
-│   ├── Dockerfile.server       # Dockerfile for API server (production)
-│   ├── Dockerfile.server.dev   # Dockerfile for API server (local development)
-│   ├── docker-compose.yml      # Common Docker configuration (service definitions, network setup)
-│   ├── docker-compose.dev.yml  # Local development override configuration
-│   └── mysql/                  # MySQL initialization scripts
+├── docker/                     # Docker関連ファイル
+│   ├── Dockerfile.ingest       # ingest用Dockerfile（本番）
+│   ├── Dockerfile.server       # APIサーバー用Dockerfile（本番）
+│   ├── Dockerfile.server.dev   # APIサーバー用Dockerfile（ローカル開発）
+│   ├── docker-compose.yml      # Docker共通設定（サービス定義・ネットワーク設定）
+│   ├── docker-compose.dev.yml  # ローカル開発用オーバーライド設定
+│   └── mysql/                  # MySQL初期化スクリプト
 │
-├── .env.docker                 # Local environment variables (recommended for .gitignore)
+├── .env.docker                 # ローカル環境変数（.gitignoreに追加推奨）
 ├── go.mod
 ├── go.sum
 └── .github/
-    └── workflows/              # CI/CD (test, build, deploy)
+    └── workflows/              # CI/CD（テスト、ビルド、デプロイ）
 ```
 
-## 🔒 Authentication Design (JWT + Refresh Token)
+## 認証設計（JWT + リフレッシュトークン）
 
-### Current Implementation
+### 現在の実装
 
-- JWT access token authentication
-- Verification via `Authorization: Bearer <token>` header
+- JWTアクセストークンによる認証
+- `Authorization: Bearer <token>` ヘッダーによる検証
 
-### Future Plans (Hybrid Authentication)
+### 今後の計画（ハイブリッド認証）
 
-- Implement **short-lived JWT (5-10 minutes)** + **server-managed refresh token** approach
-- Automatic access token renewal via `/auth/refresh`
-- Immediate revocation per device via `/auth/logout`
-- Refresh tokens stored in DB or Redis with **rotation management**
+- **短期JWT（5〜10分）** + **サーバー管理リフレッシュトークン** 方式の実装
+- `/auth/refresh` によるアクセストークンの自動更新
+- `/auth/logout` によるデバイス単位の即時無効化
+- リフレッシュトークンをDBまたはRedisに保存し、**ローテーション管理**を実施
 
-## 💾 Data Flow (Example: Stock Price Retrieval)
+## データフロー（例: 株価取得）
 
-1. Batch process (`cmd/ingest`) fetches stock data from external API (e.g., Twelve Data)
-2. Stores fetched candlestick data in MySQL (or Cloud SQL)
-3. Frontend requests `/api/v1/candles?symbol=AAPL&interval=1day`
-4. Handler calls `CandlesUsecase`
-5. Usecase checks **Redis cache** via Repository
-   - **Cache hit**: Returns immediately from Redis
-   - **Cache miss**: Fetches from MySQL → Caches in Redis → Returns response
-6. Returns result as JSON to frontend
+1. バッチプロセス（`cmd/ingest`）が外部API（Twelve Data）から株式データを取得
+2. 取得したローソク足データをMySQL（またはCloud SQL）に保存
+3. フロントエンドが `GET /v1/candles/AAPL?interval=1day&outputsize=200` をリクエスト（JWT Bearer トークン付き）
+4. ハンドラーが `CandlesUsecase` を呼び出し
+5. ユースケースがリポジトリ経由で **Redisキャッシュ** を確認
+   - **キャッシュヒット**: Redisから即座に返却
+   - **キャッシュミス**: MySQLから取得 → Redisにキャッシュ → レスポンスを返却
+6. フロントエンドにJSON形式で結果を返却
 
-## 📚 API Endpoints
+## APIエンドポイント
 
-### 🩺 Health Check
+### ヘルスチェック
 
-| Method | Path       | Auth         | Description                           |
-| ------ | ---------- | ------------ | ------------------------------------- |
-| GET    | `/healthz` | Not required | Service health check (returns 200 OK) |
-
----
-
-### 🔐 Authentication
-
-| Method | Path      | Auth         | Description                     |
-| ------ | --------- | ------------ | ------------------------------- |
-| POST   | `/signup` | Not required | New user registration           |
-| POST   | `/login`  | Not required | Login (issues JWT access token) |
+| メソッド | パス       | 認証   | 説明                                    |
+| -------- | ---------- | ------ | --------------------------------------- |
+| GET      | `/healthz` | 不要   | サービスのヘルスチェック（200 OKを返却） |
 
 ---
 
-### 💹 Stock Data (Candles / Symbols)
+### 認証
 
-| Method | Path             | Auth     | Description                                            |
-| ------ | ---------------- | -------- | ------------------------------------------------------ |
-| GET    | `/symbols`       | Required | Fetch symbol list                                      |
-| GET    | `/candles/:code` | Required | Fetch candlestick data for specified code (e.g., AAPL) |
-
-### 💡 Notes
-
-- `/candles` and `/symbols` require **JWT authentication (`Authorization: Bearer <token>`)**.
-- Plans to add `/auth/refresh` and `/auth/logout` for refresh token support.
-
-## ☁️ Cloud Architecture (Google Cloud)
-
-- **Cloud Run**: Deploys Docker images
-- **Cloud SQL (MySQL)**: Application data persistence
-- **Redis (Cloud Memorystore)**: Cache management
-- **Secret Manager**: Securely manages API keys, DB passwords, and JWT secret keys
-- Loads at startup via `os.Getenv()` + Secret Manager API
-- **Local development reads from `.env.docker`**
-
-## 🧪 CI/CD
-
-- **GitHub Actions** runs automated tests on pull request creation
-- After merge, **Cloud Build** builds Docker images and stores them in **Artifact Registry**
-- Uses **Workload Identity Federation** for secure deployment from GitHub to GCP
-- Automatically deploys to **Cloud Run** and injects environment variables via Secret Manager
-
-## ⚙️ Setup
-
-### Prerequisites
-
-- Docker / Docker Compose installed
-- Go is not required (everything runs in Docker)
-- Configure local environment variables in `.env.docker`
+| メソッド | パス         | 認証   | 説明                                  |
+| -------- | ------------ | ------ | ------------------------------------- |
+| POST     | `/v1/signup` | 不要   | 新規ユーザー登録                      |
+| POST     | `/v1/login`  | 不要   | ログイン（JWTアクセストークンを発行） |
 
 ---
 
-### Steps
+### 株式データ（ローソク足 / シンボル）
+
+| メソッド | パス                | 認証   | 説明                                              |
+| -------- | ------------------- | ------ | ------------------------------------------------- |
+| GET      | `/v1/symbols`       | 必要   | シンボルリストの取得                               |
+| GET      | `/v1/candles/:code` | 必要   | 指定コードのローソク足データを取得（例: AAPL）     |
+
+### 補足
+
+- `/v1/candles` と `/v1/symbols` は **JWT認証（`Authorization: Bearer <token>`）** が必要です。
+- 今後、リフレッシュトークン対応として `/auth/refresh` と `/auth/logout` を追加予定です。
+
+## クラウドアーキテクチャ（Google Cloud）
+
+- **Cloud Run**: Dockerイメージをデプロイ
+- **Cloud SQL（MySQL）**: アプリケーションデータの永続化
+- **Redis（Cloud Memorystore）**: キャッシュ管理
+- **Secret Manager**: APIキー・DBパスワード・JWTシークレットキーを安全に管理
+- 起動時に `os.Getenv()` + Secret Manager APIで読み込み
+- **ローカル開発では `.env.docker` から読み込み**
+
+## CI/CD
+
+- **GitHub Actions** がプルリクエスト作成時に自動テストを実行
+- マージ後、**Cloud Build** がDockerイメージをビルドし、**Artifact Registry** に保存
+- **Workload Identity Federation** を使用してGitHubからGCPへ安全にデプロイ
+- **Cloud Run** に自動デプロイし、Secret Manager経由で環境変数を注入
+
+## セットアップ
+
+### 前提条件
+
+- Docker / Docker Compose がインストール済みであること
+- Go のインストールは不要（すべてDocker内で実行）
+- `.env.docker` にローカル環境変数を設定
+
+---
+
+### 手順
 
 ```bash
-# Clone repository
+# リポジトリをクローン
 git clone https://github.com/UCHIDAnobuhiro/stock_backend.git
 cd stock_backend
 
-# Copy environment variables
+# 環境変数ファイルをコピー
 cp example.env.docker .env.docker
 ```
 
-### 🔑 Obtaining Twelve Data API Key
+### Twelve Data APIキーの取得
 
-This application uses the [Twelve Data API](https://twelvedata.com/).
-A free API key is required to fetch stock data.
+このアプリケーションは [Twelve Data API](https://twelvedata.com/) を使用しています。
+株式データの取得には無料のAPIキーが必要です。
 
-1. Create an account on the Twelve Data website
-2. Issue a key from "Dashboard > API Keys"
-3. Copy and set it in .env.docker as TWELVE_DATA_API_KEY
-   Example: `TWELVE_DATA_API_KEY=your_api_key_here`
+1. Twelve Dataのウェブサイトでアカウントを作成
+2. 「Dashboard > API Keys」からキーを発行
+3. `.env.docker` に `TWELVE_DATA_API_KEY` として設定
+   例: `TWELVE_DATA_API_KEY=your_api_key_here`
 
-### ⚠️ Twelve Data Free Plan Limitations
+### Twelve Data 無料プランの制限事項
 
-- Free plan allows **up to 8 requests per minute**
+- 無料プランでは **1分あたり最大8リクエスト** まで
 
-To address this limitation, this application:
+この制限に対応するため、本アプリケーションでは以下を実施しています：
 
-- **Pre-fetches data via scheduled batch (ingest) processes**
-- **Minimizes requests through Redis caching**
+- **スケジュールバッチ（ingest）プロセスによるデータの事前取得**
+- **Redisキャッシュによるリクエスト数の最小化**
 
-### 🧩 Starting the API Server
+### APIサーバーの起動
 
 ```bash
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock up backend-dev
 ```
 
-### 🧠 Starting Batch Process (Stock Data Ingestion)
+### バッチプロセスの起動（株式データ取り込み）
 
 ```bash
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock run --rm --no-deps ingest
 ```
 
-### 💡 Notes
+### 補足
 
-- **API Server**: <http://localhost:8080>
+- **APIサーバー**: <http://localhost:8080>
 - **MySQL**: `localhost:3306`
 - **Redis**: `localhost:6379`
-- **View logs**: docker logs -f stock-backend-dev
-- **Batch process**: ingest container fetches stock prices from external API and stores them in MySQL
+- **ログ確認**: `docker logs -f stock-backend-dev`
+- **バッチプロセス**: ingestコンテナが外部APIから株価を取得し、MySQLに保存

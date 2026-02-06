@@ -1,3 +1,4 @@
+// Package jwtmw はJWTトークンの生成と認証ミドルウェアを提供します。
 package jwtmw
 
 import (
@@ -7,14 +8,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Generator implements JWT token generation.
-// It implements the JWTGenerator interface defined by consumers (e.g., auth/usecase).
+// Generator はJWTトークンの生成を実装します。
+// 利用者（例: auth/usecase）が定義するJWTGeneratorインターフェースを実装します。
 type Generator struct {
 	secret     []byte
 	expiration time.Duration
 }
 
-// NewGenerator creates a new JWT generator with the provided secret and expiration duration.
+// NewGenerator は指定されたシークレットと有効期限でJWTジェネレータの新しいインスタンスを生成します。
 func NewGenerator(secret string, expiration time.Duration) *Generator {
 	return &Generator{
 		secret:     []byte(secret),
@@ -22,7 +23,7 @@ func NewGenerator(secret string, expiration time.Duration) *Generator {
 	}
 }
 
-// GenerateToken creates a signed JWT token with standard claims.
+// GenerateToken は標準クレームを含む署名済みJWTトークンを生成します。
 func (g *Generator) GenerateToken(userID uint, email string) (string, error) {
 	claims := jwt.MapClaims{
 		"sub":   userID,

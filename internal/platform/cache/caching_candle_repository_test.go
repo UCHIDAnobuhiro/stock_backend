@@ -12,12 +12,13 @@ import (
 	"stock_backend/internal/feature/candles/domain/entity"
 )
 
-// mockCandleRepository is a mock implementation of CandleRepository for testing
+// mockCandleRepository はテスト用のCandleRepositoryモック実装です。
 type mockCandleRepository struct {
 	findFn        func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 	upsertBatchFn func(ctx context.Context, candles []entity.Candle) error
 }
 
+// Find はモックのFind関数を呼び出します。
 func (m *mockCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	if m.findFn != nil {
 		return m.findFn(ctx, symbol, interval, outputsize)
@@ -25,6 +26,7 @@ func (m *mockCandleRepository) Find(ctx context.Context, symbol, interval string
 	return nil, nil
 }
 
+// UpsertBatch はモックのUpsertBatch関数を呼び出します。
 func (m *mockCandleRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
 	if m.upsertBatchFn != nil {
 		return m.upsertBatchFn(ctx, candles)
@@ -32,6 +34,7 @@ func (m *mockCandleRepository) UpsertBatch(ctx context.Context, candles []entity
 	return nil
 }
 
+// TestNewCachingCandleRepository_Defaults はデフォルト値（TTLとnamespace）が正しく設定されることを検証します。
 func TestNewCachingCandleRepository_Defaults(t *testing.T) {
 	t.Parallel()
 
@@ -81,6 +84,7 @@ func TestNewCachingCandleRepository_Defaults(t *testing.T) {
 	}
 }
 
+// TestCachingCandleRepository_Find_NilRedis はRedisがnilの場合にキャッシュをバイパスして内部リポジトリを直接呼び出すことを検証します。
 func TestCachingCandleRepository_Find_NilRedis(t *testing.T) {
 	t.Parallel()
 
@@ -106,6 +110,7 @@ func TestCachingCandleRepository_Find_NilRedis(t *testing.T) {
 	}
 }
 
+// TestCachingCandleRepository_Find_CacheHit はキャッシュヒット時にRedisからデータを返し、内部リポジトリを呼ばないことを検証します。
 func TestCachingCandleRepository_Find_CacheHit(t *testing.T) {
 	t.Parallel()
 
@@ -144,6 +149,7 @@ func TestCachingCandleRepository_Find_CacheHit(t *testing.T) {
 	}
 }
 
+// TestCachingCandleRepository_Find_CacheMiss はキャッシュミス時にDBからデータを取得し、キャッシュに保存することを検証します。
 func TestCachingCandleRepository_Find_CacheMiss(t *testing.T) {
 	t.Parallel()
 
@@ -180,6 +186,7 @@ func TestCachingCandleRepository_Find_CacheMiss(t *testing.T) {
 	}
 }
 
+// TestCachingCandleRepository_Find_InnerError は内部リポジトリがエラーを返した場合にそのエラーが伝播されることを検証します。
 func TestCachingCandleRepository_Find_InnerError(t *testing.T) {
 	t.Parallel()
 
@@ -207,6 +214,7 @@ func TestCachingCandleRepository_Find_InnerError(t *testing.T) {
 	}
 }
 
+// TestCachingCandleRepository_Find_CorruptedCache は破損したキャッシュを検出・削除し、DBにフォールバックすることを検証します。
 func TestCachingCandleRepository_Find_CorruptedCache(t *testing.T) {
 	t.Parallel()
 
@@ -245,6 +253,7 @@ func TestCachingCandleRepository_Find_CorruptedCache(t *testing.T) {
 	}
 }
 
+// TestCachingCandleRepository_UpsertBatch_NilRedis はRedisがnilの場合にUpsertBatchが内部リポジトリのみを呼び出すことを検証します。
 func TestCachingCandleRepository_UpsertBatch_NilRedis(t *testing.T) {
 	t.Parallel()
 
@@ -269,6 +278,7 @@ func TestCachingCandleRepository_UpsertBatch_NilRedis(t *testing.T) {
 	}
 }
 
+// TestCachingCandleRepository_UpsertBatch_InnerError は内部リポジトリのUpsertBatchエラーが伝播されることを検証します。
 func TestCachingCandleRepository_UpsertBatch_InnerError(t *testing.T) {
 	t.Parallel()
 
@@ -289,6 +299,7 @@ func TestCachingCandleRepository_UpsertBatch_InnerError(t *testing.T) {
 	}
 }
 
+// TestCachingCandleRepository_UpsertBatch_EmptyCandles は空のローソク足データでUpsertBatchが正常に完了することを検証します。
 func TestCachingCandleRepository_UpsertBatch_EmptyCandles(t *testing.T) {
 	t.Parallel()
 
@@ -309,6 +320,7 @@ func TestCachingCandleRepository_UpsertBatch_EmptyCandles(t *testing.T) {
 	}
 }
 
+// TestCachingCandleRepository_UpsertBatch_CacheInvalidation はUpsertBatch後に関連するキャッシュが無効化されることを検証します。
 func TestCachingCandleRepository_UpsertBatch_CacheInvalidation(t *testing.T) {
 	t.Parallel()
 
@@ -338,6 +350,7 @@ func TestCachingCandleRepository_UpsertBatch_CacheInvalidation(t *testing.T) {
 	}
 }
 
+// TestCachingCandleRepository_UpsertBatch_DeduplicatesInvalidation は同一symbol+intervalのキャッシュ無効化が重複せず1回のみ実行されることを検証します。
 func TestCachingCandleRepository_UpsertBatch_DeduplicatesInvalidation(t *testing.T) {
 	t.Parallel()
 
@@ -368,6 +381,7 @@ func TestCachingCandleRepository_UpsertBatch_DeduplicatesInvalidation(t *testing
 	}
 }
 
+// TestSafe はsafe関数がRedisキーで問題となる文字を正しくエスケープすることを検証します。
 func TestSafe(t *testing.T) {
 	t.Parallel()
 

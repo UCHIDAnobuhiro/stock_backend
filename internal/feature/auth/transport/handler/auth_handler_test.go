@@ -14,35 +14,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockAuthUsecase is a mock implementation of the usecase.AuthUsecase interface.
+// mockAuthUsecase はAuthUsecaseインターフェースのモック実装です。
 type mockAuthUsecase struct {
 	SignupFunc func(ctx context.Context, email, password string) error
 	LoginFunc  func(ctx context.Context, email, password string) (string, error)
 }
 
-// Signup is the mock implementation of the Signup method.
+// Signup はSignupメソッドのモック実装です。
 func (m *mockAuthUsecase) Signup(ctx context.Context, email, password string) error {
 	if m.SignupFunc != nil {
 		return m.SignupFunc(ctx, email, password)
 	}
-	return nil // Default: success
+	return nil // デフォルト: 成功
 }
 
-// Login is the mock implementation of the Login method.
+// Login はLoginメソッドのモック実装です。
 func (m *mockAuthUsecase) Login(ctx context.Context, email, password string) (string, error) {
 	if m.LoginFunc != nil {
 		return m.LoginFunc(ctx, email, password)
 	}
-	return "", errors.New("login failed") // Default: failure
+	return "", errors.New("login failed") // デフォルト: 失敗
 }
 
-// TestMain sets up the test environment once for all tests.
+// TestMain は全テスト共通のテスト環境を設定します。
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
 	m.Run()
 }
 
-// makeRequest is a helper function to create and execute an HTTP request.
+// makeRequest はHTTPリクエストを作成・実行するヘルパー関数です。
 func makeRequest(t *testing.T, router *gin.Engine, method, path string, body gin.H) *httptest.ResponseRecorder {
 	t.Helper()
 
@@ -59,7 +59,7 @@ func makeRequest(t *testing.T, router *gin.Engine, method, path string, body gin
 	return w
 }
 
-// assertJSONResponse is a helper function to validate JSON response status and body.
+// assertJSONResponse はJSONレスポンスのステータスコードとボディを検証するヘルパー関数です。
 func assertJSONResponse(t *testing.T, w *httptest.ResponseRecorder, expectedStatus int, expectedBody gin.H) {
 	t.Helper()
 
@@ -72,6 +72,7 @@ func assertJSONResponse(t *testing.T, w *httptest.ResponseRecorder, expectedStat
 	assert.Equal(t, expectedBody, responseBody)
 }
 
+// TestAuthHandler_Signup はサインアップハンドラーのHTTPリクエスト/レスポンス処理をテストします。
 func TestAuthHandler_Signup(t *testing.T) {
 	t.Parallel()
 
@@ -92,14 +93,14 @@ func TestAuthHandler_Signup(t *testing.T) {
 		{
 			name:           "failure: invalid email address",
 			requestBody:    gin.H{"email": "invalid-email", "password": "password123"},
-			mockSignupFunc: nil, // Usecase is not called
+			mockSignupFunc: nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   gin.H{"error": "invalid request"},
 		},
 		{
 			name:           "failure: short password",
 			requestBody:    gin.H{"email": "test@example.com", "password": "short"},
-			mockSignupFunc: nil, // Usecase is not called
+			mockSignupFunc: nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   gin.H{"error": "invalid request"},
 		},
@@ -128,6 +129,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 	}
 }
 
+// TestAuthHandler_Login はログインハンドラーのHTTPリクエスト/レスポンス処理をテストします。
 func TestAuthHandler_Login(t *testing.T) {
 	t.Parallel()
 
@@ -148,14 +150,14 @@ func TestAuthHandler_Login(t *testing.T) {
 		{
 			name:           "failure: invalid email address",
 			requestBody:    gin.H{"email": "invalid-email", "password": "password123"},
-			mockLoginFunc:  nil, // Usecase is not called
+			mockLoginFunc:  nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   gin.H{"error": "invalid request"},
 		},
 		{
 			name:           "failure: missing password",
 			requestBody:    gin.H{"email": "test@example.com"},
-			mockLoginFunc:  nil, // Usecase is not called
+			mockLoginFunc:  nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   gin.H{"error": "invalid request"},
 		},
@@ -173,7 +175,7 @@ func TestAuthHandler_Login(t *testing.T) {
 				return "", errors.New("server misconfigured: JWT_SECRET missing")
 			},
 			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   gin.H{"error": "invalid email or password"}, // Usecase error message is hidden
+			expectedBody:   gin.H{"error": "invalid email or password"}, // Usecaseのエラーメッセージは隠蔽される
 		},
 	}
 

@@ -8,41 +8,40 @@ import (
 )
 
 const (
-	ingestOutputSize = 200 // Number of data points to fetch per request
+	ingestOutputSize = 200 // 1リクエストあたりの取得データポイント数
 )
 
-// ingestIntervals defines the list of time intervals for data ingestion.
+// ingestIntervals はデータ取り込みに使用する時間間隔のリストを定義します。
 var ingestIntervals = []string{"1day", "1week", "1month"}
 
-// MarketRepository defines the repository interface for fetching stock market data.
-// It abstracts external API implementations.
-// Following Go convention: interfaces are defined by the consumer (usecase), not the provider (adapters).
+// MarketRepository は株式市場データ取得のリポジトリインターフェースを定義します。
+// 外部API実装を抽象化します。
+// Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
 type MarketRepository interface {
 	GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 }
 
-// IngestUsecase defines the use case for fetching data from external APIs
-// and persisting it to the database.
+// IngestUsecase は外部APIからデータを取得し、データベースに永続化するユースケースを定義します。
 type IngestUsecase struct {
 	market      MarketRepository
 	candle      CandleRepository
 	rateLimiter ratelimiter.RateLimiterInterface
 }
 
-// NewIngestUsecase creates a new IngestUsecase.
+// NewIngestUsecase はIngestUsecaseの新しいインスタンスを生成します。
 func NewIngestUsecase(market MarketRepository, candle CandleRepository, rateLimiter ratelimiter.RateLimiterInterface) *IngestUsecase {
 	return &IngestUsecase{market: market, candle: candle, rateLimiter: rateLimiter}
 }
 
-// ingestOne fetches time series data for a specified symbol and interval from
-// the external repository and batch inserts (or updates) it into the database.
+// ingestOne は指定された銘柄とインターバルの時系列データを外部リポジトリから取得し、
+// データベースにバッチ挿入（または更新）します。
 func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol, interval string, outputsize int) error {
 	cs, err := iu.market.GetTimeSeries(ctx, symbol, interval, outputsize)
 	if err != nil {
 		return err
 	}
 
-	// Set symbol and interval for the fetched data
+	// 取得したデータにシンボルとインターバルを設定
 	for i := range cs {
 		cs[i].Symbol = symbol
 		cs[i].Interval = interval
@@ -50,17 +49,17 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol, interval string,
 	return iu.candle.UpsertBatch(ctx, cs)
 }
 
-// IngestAll fetches time series data for all specified symbols across multiple
-// time intervals (daily, weekly, monthly) and persists them to the database.
-// It respects API rate limits by waiting between requests as needed.
+// IngestAll は指定された全銘柄の時系列データを複数の時間間隔（日次、週次、月次）で取得し、
+// データベースに永続化します。
+// APIレート制限を遵守し、必要に応じてリクエスト間で待機します。
 func (iu *IngestUsecase) IngestAll(ctx context.Context, symbols []string) error {
 	for _, s := range symbols {
 		for _, interval := range ingestIntervals {
 			iu.rateLimiter.WaitIfNeeded()
 			if err := iu.ingestOne(ctx, s, interval, ingestOutputSize); err != nil {
-				// Continue processing even if one symbol fails, logging the error
+				// 1銘柄のエラーで処理を停止せず、エラーをログに記録して続行
 				slog.Error("failed to ingest data", "symbol", s, "interval", interval, "error", err)
-				continue // Move to next interval or symbol
+				continue // 次のインターバルまたは銘柄に進む
 			}
 		}
 	}

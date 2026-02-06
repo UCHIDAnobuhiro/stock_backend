@@ -1,3 +1,4 @@
+// Package ratelimiter はAPI呼び出しなどの操作頻度を制限するレートリミッターを提供します。
 package ratelimiter
 
 import (
@@ -5,21 +6,20 @@ import (
 	"time"
 )
 
-// RateLimiterInterface defines an interface for limiting the frequency of operations
-// such as API calls.
+// RateLimiterInterface はAPI呼び出しなどの操作頻度を制限するインターフェースです。
 type RateLimiterInterface interface {
 	WaitIfNeeded()
 }
 
-// RateLimiter limits the frequency of operations such as API calls.
+// RateLimiter はAPI呼び出しなどの操作頻度を制限します。
 type RateLimiter struct {
-	limit     int           // Maximum number of operations per interval
-	interval  time.Duration // Time interval for resetting the counter
+	limit     int           // インターバルあたりの最大操作回数
+	interval  time.Duration // カウンターをリセットする時間間隔
 	count     int
 	lastReset time.Time
 }
 
-// NewRateLimiter creates a new RateLimiter instance.
+// NewRateLimiter は新しいRateLimiterインスタンスを生成します。
 func NewRateLimiter(limit int, interval time.Duration) *RateLimiter {
 	return &RateLimiter{
 		limit:     limit,
@@ -28,10 +28,10 @@ func NewRateLimiter(limit int, interval time.Duration) *RateLimiter {
 	}
 }
 
-// WaitIfNeeded checks if the rate limit has been reached and waits if necessary.
+// WaitIfNeeded はレートリミットに達しているか確認し、必要に応じて待機します。
 func (rl *RateLimiter) WaitIfNeeded() {
 	now := time.Now()
-	// Reset counter if interval has elapsed
+	// インターバルが経過していればカウンターをリセット
 	if now.Sub(rl.lastReset) >= rl.interval {
 		rl.count = 0
 		rl.lastReset = now
@@ -44,7 +44,7 @@ func (rl *RateLimiter) WaitIfNeeded() {
 			slog.Info("rate limit reached, sleeping", "limit", rl.limit, "sleep_duration", sleep)
 			time.Sleep(sleep)
 		}
-		// Reset after waiting
+		// 待機後にリセット
 		rl.count = 1
 		rl.lastReset = time.Now()
 	}

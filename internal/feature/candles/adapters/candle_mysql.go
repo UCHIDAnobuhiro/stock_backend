@@ -1,4 +1,4 @@
-// Package adapters provides repository implementations for the candles feature.
+// Package adapters はcandlesフィーチャーのリポジトリ実装を提供します。
 package adapters
 
 import (
@@ -11,21 +11,21 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// candleMySQL is a MySQL implementation of the CandleRepository interface.
+// candleMySQL はCandleRepositoryインターフェースのMySQL実装です。
 type candleMySQL struct {
 	db *gorm.DB
 }
 
-// Compile-time check to ensure candleMySQL implements CandleRepository.
+// candleMySQLがCandleRepositoryを実装していることをコンパイル時に検証します。
 var _ usecase.CandleRepository = (*candleMySQL)(nil)
 
-// NewCandleRepository creates a new candleMySQL repository with the given database connection.
+// NewCandleRepository は指定されたデータベース接続でcandleMySQLリポジトリの新しいインスタンスを生成します。
 func NewCandleRepository(db *gorm.DB) *candleMySQL {
 	return &candleMySQL{db: db}
 }
 
-// CandleModel represents the database model for candlestick data.
-// It uses a composite unique index on (symbol, interval, time) for upsert operations.
+// CandleModel はローソク足データのデータベースモデルです。
+// Upsert操作のために（symbol, interval, time）の複合ユニークインデックスを使用します。
 type CandleModel struct {
 	ID       uint      `gorm:"primaryKey"`
 	Symbol   string    `gorm:"size:32;not null;uniqueIndex:candle_sym_int_time,priority:1"`
@@ -39,12 +39,12 @@ type CandleModel struct {
 	Volume int64   `gorm:"not null;default:0"`
 }
 
-// TableName returns the database table name for this model.
+// TableName はこのモデルのデータベーステーブル名を返します。
 func (CandleModel) TableName() string {
 	return "candles"
 }
 
-// toModel converts a domain entity to a database model.
+// toModel はドメインエンティティをデータベースモデルに変換します。
 func toModel(e entity.Candle) CandleModel {
 	return CandleModel{
 		Symbol:   e.Symbol,
@@ -58,8 +58,8 @@ func toModel(e entity.Candle) CandleModel {
 	}
 }
 
-// UpsertBatch inserts or updates candlestick data in batch.
-// It uses MySQL's ON DUPLICATE KEY UPDATE for efficient upserts.
+// UpsertBatch はローソク足データをバッチで挿入または更新します。
+// MySQLのON DUPLICATE KEY UPDATEを使用して効率的なUpsertを行います。
 func (r *candleMySQL) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
 	if len(candles) == 0 {
 		return nil
@@ -75,8 +75,8 @@ func (r *candleMySQL) UpsertBatch(ctx context.Context, candles []entity.Candle) 
 	}).Create(&ms).Error
 }
 
-// Find retrieves candlestick data for a given symbol and interval.
-// Results are ordered by time descending and limited by outputsize.
+// Find は指定された銘柄とインターバルのローソク足データを取得します。
+// 結果は時間の降順でソートされ、outputsizeで件数が制限されます。
 func (r *candleMySQL) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	var rows []CandleModel
 	q := r.db.WithContext(ctx).

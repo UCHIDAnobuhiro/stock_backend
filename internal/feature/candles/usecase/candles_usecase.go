@@ -1,4 +1,4 @@
-// Package usecase implements the business logic for candlestick data operations.
+// Package usecase はローソク足データ操作のビジネスロジックを実装します。
 package usecase
 
 import (
@@ -7,35 +7,35 @@ import (
 )
 
 const (
-	// DefaultInterval is the default time interval for candle queries.
+	// DefaultInterval はローソク足クエリのデフォルト時間間隔です。
 	DefaultInterval = "1day"
-	// DefaultOutputSize is the default number of candles to return.
+	// DefaultOutputSize はデフォルトのローソク足返却件数です。
 	DefaultOutputSize = 200
-	// MaxOutputSize is the maximum number of candles that can be returned.
+	// MaxOutputSize はローソク足の最大返却件数です。
 	MaxOutputSize = 5000
 )
 
-// CandleRepository abstracts the persistence layer for candlestick data.
-// Following Go convention: interfaces are defined by the consumer (usecase), not the provider (adapters).
+// CandleRepository はローソク足データの永続化レイヤーを抽象化します。
+// Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
 type CandleRepository interface {
-	// Find searches the database for candlestick data.
+	// Find はデータベースからローソク足データを検索します。
 	Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 
-	// UpsertBatch performs upsert operations using (symbol, interval, time) as a unique key.
+	// UpsertBatch は（symbol, interval, time）をユニークキーとしてUpsert操作を行います。
 	UpsertBatch(ctx context.Context, candles []entity.Candle) error
 }
 
-// candlesUsecase defines the use case for candlestick data operations.
+// candlesUsecase はローソク足データ操作のユースケースを定義します。
 type candlesUsecase struct {
 	candle CandleRepository
 }
 
-// NewCandlesUsecase creates a new candlesUsecase.
+// NewCandlesUsecase はcandlesUsecaseの新しいインスタンスを生成します。
 func NewCandlesUsecase(candle CandleRepository) *candlesUsecase {
 	return &candlesUsecase{candle: candle}
 }
 
-// GetCandles retrieves candlestick data for a given symbol and time interval.
+// GetCandles は指定された銘柄と時間間隔のローソク足データを取得します。
 func (cu *candlesUsecase) GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	if interval == "" {
 		interval = DefaultInterval

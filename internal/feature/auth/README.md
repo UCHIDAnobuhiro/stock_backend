@@ -1,19 +1,19 @@
-# Auth Feature
+# Auth フィーチャー
 
-## Overview
+## 概要
 
-The Auth feature provides a JWT (JSON Web Token) based authentication system. It handles user registration, login, and JWT token issuance and verification.
+Auth フィーチャーは、JWT（JSON Web Token）ベースの認証システムを提供します。ユーザー登録、ログイン、JWTトークンの発行・検証を処理します。
 
-### Key Features
+### 主な機能
 
-- **User Signup**: Register new users with email and password
-- **Login**: Authenticate credentials and issue JWT tokens
-- **Password Encryption**: Secure password hashing with bcrypt
-- **JWT Authentication**: Issue JWT tokens valid for 1 hour to control access to protected endpoints
+- **ユーザー登録（Signup）**: メールアドレスとパスワードで新規ユーザーを登録
+- **ログイン**: 認証情報を検証し、JWTトークンを発行
+- **パスワード暗号化**: bcryptによる安全なパスワードハッシュ化
+- **JWT認証**: 保護エンドポイントへのアクセス制御用に有効期限1時間のJWTトークンを発行
 
-## Sequence Diagrams
+## シーケンス図
 
-### User Signup Flow
+### ユーザー登録フロー
 
 ```mermaid
 sequenceDiagram
@@ -48,7 +48,7 @@ sequenceDiagram
     Handler-->>Client: 201 Created<br/>{message: "ok"}
 ```
 
-### Login Flow
+### ログインフロー
 
 ```mermaid
 sequenceDiagram
@@ -91,13 +91,13 @@ sequenceDiagram
     Handler-->>Client: 200 OK<br/>{token: "eyJhbGc..."}
 ```
 
-## API Specification
+## API仕様
 
 ### POST /signup
 
-Registers a new user.
+新規ユーザーを登録します。
 
-**Request**
+**リクエスト**
 ```json
 {
   "email": "user@example.com",
@@ -105,38 +105,38 @@ Registers a new user.
 }
 ```
 
-**Validation Rules**
-- `email`: Required, valid email format
-- `password`: Required, minimum 8 characters
+**バリデーションルール**
+- `email`: 必須、有効なメールアドレス形式
+- `password`: 必須、最低8文字
 
-**Response**
+**レスポンス**
 
-- **201 Created** - Registration successful
+- **201 Created** - 登録成功
   ```json
   {
     "message": "ok"
   }
   ```
 
-- **400 Bad Request** - Validation error
+- **400 Bad Request** - バリデーションエラー
   ```json
   {
     "error": "Key: 'SignupReq.Password' Error:Field validation for 'Password' failed on the 'min' tag"
   }
   ```
 
-- **409 Conflict** - Email address already in use
+- **409 Conflict** - ユーザー作成失敗（メールアドレスが既に使用されている等）
   ```json
   {
-    "error": "failed to hash password: ..."
+    "error": "signup failed"
   }
   ```
 
 ### POST /login
 
-Authenticates a user and issues a JWT token.
+ユーザーを認証し、JWTトークンを発行します。
 
-**Request**
+**リクエスト**
 ```json
 {
   "email": "user@example.com",
@@ -144,40 +144,40 @@ Authenticates a user and issues a JWT token.
 }
 ```
 
-**Validation Rules**
-- `email`: Required, valid email format
-- `password`: Required
+**バリデーションルール**
+- `email`: 必須、有効なメールアドレス形式
+- `password`: 必須
 
-**Response**
+**レスポンス**
 
-- **200 OK** - Authentication successful
+- **200 OK** - 認証成功
   ```json
   {
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   }
   ```
 
-  **JWT Claims:**
-  - `sub`: User ID (uint)
-  - `email`: User's email address
-  - `iat`: Issued at (Unix timestamp)
-  - `exp`: Expiration time (issued at + 1 hour)
+  **JWTクレーム:**
+  - `sub`: ユーザーID（uint）
+  - `email`: ユーザーのメールアドレス
+  - `iat`: 発行日時（Unixタイムスタンプ）
+  - `exp`: 有効期限（発行日時 + 1時間）
 
-- **400 Bad Request** - Validation error
+- **400 Bad Request** - バリデーションエラー
   ```json
   {
     "error": "Key: 'LoginReq.Email' Error:Field validation for 'Email' failed on the 'email' tag"
   }
   ```
 
-- **401 Unauthorized** - Authentication failed (invalid email or password)
+- **401 Unauthorized** - 認証失敗（メールアドレスまたはパスワードが無効）
   ```json
   {
     "error": "invalid email or password"
   }
   ```
 
-## Dependency Diagram
+## 依存関係図
 
 ```mermaid
 graph TB
@@ -229,139 +229,139 @@ graph TB
     style DB fill:#ffebee
 ```
 
-### Dependency Explanation
+### 依存関係の説明
 
-#### Transport Layer ([transport/handler/auth_handler.go](transport/handler/auth_handler.go))
-- **AuthHandler**: Processes HTTP requests and calls AuthUsecase
-- **DTOs** ([transport/http/dto/](transport/http/dto/)): Define request/response data structures
-  - [SignupReq](transport/http/dto/signup_request.go): User registration request
-  - [LoginReq](transport/http/dto/login_request.go): Login request
+#### Transport層（[transport/handler/auth_handler.go](transport/handler/auth_handler.go)）
+- **AuthHandler**: HTTPリクエストを処理し、AuthUsecaseを呼び出す
+- **DTO**（[transport/http/dto/](transport/http/dto/)）: リクエスト/レスポンスのデータ構造を定義
+  - [SignupReq](transport/http/dto/signup_request.go): ユーザー登録リクエスト
+  - [LoginReq](transport/http/dto/login_request.go): ログインリクエスト
 
-#### Usecase Layer
-- **AuthUsecase** ([usecase/auth_usecase.go](usecase/auth_usecase.go)): Implements authentication business logic
-  - Password hashing (bcrypt)
-  - Password verification
-  - JWT token generation and signing
-  - Defines UserRepository interface (following Go's "consumer defines interface" convention)
-- **Domain Errors** ([usecase/errors.go](usecase/errors.go)): Centralized error definitions
-  - `ErrUserNotFound`: Returned when user lookup fails
-  - `ErrEmailAlreadyExists`: Returned when email is already registered
+#### Usecase層
+- **AuthUsecase**（[usecase/auth_usecase.go](usecase/auth_usecase.go)）: 認証ビジネスロジックを実装
+  - パスワードハッシュ化（bcrypt）
+  - パスワード検証
+  - JWTトークンの生成と署名
+  - UserRepositoryインターフェースを定義（Goの「インターフェースは利用者が定義する」慣例に従う）
+- **ドメインエラー**（[usecase/errors.go](usecase/errors.go)）: エラー定義の一元管理
+  - `ErrUserNotFound`: ユーザー検索が失敗した場合に返却
+  - `ErrEmailAlreadyExists`: メールアドレスが既に登録されている場合に返却
 
-#### Domain Layer
-- **User Entity** ([domain/entity/user.go](domain/entity/user.go)): User domain model
+#### Domain層
+- **User Entity**（[domain/entity/user.go](domain/entity/user.go)）: ユーザードメインモデル
 
-#### Usecase Layer (Continued)
-- **UserRepository Interface** ([usecase/auth_usecase.go](usecase/auth_usecase.go)): Repository interface defined in usecase layer (following Go convention: "interfaces are defined by the consumer")
-  - `Create(user)`: Create user
-  - `FindByEmail(email)`: Find user by email address
-  - `FindByID(id)`: Find user by ID
-- **Error Definitions** ([usecase/errors.go](usecase/errors.go)): Domain errors
-  - `ErrUserNotFound`: User not found error
-  - `ErrEmailAlreadyExists`: Duplicate email error
+#### Usecase層（続き）
+- **UserRepositoryインターフェース**（[usecase/auth_usecase.go](usecase/auth_usecase.go)）: usecase層で定義されたリポジトリインターフェース（Goの慣例:「インターフェースは利用者が定義する」に従う）
+  - `Create(user)`: ユーザーを作成
+  - `FindByEmail(email)`: メールアドレスでユーザーを検索
+  - `FindByID(id)`: IDでユーザーを検索
+- **エラー定義**（[usecase/errors.go](usecase/errors.go)）: ドメインエラー
+  - `ErrUserNotFound`: ユーザー未検出エラー
+  - `ErrEmailAlreadyExists`: メールアドレス重複エラー
 
-#### Adapters Layer ([adapters/user_mysql.go](adapters/user_mysql.go))
-- **UserMySQL**: MySQL implementation of UserRepository (using GORM)
+#### Adapters層（[adapters/user_mysql.go](adapters/user_mysql.go)）
+- **UserMySQL**: UserRepositoryのMySQL実装（GORMを使用）
 
-### Architectural Characteristics
+### アーキテクチャ上の特徴
 
-1. **Clean Architecture**: Domain layer is independent of infrastructure layer
-2. **Dependency Inversion**: Usecase defines and depends on UserRepository interface, not concrete implementations (following Go's "consumer defines interface" principle)
-3. **Interface Ownership**: Repository interfaces are defined in the usecase layer where they are used, not in a separate repository package (Go best practice)
-4. **Security**:
-   - Passwords are hashed with bcrypt before storage
-   - JWT tokens are signed with HS256 algorithm
-   - Signing uses `JWT_SECRET` environment variable
+1. **クリーンアーキテクチャ**: ドメイン層はインフラストラクチャ層から独立
+2. **依存性逆転**: Usecaseは具体的な実装ではなく、UserRepositoryインターフェースを定義・依存（Goの「インターフェースは利用者が定義する」原則に従う）
+3. **インターフェースの所有権**: リポジトリインターフェースは、別のリポジトリパッケージではなく、使用されるusecase層で定義（Goのベストプラクティス）
+4. **セキュリティ**:
+   - パスワードは保存前にbcryptでハッシュ化
+   - JWTトークンはHS256アルゴリズムで署名
+   - 署名には環境変数 `JWT_SECRET` を使用
 
-## Directory Structure
+## ディレクトリ構成
 
 ```
 auth/
-├── README.md                          # This file
+├── README.md                          # このファイル
 ├── domain/
 │   └── entity/
-│       └── user.go                   # User entity definition
+│       └── user.go                   # Userエンティティ定義
 ├── usecase/
-│   ├── auth_usecase.go               # Authentication business logic + UserRepository interface
-│   ├── auth_usecase_test.go          # Usecase tests
-│   └── errors.go                     # Domain error definitions
+│   ├── auth_usecase.go               # 認証ビジネスロジック + UserRepositoryインターフェース
+│   ├── auth_usecase_test.go          # Usecaseテスト
+│   └── errors.go                     # ドメインエラー定義
 ├── adapters/
-│   ├── user_mysql.go                 # MySQL repository implementation
-│   └── user_mysql_test.go            # Repository tests
+│   ├── user_mysql.go                 # MySQLリポジトリ実装
+│   └── user_mysql_test.go            # リポジトリテスト
 └── transport/
     ├── handler/
-    │   ├── auth_handler.go           # HTTP handlers
-    │   └── auth_handler_test.go      # Handler tests
+    │   ├── auth_handler.go           # HTTPハンドラー
+    │   └── auth_handler_test.go      # ハンドラーテスト
     └── http/dto/
-        ├── signup_request.go         # Signup request DTO
-        └── login_request.go          # Login request DTO
+        ├── signup_request.go         # サインアップリクエストDTO
+        └── login_request.go          # ログインリクエストDTO
 ```
 
-## Testing
+## テスト
 
-All tests in the auth feature follow a **table-driven testing pattern** for consistency and maintainability.
+auth フィーチャーのすべてのテストは、一貫性と保守性のために**テーブル駆動テストパターン**に従っています。
 
-### Test Structure and Patterns
+### テスト構造とパターン
 
-#### Common Patterns Across All Tests
+#### 全テスト共通のパターン
 
-1. **Table-Driven Tests**: All test functions use a `tests` slice with struct fields:
-   - `name`: Test case description (e.g., `"success: user creation"`, `"failure: duplicate email"`)
-   - `wantErr`: Boolean flag indicating if an error is expected
-   - Additional fields specific to each test type (see below)
+1. **テーブル駆動テスト**: すべてのテスト関数は `tests` スライスと構造体フィールドを使用:
+   - `name`: テストケースの説明（例: `"success: user creation"`, `"failure: duplicate email"`）
+   - `wantErr`: エラーが期待されるかどうかを示すブールフラグ
+   - テストタイプ固有の追加フィールド（後述）
 
-2. **Parallel Execution**: All tests use `t.Parallel()` to enable concurrent execution:
+2. **並列実行**: すべてのテストは `t.Parallel()` を使用して並行実行を有効化:
    ```go
    func TestSomething(t *testing.T) {
-       t.Parallel()  // Enable parallel execution
+       t.Parallel()  // 並列実行を有効化
 
        tests := []struct { /* ... */ }{/* ... */}
 
        for _, tt := range tests {
            t.Run(tt.name, func(t *testing.T) {
-               t.Parallel()  // Enable parallel subtests
-               // Test logic...
+               t.Parallel()  // サブテストの並列実行を有効化
+               // テストロジック...
            })
        }
    }
    ```
 
-3. **Helper Functions**: Each test file includes helper functions to reduce code duplication:
+3. **ヘルパー関数**: 各テストファイルにはコード重複を削減するヘルパー関数を含む:
    - Usecase: `createTestUser()`, `assertError()`, `verifyBcryptHash()`
    - Handler: `makeRequest()`, `assertJSONResponse()`
    - Repository: `setupTestDB()`, `seedUser()`
 
-#### Usecase Tests ([usecase/auth_usecase_test.go](usecase/auth_usecase_test.go))
+#### Usecaseテスト（[usecase/auth_usecase_test.go](usecase/auth_usecase_test.go)）
 
-Uses **mock repositories** to test business logic in isolation.
+**モックリポジトリ**を使用してビジネスロジックを単独でテストします。
 
-**Test Case Structure:**
+**テストケース構造:**
 ```go
 tests := []struct {
     name              string
     email             string
     password          string
     wantErr           bool
-    errMsg            string           // Expected error message
-    verifyBcryptHash  bool             // Should verify password hashing
-    repositoryErr     error            // Mock repository error
+    errMsg            string           // 期待されるエラーメッセージ
+    verifyBcryptHash  bool             // パスワードハッシュ化を検証するか
+    repositoryErr     error            // モックリポジトリのエラー
 }{/* ... */}
 ```
 
-**Key Features:**
-- Mock implementations with customizable behavior via function fields
-- bcrypt password verification
-- JWT token generation validation
+**主な特徴:**
+- 関数フィールドによるカスタマイズ可能な動作を持つモック実装
+- bcryptパスワード検証
+- JWTトークン生成の検証
 
-**Run Command:**
+**実行コマンド:**
 ```bash
 go test ./internal/feature/auth/usecase/... -v
 ```
 
-#### Handler Tests ([transport/handler/auth_handler_test.go](transport/handler/auth_handler_test.go))
+#### ハンドラーテスト（[transport/handler/auth_handler_test.go](transport/handler/auth_handler_test.go)）
 
-Uses **mock usecases** to test HTTP request/response handling.
+**モックusecase**を使用してHTTPリクエスト/レスポンスの処理をテストします。
 
-**Test Case Structure:**
+**テストケース構造:**
 ```go
 tests := []struct {
     name           string
@@ -372,51 +372,51 @@ tests := []struct {
 }{/* ... */}
 ```
 
-**Key Features:**
-- HTTP request/response validation
-- DTO validation testing
-- Status code verification
-- JSON response body matching
+**主な特徴:**
+- HTTPリクエスト/レスポンスの検証
+- DTOバリデーションのテスト
+- ステータスコードの検証
+- JSONレスポンスボディのマッチング
 
-**Run Command:**
+**実行コマンド:**
 ```bash
 go test ./internal/feature/auth/transport/handler/... -v
 ```
 
-#### Repository Tests ([adapters/user_mysql_test.go](adapters/user_mysql_test.go))
+#### リポジトリテスト（[adapters/user_mysql_test.go](adapters/user_mysql_test.go)）
 
-Uses **in-memory SQLite database** for integration testing.
+統合テストに**インメモリSQLiteデータベース**を使用します。
 
-**Test Case Structure:**
+**テストケース構造:**
 ```go
 tests := []struct {
     name         string
-    email        string          // (or user, userID depending on the test)
+    email        string          // （テストによってはuser, userIDなど）
     wantErr      bool
-    expectedErr  error           // Specific error type (e.g., usecase.ErrUserNotFound)
-    setupFunc    func(t *testing.T, db *gorm.DB) *entity.User  // Setup test data
-    validateFunc func(t *testing.T, expected, found *entity.User)  // Validate results
+    expectedErr  error           // 特定のエラー型（例: usecase.ErrUserNotFound）
+    setupFunc    func(t *testing.T, db *gorm.DB) *entity.User  // テストデータの準備
+    validateFunc func(t *testing.T, expected, found *entity.User)  // 結果の検証
 }{/* ... */}
 ```
 
-**Key Features:**
-- Each test gets a fresh in-memory SQLite database
-- `setupFunc`: Prepares test data before execution
-- `validateFunc`: Custom validation logic for success cases
-- Tests database constraints (unique email, timestamps, etc.)
+**主な特徴:**
+- 各テストが新しいインメモリSQLiteデータベースを使用
+- `setupFunc`: 実行前にテストデータを準備
+- `validateFunc`: 成功ケースのカスタム検証ロジック
+- データベース制約のテスト（ユニークメール、タイムスタンプなど）
 
-**Run Command:**
+**実行コマンド:**
 ```bash
 go test ./internal/feature/auth/adapters/... -v
 ```
 
-### Run All Tests
+### 全テスト実行
 
 ```bash
 go test ./internal/feature/auth/... -v -race -cover
 ```
 
-### Example Test Output
+### テスト出力例
 
 ```
 === RUN   TestAuthUsecase_Signup
@@ -432,28 +432,28 @@ go test ./internal/feature/auth/... -v -race -cover
     --- PASS: TestAuthUsecase_Signup/failure:_password_too_short (0.00s)
 ```
 
-## Environment Variables
+## 環境変数
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `JWT_SECRET` | Secret key for signing JWT tokens | ✅ |
+| 変数名 | 説明 | 必須 |
+|--------|------|------|
+| `JWT_SECRET` | JWTトークン署名用の秘密鍵 | ✅ |
 
-**Configuration Example** (`.env.docker`):
+**設定例**（`.env.docker`）:
 ```
 JWT_SECRET=your-super-secret-key-change-this-in-production
 ```
 
-## Security Considerations
+## セキュリティに関する注意事項
 
-1. **Password Hashing**: Uses bcrypt (default cost: 10)
-2. **JWT Expiration**: Automatically expires after 1 hour
-3. **Error Messages**: Login failures return unified "invalid email or password" message (prevents enumeration attacks)
-4. **JWT_SECRET**: Managed via environment variable; use a strong secret key in production
+1. **パスワードハッシュ化**: bcryptを使用（デフォルトコスト: 10）
+2. **JWTの有効期限**: 1時間で自動的に失効
+3. **エラーメッセージ**: ログイン失敗時は統一された "invalid email or password" メッセージを返却（列挙攻撃を防止）
+4. **JWT_SECRET**: 環境変数で管理。本番環境では強力な秘密鍵を使用すること
 
-## Future Enhancements
+## 今後の拡張
 
-- Refresh token implementation
-- Password reset functionality
-- Email verification
-- Two-factor authentication (2FA)
-- OAuth2 provider integration
+- リフレッシュトークンの実装
+- パスワードリセット機能
+- メール認証
+- 二要素認証（2FA）
+- OAuth2プロバイダー連携

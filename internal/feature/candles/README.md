@@ -1,20 +1,20 @@
-# Candles Feature
+# Candles フィーチャー
 
-## Overview
+## 概要
 
-The Candles feature provides stock market candlestick (OHLCV) data management. It handles both real-time data retrieval via REST API and batch data ingestion from external market data providers.
+Candlesフィーチャーは、株式市場のローソク足（OHLCV）データ管理を提供します。REST APIによるリアルタイムデータ取得と、外部マーケットデータプロバイダーからのバッチデータ取り込みの両方を処理します。
 
-### Key Features
+### 主な機能
 
-- **Candlestick Data Retrieval**: Query OHLCV data by symbol, interval, and output size
-- **Multiple Time Intervals**: Support for daily, weekly, and monthly intervals
-- **Batch Data Ingestion**: Automated fetching from TwelveData API with rate limiting
-- **Redis Caching**: Transparent caching layer with automatic cache invalidation
-- **Upsert Operations**: Efficient batch insert/update using composite unique keys
+- **ローソク足データ取得**: 銘柄、インターバル、出力サイズによるOHLCVデータのクエリ
+- **複数の時間間隔**: 日次、週次、月次のインターバルをサポート
+- **バッチデータ取り込み**: レート制限付きのTwelveData APIからの自動データ取得
+- **Redisキャッシュ**: 自動キャッシュ無効化を備えた透過的なキャッシュレイヤー
+- **Upsert操作**: 複合ユニークキーを使用した効率的なバッチ挿入/更新
 
-## Sequence Diagrams
+## シーケンス図
 
-### Get Candles Flow (API Request)
+### ローソク足取得フロー（APIリクエスト）
 
 ```mermaid
 sequenceDiagram
@@ -60,7 +60,7 @@ sequenceDiagram
     Handler-->>Client: 200 OK<br/>[{time, open, high, low, close, volume}, ...]
 ```
 
-### Batch Ingestion Flow
+### バッチ取り込みフロー
 
 ```mermaid
 sequenceDiagram
@@ -106,32 +106,32 @@ sequenceDiagram
     Usecase-->>Main: nil
 ```
 
-## API Specification
+## API仕様
 
 ### GET /candles/:code
 
-Retrieves candlestick data for a specified stock symbol. Requires JWT authentication.
+指定された銘柄のローソク足データを取得します。JWT認証が必要です。
 
-**Path Parameters**
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `code` | Stock ticker symbol | `7203.T`, `AAPL` |
+**パスパラメータ**
+| パラメータ | 説明 | 例 |
+|-----------|------|-----|
+| `code` | 銘柄コード | `7203.T`, `AAPL` |
 
-**Query Parameters**
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `interval` | `1day` | Time interval (`1day`, `1week`, `1month`) |
-| `outputsize` | `200` | Number of data points to return (max: 5000) |
+**クエリパラメータ**
+| パラメータ | デフォルト | 説明 |
+|-----------|-----------|------|
+| `interval` | `1day` | 時間間隔（`1day`, `1week`, `1month`） |
+| `outputsize` | `200` | 返却するデータポイント数（最大: 5000） |
 
-**Request Example**
+**リクエスト例**
 ```
 GET /candles/7203.T?interval=1day&outputsize=100
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-**Response**
+**レスポンス**
 
-- **200 OK** - Success
+- **200 OK** - 成功
   ```json
   [
     {
@@ -152,23 +152,23 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     }
   ]
   ```
-  Note: Results are ordered by time descending (newest first).
+  注: 結果は時間の降順（新しい順）でソートされます。
 
-- **401 Unauthorized** - Missing or invalid JWT token
+- **401 Unauthorized** - JWTトークンが未指定または無効
   ```json
   {
     "error": "authorization header required"
   }
   ```
 
-- **502 Bad Gateway** - Database or upstream error
+- **502 Bad Gateway** - データベースまたは上流サービスのエラー
   ```json
   {
     "error": "database connection failed"
   }
   ```
 
-## Dependency Diagram
+## 依存関係図
 
 ```mermaid
 graph TB
@@ -234,89 +234,90 @@ graph TB
     style API fill:#ffebee
 ```
 
-### Dependency Explanation
+### 依存関係の説明
 
-#### Transport Layer ([transport/handler/candle_handler.go](transport/handler/candle_handler.go))
-- **CandlesHandler**: Processes HTTP requests and calls CandlesUsecase
-- **CandleResponse DTO** ([transport/http/dto/candle_response.go](transport/http/dto/candle_response.go)): Response data structure with JSON serialization
+#### トランスポート層（[transport/handler/candle_handler.go](transport/handler/candle_handler.go)）
+- **CandlesHandler**: HTTPリクエストを処理し、CandlesUsecaseを呼び出す
+- **CandleResponse DTO**（[transport/http/dto/candle_response.go](transport/http/dto/candle_response.go)）: JSONシリアライゼーション付きのレスポンスデータ構造
 
-#### Usecase Layer
-- **CandlesUsecase** ([usecase/candles_usecase.go](usecase/candles_usecase.go)): Retrieves candlestick data with parameter validation
-  - Applies default values for interval and outputsize
-  - Enforces maximum outputsize limit (5000)
-  - Defines `CandleRepository` interface (following Go's "consumer defines interface" convention)
-- **IngestUsecase** ([usecase/ingest_usecase.go](usecase/ingest_usecase.go)): Batch data ingestion from external APIs
-  - Iterates over symbols and intervals
-  - Respects rate limits via RateLimiter
-  - Defines `MarketRepository` interface
+#### ユースケース層
+- **CandlesUsecase**（[usecase/candles_usecase.go](usecase/candles_usecase.go)）: パラメータバリデーション付きのローソク足データ取得
+  - インターバルとoutputsizeのデフォルト値を適用
+  - 最大outputsize制限（5000）を適用
+  - `CandleRepository`インターフェースを定義（Goの「インターフェースは利用者が定義する」慣例に従う）
+- **IngestUsecase**（[usecase/ingest_usecase.go](usecase/ingest_usecase.go)）: 外部APIからのバッチデータ取り込み
+  - 銘柄とインターバルをイテレーション
+  - RateLimiterによるレート制限を遵守
+  - `MarketRepository`インターフェースを定義
 
-#### Domain Layer
-- **Candle Entity** ([domain/entity/candle.go](domain/entity/candle.go)): OHLCV candlestick data model
-  - `Symbol`: Stock ticker symbol (e.g., "AAPL", "7203.T")
-  - `Interval`: Time interval (e.g., "1day", "1week", "1month")
-  - `Time`: Timestamp for the candle period
-  - `Open`, `High`, `Low`, `Close`: Price data
-  - `Volume`: Trading volume
+#### ドメイン層
+- **Candle Entity**（[domain/entity/candle.go](domain/entity/candle.go)）: OHLCVローソク足データモデル
+  - `Symbol`: 銘柄コード（例: "AAPL", "7203.T"）
+  - `Interval`: 時間間隔（例: "1day", "1week", "1month"）
+  - `Time`: ローソク足期間のタイムスタンプ
+  - `Open`, `High`, `Low`, `Close`: 価格データ
+  - `Volume`: 出来高
 
-#### Adapters Layer ([adapters/candle_mysql.go](adapters/candle_mysql.go))
-- **CandleMySQL**: MySQL implementation of CandleRepository (using GORM)
-  - `Find`: Retrieves candles ordered by time descending
-  - `UpsertBatch`: Batch insert/update using `ON DUPLICATE KEY UPDATE`
-  - Composite unique index on (symbol, interval, time)
+#### アダプター層（[adapters/candle_mysql.go](adapters/candle_mysql.go)）
+- **CandleMySQL**: CandleRepositoryのMySQL実装（GORMを使用）
+  - `Find`: 時間の降順でローソク足を取得
+  - `UpsertBatch`: `ON DUPLICATE KEY UPDATE`によるバッチ挿入/更新
+  - （symbol, interval, time）の複合ユニークインデックス
 
-#### Platform Layer
-- **CachingCandleRepository** ([platform/cache/caching_candle_repository.go](../../platform/cache/caching_candle_repository.go)): Redis caching decorator
-  - Implements decorator pattern wrapping CandleMySQL
-  - Cache key format: `candles:{symbol}:{interval}:{outputsize}`
-  - Automatic cache invalidation on UpsertBatch
-  - Graceful degradation when Redis is unavailable
+#### プラットフォーム層
+- **CachingCandleRepository**（[platform/cache/caching_candle_repository.go](../../platform/cache/caching_candle_repository.go)）: Redisキャッシュデコレータ
+  - CandleMySQLをラップするデコレータパターンを実装
+  - キャッシュキー形式: `candles:{symbol}:{interval}:{outputsize}`
+  - UpsertBatch時の自動キャッシュ無効化
+  - Redis利用不可時のグレースフルデグレード
 
-### Architectural Characteristics
+### アーキテクチャの特徴
 
-1. **Clean Architecture**: Domain layer is independent of infrastructure
-2. **Dependency Inversion**: Usecase defines CandleRepository interface; adapters implement it
-3. **Decorator Pattern**: CachingCandleRepository transparently adds caching
-4. **Interface Ownership**: Interfaces defined where they are consumed (Go best practice)
-5. **Graceful Degradation**: System continues operating when Redis is unavailable
+1. **クリーンアーキテクチャ**: ドメイン層がインフラストラクチャから独立
+2. **依存性逆転**: UsecaseがCandleRepositoryインターフェースを定義し、adaptersが実装
+3. **デコレータパターン**: CachingCandleRepositoryが透過的にキャッシュを追加
+4. **インターフェース所有権**: インターフェースは利用される場所で定義（Goのベストプラクティス）
+5. **グレースフルデグレード**: Redis利用不可時もシステムは継続して動作
 
-## Directory Structure
+## ディレクトリ構成
 
 ```
 candles/
-├── README.md                          # This file
+├── README.md                          # 本ファイル
 ├── domain/
 │   └── entity/
-│       └── candle.go                  # Candle entity (OHLCV data)
+│       └── candle.go                  # Candleエンティティ（OHLCVデータ）
 ├── usecase/
-│   ├── candles_usecase.go             # Query logic + CandleRepository interface
-│   ├── candles_usecase_test.go        # Usecase tests
-│   ├── ingest_usecase.go              # Batch ingestion + MarketRepository interface
-│   └── ingest_usecase_test.go         # Ingest tests
+│   ├── candles_usecase.go             # クエリロジック + CandleRepositoryインターフェース
+│   ├── candles_usecase_test.go        # ユースケーステスト
+│   ├── ingest_usecase.go              # バッチ取り込み + MarketRepositoryインターフェース
+│   └── ingest_usecase_test.go         # 取り込みテスト
 ├── adapters/
-│   ├── candle_mysql.go                # MySQL repository implementation
-│   └── candle_mysql_test.go           # Repository tests
+│   ├── candle_mysql.go                # MySQLリポジトリ実装
+│   └── candle_mysql_test.go           # リポジトリテスト
 └── transport/
     ├── handler/
-    │   ├── candle_handler.go          # HTTP handler
-    │   └── candle_handler_test.go     # Handler tests
-    └── http/dto/
-        └── candle_response.go         # Response DTO
+    │   ├── candle_handler.go          # HTTPハンドラー
+    │   └── candle_handler_test.go     # ハンドラーテスト
+    └── http/
+        └── dto/
+            └── candle_response.go     # レスポンスDTO
 ```
 
-## Testing
+## テスト
 
-All tests in the candles feature follow a **table-driven testing pattern** for consistency and maintainability.
+Candlesフィーチャーの全テストは、一貫性と保守性のために**テーブル駆動テストパターン**に従います。
 
-### Test Structure and Patterns
+### テスト構造とパターン
 
-#### Common Patterns Across All Tests
+#### 全テスト共通のパターン
 
-1. **Table-Driven Tests**: All test functions use a `tests` slice with struct fields:
-   - `name`: Test case description (e.g., `"success: all parameters specified"`, `"error: repository returns error"`)
-   - `wantErr`: Boolean flag indicating if an error is expected
-   - Additional fields specific to each test type
+1. **テーブル駆動テスト**: 全テスト関数は構造体フィールドを持つ`tests`スライスを使用:
+   - `name`: テストケースの説明（例: `"success: all parameters specified"`, `"error: repository returns error"`）
+   - `wantErr`: エラーが期待されるかどうかを示すブール値フラグ
+   - テストタイプ固有の追加フィールド
 
-2. **Parallel Execution**: Repository and handler tests use `t.Parallel()`:
+2. **並列実行**: リポジトリテストとハンドラーテストは`t.Parallel()`を使用:
    ```go
    func TestCandleMySQL_Find(t *testing.T) {
        t.Parallel()
@@ -330,15 +331,15 @@ All tests in the candles feature follow a **table-driven testing pattern** for c
    }
    ```
 
-3. **Helper Functions**: Each test file includes helper functions:
-   - Repository: `setupTestDB()`, `seedCandle()`
-   - Handler: Uses `httptest.NewRecorder()` for HTTP testing
+3. **ヘルパー関数**: 各テストファイルにヘルパー関数を含む:
+   - リポジトリ: `setupTestDB()`, `seedCandle()`
+   - ハンドラー: HTTPテスト用に`httptest.NewRecorder()`を使用
 
-#### Usecase Tests ([usecase/candles_usecase_test.go](usecase/candles_usecase_test.go))
+#### ユースケーステスト（[usecase/candles_usecase_test.go](usecase/candles_usecase_test.go)）
 
-Uses **mock repositories** to test business logic in isolation.
+ビジネスロジックを分離してテストするために**モックリポジトリ**を使用します。
 
-**Test Case Structure:**
+**テストケース構造:**
 ```go
 tests := []struct {
     name               string
@@ -348,52 +349,52 @@ tests := []struct {
     mockFindFunc       func(...) ([]entity.Candle, error)
     expectedCandles    []entity.Candle
     expectedErr        error
-    expectedInterval   string  // Verified value passed to mock
-    expectedOutputsize int     // Verified value passed to mock
+    expectedInterval   string  // モックに渡されるべき値
+    expectedOutputsize int     // モックに渡されるべき値
 }{/* ... */}
 ```
 
-**Key Features:**
-- Mock implementations with customizable behavior
-- Parameter validation testing (defaults, max limits)
-- Call count verification
+**主な特徴:**
+- カスタマイズ可能な動作を持つモック実装
+- パラメータバリデーションテスト（デフォルト値、最大値制限）
+- 呼び出し回数の検証
 
-**Run Command:**
+**実行コマンド:**
 ```bash
 go test ./internal/feature/candles/usecase/... -v
 ```
 
-#### Handler Tests ([transport/handler/candle_handler_test.go](transport/handler/candle_handler_test.go))
+#### ハンドラーテスト（[transport/handler/candle_handler_test.go](transport/handler/candle_handler_test.go)）
 
-Uses **mock usecases** to test HTTP request/response handling.
+HTTPリクエスト/レスポンス処理をテストするために**モックユースケース**を使用します。
 
-**Test Case Structure:**
+**テストケース構造:**
 ```go
 tests := []struct {
     name           string
     url            string
     mockGetCandles func(...) ([]entity.Candle, error)
     expectedStatus int
-    expectedBody   string  // JSON string comparison
+    expectedBody   string  // JSON文字列比較
 }{/* ... */}
 ```
 
-**Key Features:**
-- HTTP status code verification
-- JSON response body matching with `assert.JSONEq`
-- Query parameter parsing validation
-- Default value handling
+**主な特徴:**
+- HTTPステータスコードの検証
+- `assert.JSONEq`によるJSONレスポンスボディの照合
+- クエリパラメータのパース検証
+- デフォルト値の処理
 
-**Run Command:**
+**実行コマンド:**
 ```bash
 go test ./internal/feature/candles/transport/handler/... -v
 ```
 
-#### Repository Tests ([adapters/candle_mysql_test.go](adapters/candle_mysql_test.go))
+#### リポジトリテスト（[adapters/candle_mysql_test.go](adapters/candle_mysql_test.go)）
 
-Uses **in-memory SQLite database** for integration testing.
+統合テストに**インメモリSQLiteデータベース**を使用します。
 
-**Test Case Structure:**
+**テストケース構造:**
 ```go
 tests := []struct {
     name         string
@@ -406,25 +407,25 @@ tests := []struct {
 }{/* ... */}
 ```
 
-**Key Features:**
-- Each test gets a fresh in-memory SQLite database
-- `setupFunc`: Prepares test data before execution
-- `validateFunc`: Custom validation logic for success cases
-- Tests upsert behavior (insert vs update)
-- Tests ordering and limit functionality
+**主な特徴:**
+- 各テストは新しいインメモリSQLiteデータベースを使用
+- `setupFunc`: テスト実行前にテストデータを準備
+- `validateFunc`: 成功ケースのカスタムバリデーションロジック
+- Upsert動作のテスト（挿入 vs 更新）
+- ソート順とLIMIT機能のテスト
 
-**Run Command:**
+**実行コマンド:**
 ```bash
 go test ./internal/feature/candles/adapters/... -v
 ```
 
-### Run All Tests
+### 全テスト実行
 
 ```bash
 go test ./internal/feature/candles/... -v -race -cover
 ```
 
-### Example Test Output
+### テスト出力例
 
 ```
 === RUN   TestCandlesUsecase_GetCandles
@@ -439,48 +440,48 @@ go test ./internal/feature/candles/... -v -race -cover
     ...
 ```
 
-## Caching Strategy
+## キャッシュ戦略
 
-### Cache Configuration
+### キャッシュ設定
 
-| Setting | Value | Description |
-|---------|-------|-------------|
-| Key Format | `candles:{symbol}:{interval}:{outputsize}` | Unique key per query |
-| Default TTL | 5 minutes | Configurable via constructor |
-| Namespace | `candles` | Key prefix for isolation |
+| 設定 | 値 | 説明 |
+|------|-----|------|
+| キー形式 | `candles:{symbol}:{interval}:{outputsize}` | クエリごとの一意なキー |
+| デフォルトTTL | 5分 | コンストラクタで設定可能 |
+| 名前空間 | `candles` | 分離のためのキープレフィックス |
 
-### Cache Behavior
+### キャッシュ動作
 
-1. **Read Path (Find)**
-   - Check Redis for cached data
-   - On HIT: Return deserialized data
-   - On MISS: Query MySQL, cache result, return data
-   - On Redis error: Bypass cache, query MySQL directly
+1. **読み取りパス（Find）**
+   - Redisのキャッシュデータを確認
+   - ヒット時: デシリアライズしたデータを返却
+   - ミス時: MySQLにクエリ、結果をキャッシュして返却
+   - Redisエラー時: キャッシュをバイパスし、MySQLに直接クエリ
 
-2. **Write Path (UpsertBatch)**
-   - Write to MySQL first
-   - Invalidate related cache entries using pattern matching
-   - Pattern: `candles:{symbol}:{interval}:*`
+2. **書き込みパス（UpsertBatch）**
+   - まずMySQLに書き込み
+   - パターンマッチングで関連するキャッシュエントリを無効化
+   - パターン: `candles:{symbol}:{interval}:*`
 
-### Graceful Degradation
+### グレースフルデグレード
 
-The caching layer is designed to fail gracefully:
-- If Redis is unavailable, requests are served directly from MySQL
-- Cache write failures are logged but don't fail the request
-- Corrupted cache entries are automatically deleted
+キャッシュ層はグレースフルに障害を処理するよう設計されています:
+- Redis利用不可時、リクエストはMySQLから直接提供
+- キャッシュ書き込みの失敗はログに記録されるがリクエストは失敗しない
+- 破損したキャッシュエントリは自動的に削除
 
-## Environment Variables
+## 環境変数
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `TWELVE_DATA_API_KEY` | API key for TwelveData market data | Yes (for ingestion) |
+| 変数 | 説明 | 必須 |
+|------|------|------|
+| `TWELVE_DATA_API_KEY` | TwelveDataマーケットデータのAPIキー | はい（取り込み用） |
 
-**Note:** Redis and MySQL connection settings are configured at the application level, not specific to this feature.
+**注:** RedisとMySQLの接続設定は、このフィーチャー固有ではなくアプリケーションレベルで設定されます。
 
-## Future Enhancements
+## 今後の拡張
 
-- Real-time data streaming via WebSocket
-- Additional technical indicators (SMA, EMA, RSI, etc.)
-- Historical data backfill functionality
-- Custom interval support (5min, 15min, 1hour)
-- Data export in CSV/Excel formats
+- WebSocketによるリアルタイムデータストリーミング
+- テクニカル指標の追加（SMA、EMA、RSIなど）
+- ヒストリカルデータのバックフィル機能
+- カスタムインターバルのサポート（5分、15分、1時間）
+- CSV/Excel形式でのデータエクスポート

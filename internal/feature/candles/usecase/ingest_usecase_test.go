@@ -8,9 +8,10 @@ import (
 	"time"
 )
 
+// ErrMarketAPI はマーケットAPIのセンチネルエラーです。
 var ErrMarketAPI = errors.New("market API error")
 
-// mockMarketRepository is a mock implementation of the MarketRepository interface.
+// mockMarketRepository はMarketRepositoryインターフェースのモック実装です。
 type mockMarketRepository struct {
 	GetTimeSeriesFunc  func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 	GetTimeSeriesCalls int
@@ -24,16 +25,17 @@ func (m *mockMarketRepository) GetTimeSeries(ctx context.Context, symbol, interv
 	return nil, errors.New("GetTimeSeriesFunc is not implemented")
 }
 
-// mockRateLimiter is a mock implementation of the RateLimiterInterface.
+// mockRateLimiter はRateLimiterInterfaceのモック実装です。
 type mockRateLimiter struct {
 	WaitIfNeededCalls int
 }
 
 func (m *mockRateLimiter) WaitIfNeeded() {
 	m.WaitIfNeededCalls++
-	// For testing purposes, return immediately without waiting
+	// テスト用に待機せず即座にリターン
 }
 
+// TestIngestUsecase_ingestOne はingestOneメソッドのデータ取得・保存処理をテストします。
 func TestIngestUsecase_ingestOne(t *testing.T) {
 	ctx := context.Background()
 	testTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -146,6 +148,7 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 	}
 }
 
+// TestIngestUsecase_IngestAll はIngestAllメソッドの全銘柄・全インターバル処理をテストします。
 func TestIngestUsecase_IngestAll(t *testing.T) {
 	ctx := context.Background()
 	testTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -171,7 +174,7 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 				return nil
 			},
 			expectedErr: nil,
-			// 2 symbols × 3 intervals (1day, 1week, 1month) = 6 calls
+			// 2銘柄 × 3インターバル（1day, 1week, 1month）= 6回呼び出し
 			expectedGetTimeSeriesCalls: 6,
 		},
 		{
@@ -184,7 +187,7 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 				return nil
 			},
 			expectedErr: nil,
-			// 1 symbol × 3 intervals = 3 calls
+			// 1銘柄 × 3インターバル = 3回呼び出し
 			expectedGetTimeSeriesCalls: 3,
 		},
 		{
@@ -213,8 +216,8 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
 				return nil
 			},
-			expectedErr: nil, // IngestAll continues without returning error
-			// 3 symbols × 3 intervals = 9 calls (even with errors, all calls are attempted)
+			expectedErr: nil, // IngestAllはエラーを返さず処理を続行
+			// 3銘柄 × 3インターバル = 9回呼び出し（エラーが発生しても全呼び出しが試行される）
 			expectedGetTimeSeriesCalls: 9,
 		},
 		{
@@ -229,8 +232,8 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 				}
 				return nil
 			},
-			expectedErr: nil, // IngestAll continues without returning error
-			// 2 symbols × 3 intervals = 6 calls
+			expectedErr: nil, // IngestAllはエラーを返さず処理を続行
+			// 2銘柄 × 3インターバル = 6回呼び出し
 			expectedGetTimeSeriesCalls: 6,
 		},
 	}
@@ -263,6 +266,7 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 	}
 }
 
+// TestIngestUsecase_IngestAll_Intervals はIngestAllが正しいインターバル順序で呼び出すことをテストします。
 func TestIngestUsecase_IngestAll_Intervals(t *testing.T) {
 	ctx := context.Background()
 	testTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)

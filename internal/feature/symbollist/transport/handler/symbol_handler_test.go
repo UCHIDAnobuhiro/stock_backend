@@ -12,11 +12,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// mockSymbolUsecase is a mock implementation of SymbolUsecase interface.
+// mockSymbolUsecase はSymbolUsecaseインターフェースのモック実装です。
 type mockSymbolUsecase struct {
 	ListActiveSymbolsFunc func(ctx context.Context) ([]entity.Symbol, error)
 }
 
+// ListActiveSymbols はモックのListActiveSymbols関数を呼び出します。
 func (m *mockSymbolUsecase) ListActiveSymbols(ctx context.Context) ([]entity.Symbol, error) {
 	if m.ListActiveSymbolsFunc != nil {
 		return m.ListActiveSymbolsFunc(ctx)
@@ -24,6 +25,7 @@ func (m *mockSymbolUsecase) ListActiveSymbols(ctx context.Context) ([]entity.Sym
 	return nil, nil
 }
 
+// TestNewSymbolHandler はNewSymbolHandlerコンストラクタが正しくインスタンスを生成することを検証します。
 func TestNewSymbolHandler(t *testing.T) {
 	t.Parallel()
 
@@ -34,6 +36,7 @@ func TestNewSymbolHandler(t *testing.T) {
 	assert.NotNil(t, handler.uc, "usecase should not be nil")
 }
 
+// TestSymbolHandler_List はListハンドラーの各種シナリオをテーブル駆動テストで検証します。
 func TestSymbolHandler_List(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -113,11 +116,12 @@ func TestSymbolHandler_List(t *testing.T) {
 	}
 }
 
+// TestSymbolHandler_List_DTOConversion はレスポンスにcodeとnameのみが含まれ、内部フィールドが公開されないことを検証します。
 func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
-	// Verify that only code and name are included in the response (not ID, Market, IsActive, SortKey)
+	// レスポンスにcodeとnameのみが含まれることを検証（ID、Market、IsActive、SortKeyは含まれない）
 	mockUC := &mockSymbolUsecase{
 		ListActiveSymbolsFunc: func(ctx context.Context) ([]entity.Symbol, error) {
 			return []entity.Symbol{
@@ -143,9 +147,9 @@ func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	// Response should only contain code and name fields
+	// レスポンスにはcodeとnameフィールドのみ含まれるべき
 	assert.JSONEq(t, `[{"code":"TEST.T","name":"Test Company"}]`, w.Body.String())
-	// Verify that internal fields are not exposed
+	// 内部フィールドが公開されていないことを検証
 	assert.NotContains(t, w.Body.String(), "999")
 	assert.NotContains(t, w.Body.String(), "NYSE")
 	assert.NotContains(t, w.Body.String(), "is_active")

@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// TestBuildDSN_TCP はTCP接続用のDSN文字列が正しく生成されることを検証します。
 func TestBuildDSN_TCP(t *testing.T) {
 	t.Parallel()
 
@@ -27,6 +28,7 @@ func TestBuildDSN_TCP(t *testing.T) {
 	}
 }
 
+// TestBuildDSN_CloudSQL はCloud SQL Unixソケット接続用のDSN文字列が正しく生成されることを検証します。
 func TestBuildDSN_CloudSQL(t *testing.T) {
 	t.Parallel()
 
@@ -45,6 +47,7 @@ func TestBuildDSN_CloudSQL(t *testing.T) {
 	}
 }
 
+// TestBuildDSN_CloudSQLTakesPrecedence はInstanceNameとHost/Portが両方設定されている場合にInstanceNameが優先されることを検証します。
 func TestBuildDSN_CloudSQLTakesPrecedence(t *testing.T) {
 	t.Parallel()
 
@@ -70,6 +73,7 @@ func TestBuildDSN_CloudSQLTakesPrecedence(t *testing.T) {
 	}
 }
 
+// TestConnectWithRetry_SuccessOnFirstTry は初回接続成功時にリトライせずDBを返すことを検証します。
 func TestConnectWithRetry_SuccessOnFirstTry(t *testing.T) {
 	t.Parallel()
 
@@ -88,6 +92,7 @@ func TestConnectWithRetry_SuccessOnFirstTry(t *testing.T) {
 	}
 }
 
+// TestConnectWithRetry_RetriesOnFailure は接続失敗時にリトライして最終的に成功することを検証します。
 func TestConnectWithRetry_RetriesOnFailure(t *testing.T) {
 	// Not parallel because this test takes time due to retry sleeps
 
@@ -116,6 +121,7 @@ func TestConnectWithRetry_RetriesOnFailure(t *testing.T) {
 	}
 }
 
+// TestConnectWithRetry_TimeoutAfterRetries はタイムアウト後にエラーが返されることを検証します。
 func TestConnectWithRetry_TimeoutAfterRetries(t *testing.T) {
 	t.Parallel()
 
@@ -136,6 +142,7 @@ func TestConnectWithRetry_TimeoutAfterRetries(t *testing.T) {
 	}
 }
 
+// TestLoadConfigFromEnv は環境変数からデータベース設定が正しく読み込まれることを検証します。
 func TestLoadConfigFromEnv(t *testing.T) {
 	// Note: Not running in parallel since we're modifying environment variables
 	// Set environment variables for the test
