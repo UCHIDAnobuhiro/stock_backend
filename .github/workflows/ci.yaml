@@ -1,5 +1,4 @@
 # mainブランチへのPR時に実行されるCIワークフロー
-# docs-checkでコード変更の有無を判定し、lintとbuild-testを並列実行する
 name: CI
 
 on:
@@ -8,7 +7,6 @@ on:
 
 jobs:
     # ドキュメントのみの変更かどうかを判定する
-    # 結果をoutputsで後続ジョブに共有し、不要なCI実行をスキップする
     docs-check:
         name: Check changes
         runs-on: ubuntu-latest
@@ -18,7 +16,6 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
               with:
-                  # 差分チェック用に直近2コミットのみ取得（全履歴は不要）
                   fetch-depth: 2
 
             - name: Check if only docs changed
@@ -31,7 +28,6 @@ jobs:
                   fi
 
     # 静的解析（golangci-lint）
-    # build-testと並列実行してCI全体の所要時間を短縮する
     lint:
         name: Lint
         needs: docs-check
@@ -53,7 +49,6 @@ jobs:
                   args: --timeout=5m
 
     # ビルド確認とテスト実行
-    # lintと並列実行してCI全体の所要時間を短縮する
     build-test:
         name: Build & Test
         needs: docs-check
@@ -63,7 +58,6 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
-            # setup-goがモジュールキャッシュを自動管理するため、go mod downloadは不要
             - name: Setup Go
               uses: actions/setup-go@v5
               with:
@@ -74,3 +68,19 @@ jobs:
 
             - name: Run tests
               run: go test ./... -v -race -cover
+
+    # 全CIジョブの結果を集約するゲートジョブ
+    # GitHub Branch Protectionではこのジョブだけをrequiredに設定する
+    ci-gate:
+        name: CI Gate
+        needs: [lint, build-test]
+        if: always()
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check CI results
+              run: |
+                  if [[ "${{ needs.lint.result }}" == "failure" || "${{ needs.build-test.result }}" == "failure" ]]; then
+                    echo "CI failed"
+                    exit 1
+                  fi
+                  echo "CI passed"
