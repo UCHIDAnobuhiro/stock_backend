@@ -1,3 +1,5 @@
+# mainブランチへのPR時に実行されるCIワークフロー
+# docs-checkでコード変更の有無を判定し、lintとbuild-testを並列実行する
 name: CI
 
 on:
@@ -5,48 +7,70 @@ on:
         branches: [main]
 
 jobs:
-    build-test:
-        name: Build & Test
+    # ドキュメントのみの変更かどうかを判定する
+    # 結果をoutputsで後続ジョブに共有し、不要なCI実行をスキップする
+    docs-check:
+        name: Check changes
         runs-on: ubuntu-latest
+        outputs:
+            code_changed: ${{ steps.docs_check.outputs.code_changed }}
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
               with:
-                  fetch-depth: 0
+                  # 差分チェック用に直近2コミットのみ取得（全履歴は不要）
+                  fetch-depth: 2
 
             - name: Check if only docs changed
               id: docs_check
               run: |
-                  if git diff --name-only origin/main...HEAD | grep -qvE '\.(md|txt)$|^docs/|^LICENSE$|^\.github/PULL_REQUEST_TEMPLATE\.md$'; then
+                  if git diff --name-only HEAD~1...HEAD | grep -qvE '\.(md|txt)$|^docs/|^LICENSE$|^\.github/PULL_REQUEST_TEMPLATE\.md$'; then
                     echo "code_changed=true" >> $GITHUB_OUTPUT
                   else
                     echo "code_changed=false" >> $GITHUB_OUTPUT
                   fi
+
+    # 静的解析（golangci-lint）
+    # build-testと並列実行してCI全体の所要時間を短縮する
+    lint:
+        name: Lint
+        needs: docs-check
+        if: needs.docs-check.outputs.code_changed == 'true'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
 
             - name: Setup Go
               uses: actions/setup-go@v5
               with:
                   go-version: "1.24.x"
 
-            - name: Install dependencies
-              if: steps.docs_check.outputs.code_changed == 'true'
-              run: go mod download
-
             - name: Run golangci-lint
-              if: steps.docs_check.outputs.code_changed == 'true'
               uses: golangci/golangci-lint-action@v8
               with:
                   version: v2.6.2
                   args: --timeout=5m
 
+    # ビルド確認とテスト実行
+    # lintと並列実行してCI全体の所要時間を短縮する
+    build-test:
+        name: Build & Test
+        needs: docs-check
+        if: needs.docs-check.outputs.code_changed == 'true'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            # setup-goがモジュールキャッシュを自動管理するため、go mod downloadは不要
+            - name: Setup Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.24.x"
+
             - name: Run build
-              if: steps.docs_check.outputs.code_changed == 'true'
               run: go build ./...
 
             - name: Run tests
-              if: steps.docs_check.outputs.code_changed == 'true'
               run: go test ./... -v -race -cover
-
-            - name: Documentation-only change
-              if: steps.docs_check.outputs.code_changed == 'false'
-              run: echo "Only documentation files changed, skipping full CI"
