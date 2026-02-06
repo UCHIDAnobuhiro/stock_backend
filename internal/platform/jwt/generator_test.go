@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// TestNewGenerator は各種設定でGeneratorが正しく生成されることを検証します。
 func TestNewGenerator(t *testing.T) {
 	t.Parallel()
 
@@ -39,6 +40,7 @@ func TestNewGenerator(t *testing.T) {
 	}
 }
 
+// TestGenerator_GenerateToken は生成されたJWTトークンが有効で正しいクレームを含むことを検証します。
 func TestGenerator_GenerateToken(t *testing.T) {
 	t.Parallel()
 
@@ -100,6 +102,7 @@ func TestGenerator_GenerateToken(t *testing.T) {
 	}
 }
 
+// TestGenerator_GenerateToken_SigningMethod はトークンがHS256署名アルゴリズムで署名されていることを検証します。
 func TestGenerator_GenerateToken_SigningMethod(t *testing.T) {
 	t.Parallel()
 
@@ -124,6 +127,7 @@ func TestGenerator_GenerateToken_SigningMethod(t *testing.T) {
 	}
 }
 
+// TestGenerator_GenerateToken_Expiration はトークンのexp・iatクレームが正しい時刻範囲内であることを検証します。
 func TestGenerator_GenerateToken_Expiration(t *testing.T) {
 	t.Parallel()
 
@@ -160,6 +164,7 @@ func TestGenerator_GenerateToken_Expiration(t *testing.T) {
 	}
 }
 
+// TestGenerator_GenerateToken_DifferentUsersProduceDifferentTokens は異なるユーザーに対して異なるトークンが生成されることを検証します。
 func TestGenerator_GenerateToken_DifferentUsersProduceDifferentTokens(t *testing.T) {
 	t.Parallel()
 
