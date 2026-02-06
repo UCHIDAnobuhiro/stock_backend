@@ -1,4 +1,4 @@
-package handler
+package handler_test
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"stock_backend/internal/feature/candles/domain/entity"
+	"stock_backend/internal/feature/candles/transport/handler"
 	"testing"
 	"time"
 
@@ -94,10 +95,10 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 				GetCandlesFunc: tt.mockGetCandles,
 			}
 
-			handler := NewCandlesHandler(mockUC)
+			h := handler.NewCandlesHandler(mockUC)
 
 			router := gin.New()
-			router.GET("/candles/:code", handler.GetCandlesHandler)
+			router.GET("/candles/:code", h.GetCandlesHandler)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodGet, tt.url, io.NopCloser(bytes.NewReader(nil)))

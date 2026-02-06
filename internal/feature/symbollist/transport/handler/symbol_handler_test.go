@@ -1,4 +1,4 @@
-package handler
+package handler_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"stock_backend/internal/feature/symbollist/domain/entity"
+	"stock_backend/internal/feature/symbollist/transport/handler"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -30,10 +31,9 @@ func TestNewSymbolHandler(t *testing.T) {
 	t.Parallel()
 
 	mockUC := &mockSymbolUsecase{}
-	handler := NewSymbolHandler(mockUC)
+	h := handler.NewSymbolHandler(mockUC)
 
-	assert.NotNil(t, handler, "handler should not be nil")
-	assert.NotNil(t, handler.uc, "usecase should not be nil")
+	assert.NotNil(t, h, "handler should not be nil")
 }
 
 // TestSymbolHandler_List はListハンドラーの各種シナリオをテーブル駆動テストで検証します。
@@ -100,10 +100,10 @@ func TestSymbolHandler_List(t *testing.T) {
 			mockUC := &mockSymbolUsecase{
 				ListActiveSymbolsFunc: tt.mockListActiveFunc,
 			}
-			handler := NewSymbolHandler(mockUC)
+			h := handler.NewSymbolHandler(mockUC)
 
 			router := gin.New()
-			router.GET("/symbols", handler.List)
+			router.GET("/symbols", h.List)
 
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(http.MethodGet, "/symbols", nil)
@@ -136,10 +136,10 @@ func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 			}, nil
 		},
 	}
-	handler := NewSymbolHandler(mockUC)
+	h := handler.NewSymbolHandler(mockUC)
 
 	router := gin.New()
-	router.GET("/symbols", handler.List)
+	router.GET("/symbols", h.List)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/symbols", nil)

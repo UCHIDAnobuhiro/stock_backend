@@ -1,9 +1,10 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
 	"errors"
 	"stock_backend/internal/feature/symbollist/domain/entity"
+	"stock_backend/internal/feature/symbollist/usecase"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,10 +37,9 @@ func TestNewSymbolUsecase(t *testing.T) {
 	t.Parallel()
 
 	mockRepo := &mockSymbolRepository{}
-	uc := NewSymbolUsecase(mockRepo)
+	uc := usecase.NewSymbolUsecase(mockRepo)
 
 	assert.NotNil(t, uc, "usecase should not be nil")
-	assert.NotNil(t, uc.repo, "repository should not be nil")
 }
 
 // TestSymbolUsecase_ListActiveSymbols はListActiveSymbolsメソッドの各種シナリオをテーブル駆動テストで検証します。
@@ -113,7 +113,7 @@ func TestSymbolUsecase_ListActiveSymbols(t *testing.T) {
 			mockRepo := &mockSymbolRepository{
 				ListActiveFunc: tt.mockListActive,
 			}
-			uc := NewSymbolUsecase(mockRepo)
+			uc := usecase.NewSymbolUsecase(mockRepo)
 
 			symbols, err := uc.ListActiveSymbols(context.Background())
 
@@ -143,7 +143,7 @@ func TestSymbolUsecase_ListActiveSymbols_ContextCancellation(t *testing.T) {
 			return nil, ctx.Err()
 		},
 	}
-	uc := NewSymbolUsecase(mockRepo)
+	uc := usecase.NewSymbolUsecase(mockRepo)
 
 	symbols, err := uc.ListActiveSymbols(ctx)
 
