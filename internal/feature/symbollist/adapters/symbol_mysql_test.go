@@ -11,21 +11,21 @@ import (
 	"gorm.io/gorm"
 )
 
-// setupTestDB prepares an in-memory SQLite database for testing.
+// setupTestDB はテスト用のインメモリSQLiteデータベースを準備します。
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err, "failed to initialize test database")
 
-	// Create Symbol table
+	// Symbolテーブルを作成
 	err = db.AutoMigrate(&entity.Symbol{})
 	require.NoError(t, err, "failed to migrate table")
 
 	return db
 }
 
-// seedSymbol creates a test symbol in the database for testing.
+// seedSymbol はテスト用の銘柄データをデータベースに作成します。
 func seedSymbol(t *testing.T, db *gorm.DB, code, name, market string, isActive bool, sortKey int) *entity.Symbol {
 	t.Helper()
 
@@ -42,14 +42,15 @@ func seedSymbol(t *testing.T, db *gorm.DB, code, name, market string, isActive b
 	return symbol
 }
 
-// updateSymbolActive updates the is_active field of a symbol.
-// This is needed because SQLite handles boolean differently during INSERT.
+// updateSymbolActive は銘柄のis_activeフィールドを更新します。
+// SQLiteはINSERT時にbooleanの扱いが異なるため、この関数が必要です。
 func updateSymbolActive(t *testing.T, db *gorm.DB, symbol *entity.Symbol, isActive bool) {
 	t.Helper()
 	err := db.Model(symbol).Update("is_active", isActive).Error
 	require.NoError(t, err, "failed to update symbol active status")
 }
 
+// TestNewSymbolRepository はNewSymbolRepositoryコンストラクタが正しくインスタンスを生成することを検証します。
 func TestNewSymbolRepository(t *testing.T) {
 	t.Parallel()
 
@@ -60,6 +61,7 @@ func TestNewSymbolRepository(t *testing.T) {
 	assert.NotNil(t, repo.db, "database connection should not be nil")
 }
 
+// TestSymbolMySQL_ListActive はListActiveメソッドの各種シナリオをテーブル駆動テストで検証します。
 func TestSymbolMySQL_ListActive(t *testing.T) {
 	t.Parallel()
 
@@ -144,7 +146,7 @@ func TestSymbolMySQL_ListActive(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Len(t, symbols, tt.expectedCount)
 
-				// Verify order and codes
+				// 順序とコードを検証
 				for i, expectedCode := range tt.expectedCodes {
 					assert.Equal(t, expectedCode, symbols[i].Code)
 				}
@@ -153,6 +155,7 @@ func TestSymbolMySQL_ListActive(t *testing.T) {
 	}
 }
 
+// TestSymbolMySQL_ListActiveCodes はListActiveCodesメソッドの各種シナリオをテーブル駆動テストで検証します。
 func TestSymbolMySQL_ListActiveCodes(t *testing.T) {
 	t.Parallel()
 
@@ -231,13 +234,14 @@ func TestSymbolMySQL_ListActiveCodes(t *testing.T) {
 	}
 }
 
+// TestSymbolMySQL_ListActive_FieldValues はListActiveが返す銘柄の全フィールド値が正しいことを検証します。
 func TestSymbolMySQL_ListActive_FieldValues(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
 	repo := NewSymbolRepository(db)
 
-	// Seed a symbol with all fields
+	// 全フィールドを持つ銘柄をシード
 	expected := seedSymbol(t, db, "7203.T", "Toyota Motor Corporation", "Tokyo Stock Exchange", true, 42)
 
 	symbols, err := repo.ListActive(context.Background())
@@ -255,6 +259,7 @@ func TestSymbolMySQL_ListActive_FieldValues(t *testing.T) {
 	assert.False(t, symbol.UpdatedAt.IsZero(), "UpdatedAt should be set")
 }
 
+// TestSymbolMySQL_ContextCancellation はコンテキストがキャンセルされた場合の動作を検証します。
 func TestSymbolMySQL_ContextCancellation(t *testing.T) {
 	t.Parallel()
 
@@ -266,11 +271,11 @@ func TestSymbolMySQL_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel context immediately
 
-	// Note: SQLite may not respect context cancellation, but the test ensures
-	// the context is passed through correctly
+	// 注意: SQLiteはコンテキストキャンセルを尊重しない場合がありますが、
+	// このテストはコンテキストが正しく伝播されることを確認します
 	_, err := repo.ListActive(ctx)
-	// SQLite in-memory doesn't always error on cancelled context
-	// This test primarily verifies the context is passed through
+	// インメモリSQLiteはキャンセルされたコンテキストで常にエラーを返すとは限りません
+	// このテストは主にコンテキストが正しく渡されることを検証します
 	if err != nil {
 		assert.ErrorIs(t, err, context.Canceled)
 	}
