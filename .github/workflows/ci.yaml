@@ -2,85 +2,102 @@
 name: CI
 
 on:
-    pull_request:
-        branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-    # ドキュメントのみの変更かどうかを判定する
-    docs-check:
-        name: Check changes
-        runs-on: ubuntu-latest
-        outputs:
-            code_changed: ${{ steps.docs_check.outputs.code_changed }}
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 2
+  # ドキュメントのみの変更かどうかを判定する（PR全体の差分で判定）
+  docs-check:
+    name: Check changes
+    runs-on: ubuntu-latest
+    outputs:
+      code_changed: ${{ steps.docs_check.outputs.code_changed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-            - name: Check if only docs changed
-              id: docs_check
-              run: |
-                  if git diff --name-only HEAD~1...HEAD | grep -qvE '\.(md|txt)$|^docs/|^LICENSE$|^\.github/PULL_REQUEST_TEMPLATE\.md$'; then
-                    echo "code_changed=true" >> $GITHUB_OUTPUT
-                  else
-                    echo "code_changed=false" >> $GITHUB_OUTPUT
-                  fi
+      - name: Check if only docs changed (PR diff)
+        id: docs_check
+        shell: bash
+        run: |
+          set -euo pipefail
 
-    # 静的解析（golangci-lint）
-    lint:
-        name: Lint
-        needs: docs-check
-        if: needs.docs-check.outputs.code_changed == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+          BASE_REF="${{ github.base_ref }}"
+          HEAD_REF="${{ github.head_ref }}"
 
-            - name: Setup Go
-              uses: actions/setup-go@v5
-              with:
-                  go-version: "1.24.x"
+          git fetch --no-tags --prune origin \
+            "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}" \
+            "+refs/heads/${HEAD_REF}:refs/remotes/origin/${HEAD_REF}"
 
-            - name: Run golangci-lint
-              uses: golangci/golangci-lint-action@v8
-              with:
-                  version: v2.6.2
-                  args: --timeout=5m
+          echo "Base: origin/${BASE_REF}"
+          echo "Head: origin/${HEAD_REF}"
 
-    # ビルド確認とテスト実行
-    build-test:
-        name: Build & Test
-        needs: docs-check
-        if: needs.docs-check.outputs.code_changed == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+          CHANGED_FILES="$(git diff --name-only "origin/${BASE_REF}...origin/${HEAD_REF}")"
+          echo "Changed files:"
+          echo "${CHANGED_FILES}"
 
-            - name: Setup Go
-              uses: actions/setup-go@v5
-              with:
-                  go-version: "1.24.x"
+          if echo "${CHANGED_FILES}" | grep -qvE '\.(md|txt)$|^docs/|^LICENSE$|^\.github/PULL_REQUEST_TEMPLATE\.md$'; then
+            echo "code_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code_changed=false" >> "$GITHUB_OUTPUT"
+          fi
 
-            - name: Run build
-              run: go build ./...
+  # 静的解析（golangci-lint）
+  lint:
+    name: Lint
+    needs: docs-check
+    if: needs.docs-check.outputs.code_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Run tests
-              run: go test ./... -v -race -cover
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
 
-    # 全CIジョブの結果を集約するゲートジョブ
-    # GitHub Branch Protectionではこのジョブだけをrequiredに設定する
-    ci-gate:
-        name: CI Gate
-        needs: [lint, build-test]
-        if: always()
-        runs-on: ubuntu-latest
-        steps:
-            - name: Check CI results
-              run: |
-                  if [[ "${{ needs.lint.result }}" == "failure" || "${{ needs.build-test.result }}" == "failure" ]]; then
-                    echo "CI failed"
-                    exit 1
-                  fi
-                  echo "CI passed"
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.6.2
+          args: --timeout=5m
+
+  # ビルド確認とテスト実行
+  build-test:
+    name: Build & Test
+    needs: docs-check
+    if: needs.docs-check.outputs.code_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+
+      - name: Run build
+        run: go build ./...
+
+      - name: Run tests
+        run: go test ./... -v -race -cover
+
+  # 全CIジョブの結果を集約するゲートジョブ
+  # GitHub Branch Protectionではこのジョブだけをrequiredに設定する
+  ci-gate:
+    name: CI Gate
+    needs: [lint, build-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI results
+        run: |
+          if [[ "${{ needs.lint.result }}" == "failure" || "${{ needs.build-test.result }}" == "failure" ]]; then
+            echo "CI failed"
+            exit 1
+          fi
+          echo "CI passed"
