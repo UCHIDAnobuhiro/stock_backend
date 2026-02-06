@@ -299,8 +299,9 @@ candles/
     ├── handler/
     │   ├── candle_handler.go          # HTTPハンドラー
     │   └── candle_handler_test.go     # ハンドラーテスト
-    └── http/dto/
-        └── candle_response.go         # レスポンスDTO
+    └── http/
+        └── dto/
+            └── candle_response.go     # レスポンスDTO
 ```
 
 ## テスト
