@@ -21,11 +21,11 @@ jobs:
       - name: Check if only docs changed (PR diff)
         id: docs_check
         shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           set -euo pipefail
-
-          BASE_REF="${{ github.base_ref }}"
-          HEAD_REF="${{ github.head_ref }}"
 
           git fetch --no-tags --prune origin \
             "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}" \
@@ -37,6 +37,11 @@ jobs:
           CHANGED_FILES="$(git diff --name-only "origin/${BASE_REF}...origin/${HEAD_REF}")"
           echo "Changed files:"
           echo "${CHANGED_FILES}"
+
+          if [ -z "${CHANGED_FILES}" ]; then
+            echo "code_changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           if echo "${CHANGED_FILES}" | grep -qvE '\.(md|txt)$|^docs/|^LICENSE$|^\.github/PULL_REQUEST_TEMPLATE\.md$'; then
             echo "code_changed=true" >> "$GITHUB_OUTPUT"
@@ -96,8 +101,13 @@ jobs:
     steps:
       - name: Check CI results
         run: |
-          if [[ "${{ needs.lint.result }}" == "failure" || "${{ needs.build-test.result }}" == "failure" ]]; then
+          LINT="${{ needs.lint.result }}"
+          BUILD_TEST="${{ needs.build-test.result }}"
+          echo "lint=${LINT} build-test=${BUILD_TEST}"
+          if [[ "${LINT}" == "success" || "${LINT}" == "skipped" ]] && \
+             [[ "${BUILD_TEST}" == "success" || "${BUILD_TEST}" == "skipped" ]]; then
+            echo "CI passed"
+          else
             echo "CI failed"
             exit 1
           fi
-          echo "CI passed"
