@@ -1,15 +1,15 @@
-// Package handler provides HTTP handlers for platform-level endpoints.
+// Package handler はプラットフォームレベルのエンドポイント用HTTPハンドラーを提供します。
 package handler
 
 import "github.com/gin-gonic/gin"
 
-// Health handles the /healthz endpoint for service health checks.
-// It responds appropriately based on the HTTP method and prevents caching.
+// Health はサービスヘルスチェック用の /healthz エンドポイントを処理します。
+// HTTPメソッドに応じて適切にレスポンスし、キャッシュを防止します。
 func Health(c *gin.Context) {
-	// Explicitly prevent caching
+	// 明示的にキャッシュを防止
 	c.Header("Cache-Control", "no-store")
 
-	// Return 200 or 204 for all GET/HEAD/OPTIONS requests
+	// すべてのGET/HEAD/OPTIONSリクエストに対して200または204を返す
 	switch c.Request.Method {
 	case "HEAD":
 		c.Status(200)
