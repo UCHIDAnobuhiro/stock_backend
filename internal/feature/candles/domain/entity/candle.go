@@ -1,17 +1,16 @@
-// Package entity defines the domain models for the candles feature.
+// Package entity はcandlesフィーチャーのドメインモデルを定義します。
 package entity
 
 import "time"
 
-// Candle represents OHLCV (Open, High, Low, Close, Volume) candlestick data
-// for a stock symbol at a specific time interval.
+// Candle は特定の銘柄・時間間隔におけるOHLCV（始値、高値、安値、終値、出来高）ローソク足データを表します。
 type Candle struct {
-	Symbol   string    // Stock ticker symbol (e.g., "AAPL", "7203.T")
-	Interval string    // Time interval (e.g., "1day", "1week", "1month")
-	Time     time.Time // Timestamp for the start of this candle period
-	Open     float64   // Opening price
-	High     float64   // Highest price during this period
-	Low      float64   // Lowest price during this period
-	Close    float64   // Closing price
-	Volume   int64     // Trading volume
+	Symbol   string    // 銘柄コード（例: "AAPL", "7203.T"）
+	Interval string    // 時間間隔（例: "1day", "1week", "1month"）
+	Time     time.Time // このローソク足期間の開始タイムスタンプ
+	Open     float64   // 始値
+	High     float64   // 期間中の高値
+	Low      float64   // 期間中の安値
+	Close    float64   // 終値
+	Volume   int64     // 出来高
 }
