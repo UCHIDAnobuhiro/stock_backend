@@ -1,12 +1,12 @@
-// Package usecase implements the business logic for the auth feature.
+// Package usecase はauthフィーチャーのビジネスロジックを実装します。
 package usecase
 
 import "errors"
 
 var (
-	// ErrUserNotFound is returned when a user cannot be found by email or ID.
+	// ErrUserNotFound はメールアドレスまたはIDでユーザーが見つからない場合に返されます。
 	ErrUserNotFound = errors.New("user not found")
 
-	// ErrEmailAlreadyExists is returned when attempting to create a user with an email that already exists.
+	// ErrEmailAlreadyExists は既に存在するメールアドレスでユーザーを作成しようとした場合に返されます。
 	ErrEmailAlreadyExists = errors.New("email already exists")
 )

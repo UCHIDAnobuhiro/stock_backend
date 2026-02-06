@@ -1,4 +1,4 @@
-// Package di provides dependency injection factories for creating application components.
+// Package di はアプリケーションコンポーネントの依存性注入ファクトリを提供します。
 package di
 
 import (
@@ -6,7 +6,7 @@ import (
 	infrahttp "stock_backend/internal/platform/http"
 )
 
-// NewMarket creates a fully configured TwelveDataMarket with HTTP client.
+// NewMarket はHTTPクライアント付きの完全に設定されたTwelveDataMarketを生成します。
 func NewMarket() *twelvedata.TwelveDataMarket {
 	cfg := twelvedata.LoadConfig()
 	httpClient := infrahttp.NewHTTPClient(cfg.Timeout)

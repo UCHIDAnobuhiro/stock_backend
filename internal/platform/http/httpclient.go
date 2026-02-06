@@ -1,3 +1,4 @@
+// Package http は外部API呼び出し用のHTTPクライアント設定を提供します。
 package http
 
 import (
@@ -6,20 +7,20 @@ import (
 	"time"
 )
 
-// NewHTTPClient creates an HTTP client configured for external API calls.
+// NewHTTPClient は外部API呼び出し用に設定されたHTTPクライアントを作成します。
 //
-// Configuration:
-//   - Proxy: Uses environment variables (HTTP_PROXY, etc.) if set
-//   - Dialer.Timeout: TCP connection timeout (shorter than default)
-//   - Dialer.KeepAlive: Duration to keep reusable TCP connections alive
-//   - MaxIdleConns: Maximum idle connections (100 to prevent exhaustion under heavy load)
-//   - IdleConnTimeout: Duration to keep idle connections
-//   - TLSHandshakeTimeout: Maximum time for HTTPS handshake
-//   - Client.Timeout: Overall request timeout (passed from caller)
+// 設定:
+//   - Proxy: 環境変数（HTTP_PROXYなど）が設定されている場合に使用
+//   - Dialer.Timeout: TCP接続タイムアウト（デフォルトより短い）
+//   - Dialer.KeepAlive: 再利用可能なTCP接続の維持期間
+//   - MaxIdleConns: 最大アイドル接続数（高負荷時の枯渇防止のため100）
+//   - IdleConnTimeout: アイドル接続の維持期間
+//   - TLSHandshakeTimeout: HTTPSハンドシェイクの最大時間
+//   - Client.Timeout: リクエスト全体のタイムアウト（呼び出し元から渡される）
 //
-// Notes:
-//   - http.DefaultClient has no timeout, so always use a custom client
-//   - Transport is explicitly configured for connection stability and resource management
+// 注意:
+//   - http.DefaultClientにはタイムアウトがないため、常にカスタムクライアントを使用すること
+//   - Transportは接続の安定性とリソース管理のために明示的に設定
 func NewHTTPClient(timeout time.Duration) *http.Client {
 	t := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,

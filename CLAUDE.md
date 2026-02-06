@@ -1,182 +1,193 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+このファイルは、Claude Code（claude.ai/code）がこのリポジトリのコードを扱う際のガイダンスを提供します。
 
-## Development Commands
+## 開発コマンド
 
-### Local Development
+### ローカル開発
 ```bash
-# Start API server (with hot reload via Air)
+# APIサーバー起動（Airによるホットリロード付き）
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock up backend-dev
 
-# Run batch data ingestion (fetches stock data from external API)
+# バッチデータ取り込み実行（外部APIから株価データを取得）
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock run --rm --no-deps ingest
 
-# View logs
+# ログ確認
 docker logs -f stock-backend-dev
 ```
 
-### Testing & Linting
+### テスト・リント
 ```bash
-# Run all tests with race detection and coverage
+# 全テスト実行（レースコンディション検出・カバレッジ付き）
 go test ./... -v -race -cover
 
-# Run tests for a specific package
+# 特定パッケージのテスト実行
 go test ./internal/feature/candles/usecase/... -v
 
-# Run a specific test function
+# 特定テスト関数の実行
 go test ./internal/feature/auth/usecase/... -v -run TestAuthUsecase_Login
 
-# Run linter (uses golangci-lint with depguard rules)
+# リンター実行（golangci-lint、depguardルール使用）
 golangci-lint run --timeout=5m
 
-# Build all packages
+# 全パッケージのビルド
 go build ./...
 ```
 
-### Environment Setup
-- Copy `example.env.docker` to `.env.docker` and configure:
-  - `TWELVE_DATA_API_KEY`: Get from https://twelvedata.com/ (free tier: 8 req/min)
-  - `JWT_SECRET`: Set a strong secret for production
-  - DB and Redis configurations for local development
+### 環境セットアップ
+- `example.env.docker` を `.env.docker` にコピーして設定：
+  - `TWELVE_DATA_API_KEY`: https://twelvedata.com/ から取得（無料枠: 8リクエスト/分）
+  - `JWT_SECRET`: 本番環境では強力なシークレットを設定
+  - DB・Redisの設定はローカル開発用
 
-## Architecture Overview
+## アーキテクチャ概要
 
-This is a **Go/Gin REST API** using **feature-based Clean Architecture** with vertical slices.
+**Go/Gin REST API** で、**フィーチャーベースのクリーンアーキテクチャ**（垂直スライス）を採用しています。
 
-### Directory Structure
+### ディレクトリ構成
 
 ```
 internal/
 ├── app/
-│   ├── di/           # Dependency injection factories
-│   └── router/       # Main HTTP router configuration
-├── feature/          # Feature modules (vertical slices)
+│   ├── di/           # 依存性注入ファクトリ
+│   └── router/       # HTTPルーター設定
+├── feature/          # フィーチャーモジュール（垂直スライス）
 │   ├── auth/
 │   ├── candles/
 │   └── symbollist/
-├── platform/         # Infrastructure layer (renamed from "infrastructure")
-│   ├── cache/        # Redis caching decorators
-│   ├── db/           # Database initialization
-│   ├── externalapi/  # External API clients (TwelveData)
-│   ├── http/         # HTTP client configuration
-│   ├── jwt/          # JWT generation and middleware
-│   ├── mysql/        # (if present)
-│   └── redis/        # Redis client setup
-└── shared/           # Shared utilities (e.g., rate limiter)
+├── platform/         # インフラストラクチャ層（旧 "infrastructure"）
+│   ├── cache/        # Redisキャッシュデコレータ
+│   ├── db/           # データベース初期化
+│   ├── externalapi/  # 外部APIクライアント（TwelveData）
+│   ├── http/         # HTTPクライアント設定
+│   ├── jwt/          # JWT生成・ミドルウェア
+│   └── redis/        # Redisクライアントセットアップ
+└── shared/           # 共有ユーティリティ（例: レートリミッター）
 ```
 
-### Feature Module Structure
+### フィーチャーモジュール構成
 
-Each feature follows a consistent layered structure:
+各フィーチャーは一貫したレイヤー構造に従います：
 
 ```
 feature/<name>/
+├── README.md         # フィーチャーのドキュメント
 ├── domain/
-│   └── entity/       # Domain models (e.g., Candle, Symbol, User)
-├── usecase/          # Application logic (defines repository interfaces, orchestrates business logic)
-├── adapters/         # Repository implementations (MySQL, etc.)
+│   └── entity/       # ドメインモデル（例: Candle, Symbol, User）
+├── usecase/          # アプリケーションロジック（リポジトリインターフェース定義、ビジネスロジック統合）
+├── adapters/         # リポジトリ実装（MySQL等）
 └── transport/
-    ├── handler/      # HTTP handlers (Gin)
-    └── http/dto/     # Request/response DTOs
+    ├── handler/      # HTTPハンドラー（Gin）
+    └── http/dto/     # リクエスト/レスポンスDTO
 ```
 
-**Note**: Following Go convention, **repository interfaces are defined in the usecase layer** (by the consumer), not in a separate domain/repository directory. This ensures interfaces are defined where they are used.
+**注意**: Goの慣例に従い、**リポジトリインターフェースはusecaseレイヤー**（利用者側）で定義します。別途domain/repositoryディレクトリには配置しません。これにより、インターフェースは使用される場所で定義されます。
 
-### Dependency Rules (Enforced by golangci-lint depguard)
+### 依存関係ルール（golangci-lint depguardで強制）
 
-**domain/** and **usecase/** layers MUST NOT import:
-- `adapters/` (repository implementations)
-- `transport/` (HTTP handlers, DTOs)
+**domain/** と **usecase/** レイヤーは以下をインポートしてはなりません：
+- `adapters/`（リポジトリ実装）
+- `transport/`（HTTPハンドラー、DTO）
 
-This ensures domain logic remains independent of infrastructure details.
+これにより、ドメインロジックがインフラストラクチャの詳細から独立した状態を保ちます。
 
-### Key Architectural Patterns
+### 主要なアーキテクチャパターン
 
-1. **Repository Pattern**: All data access goes through repository interfaces defined in the `usecase/` layer (following Go's "interfaces are defined by the consumer" convention)
-2. **Decorator Pattern for Caching**: `platform/cache/CachingCandleRepository` wraps the base repository
-   - Implements the same `CandleRepository` interface
-   - Transparently adds Redis caching without changing usecase code
-   - Gracefully degrades if Redis is unavailable (logs warning and runs without cache)
-3. **Dependency Injection**: Manual DI in `cmd/server/main.go` and `internal/app/di/`
-   - Repositories → Usecases → Handlers wired in main.go
-   - `internal/app/di/` contains factory functions for complex dependencies
-4. **Two Entry Points**:
-   - `cmd/server/main.go`: REST API server (port 8080)
-   - `cmd/ingest/main.go`: Batch job to fetch stock data from TwelveData API
+1. **リポジトリパターン**: すべてのデータアクセスは `usecase/` レイヤーで定義されたリポジトリインターフェースを経由します（Goの「インターフェースは利用者が定義する」慣例に従う）
+2. **キャッシュ用デコレータパターン**: `platform/cache/CachingCandleRepository` がベースリポジトリをラップ
+   - 同じ `CandleRepository` インターフェースを実装
+   - usecaseコードを変更せずにRedisキャッシュを透過的に追加
+   - Redisが利用できない場合はグレースフルデグレード（警告ログを出力し、キャッシュなしで動作）
+3. **依存性注入**: `cmd/server/main.go` で手動DI
+   - Repositories → Usecases → Handlers のワイヤリングは主に main.go で直接実施
+   - `internal/app/di/` には一部のファクトリ関数を配置（例: MarketRepositoryの生成）
+4. **2つのエントリーポイント**:
+   - `cmd/server/main.go`: REST APIサーバー（ポート8080）
+   - `cmd/ingest/main.go`: TwelveData APIから株価データを取得するバッチジョブ
 
-### Data Flow Examples
+### データフロー例
 
-#### Stock Price Request Flow
-1. Client requests `/candles/:code?interval=1day&outputsize=200` with JWT auth
-2. Router (`app/router`) validates JWT via `jwtmw.AuthRequired()` middleware
-3. Routes to `candles/transport/handler/CandlesHandler.GetCandlesHandler`
-4. Handler parses params (defaults: interval=1day, outputsize=200) and calls usecase
-5. Usecase calls `CandleRepository.Find(ctx, symbol, interval, outputsize)`
-6. `CachingCandleRepository` checks Redis with key format: `candles:{symbol}:{interval}:{outputsize}`
-   - **Cache HIT**: Returns deserialized JSON from Redis
-   - **Cache MISS**: Calls `candlesadapters.CandleRepository` (MySQL) → caches result with TTL → returns data
-7. Handler transforms domain entities to DTOs and returns JSON
+#### 株価リクエストフロー
+1. クライアントがJWT認証付きで `/v1/candles/:code?interval=1day&outputsize=200` をリクエスト
+2. ルーター（`app/router`）が `jwtmw.AuthRequired()` ミドルウェアでJWTを検証
+3. `candles/transport/handler/CandlesHandler.GetCandlesHandler` にルーティング
+4. ハンドラーがパラメータをパース（デフォルト: interval=1day, outputsize=200）し、usecaseを呼び出し
+5. Usecaseが `CandleRepository.Find(ctx, symbol, interval, outputsize)` を呼び出し
+6. `CachingCandleRepository` がキー形式 `candles:{symbol}:{interval}:{outputsize}` でRedisを確認
+   - **キャッシュヒット**: RedisからデシリアライズしたJSONを返却
+   - **キャッシュミス**: `candlesadapters.CandleRepository`（MySQL）を呼び出し → 結果をTTL付きでキャッシュ → データを返却
+7. ハンドラーがドメインエンティティをDTOに変換してJSONを返却
 
-#### Batch Ingestion Flow
-1. `cmd/ingest/main.go` starts with 5-minute context timeout
-2. Loads active symbols from `symbollistadapters.SymbolRepository`
-3. For each symbol × each interval (1day, 1week, 1month):
-   - `RateLimiter.WaitIfNeeded()` enforces 8 req/min limit
-   - Calls TwelveData API via `MarketRepository.GetTimeSeries()`
-   - Upserts candles to MySQL via `CandleRepository.UpsertBatch()`
-   - Cache invalidation: Deletes Redis keys matching `candles:{symbol}:{interval}:*`
-4. Errors are logged but don't stop processing (continues to next symbol/interval)
+#### バッチ取り込みフロー
+1. `cmd/ingest/main.go` が5分のコンテキストタイムアウトで開始
+2. `symbollistadapters.SymbolRepository` からアクティブなシンボルを読み込み
+3. 各シンボル × 各インターバル（1day, 1week, 1month）について：
+   - `RateLimiter.WaitIfNeeded()` が8リクエスト/分の制限を適用
+   - `MarketRepository.GetTimeSeries()` 経由でTwelveData APIを呼び出し
+   - `CandleRepository.UpsertBatch()` 経由でMySQLにローソク足データをUpsert
+   - キャッシュ無効化: `candles:{symbol}:{interval}:*` に一致するRedisキーを削除
+4. エラーはログに記録するが処理は停止しない（次のシンボル/インターバルに継続）
 
-### External Dependencies & Rate Limiting
+### 外部依存・レートリミット
 
-- **TwelveData API**: Stock market data provider (rate limited: 8 req/min on free tier)
-  - Rate limiting is handled by `shared/ratelimiter` package
-  - Ingest batch fetches 200 data points per request for 3 intervals (1day, 1week, 1month)
-  - Rate limiter automatically sleeps when limit is reached
-- **MySQL/Cloud SQL**: Primary data store (GORM ORM)
-- **Redis**: Caching layer with dynamic TTL
-  - Cache TTL is set to next 8 AM Japan time (market open) using `cache.TimeUntilNext8AM()`
-  - Cache keys include symbol, interval, and outputsize
-  - Cache invalidation happens on `UpsertBatch` operations
+- **TwelveData API**: 株式市場データプロバイダー（無料枠でレート制限: 8リクエスト/分）
+  - レートリミットは `shared/ratelimiter` パッケージで処理
+  - 取り込みバッチは3インターバル（1day, 1week, 1month）それぞれ200データポイントを取得
+  - レートリミッターは制限到達時に自動的にスリープ
+- **MySQL/Cloud SQL**: プライマリデータストア（GORM ORM）
+- **Redis**: 動的TTLによるキャッシュ層
+  - キャッシュTTLは `cache.TimeUntilNext8AM()` を使用して次の日本時間午前8時（市場開場）に設定
+  - キャッシュキーにはシンボル、インターバル、outputsizeを含む
+  - キャッシュ無効化は `UpsertBatch` 操作時に実行
 
-### Authentication
+### 認証
 
-- JWT-based authentication using `Authorization: Bearer <token>` header
-- Middleware: `platform/jwt/AuthRequired()`
-- Public endpoints: `/healthz`, `/signup`, `/login`
-- Protected endpoints: `/candles/:code`, `/symbols`
+- `Authorization: Bearer <token>` ヘッダーによるJWTベース認証
+- ミドルウェア: `platform/jwt/AuthRequired()`
+- 公開エンドポイント: `/healthz`, `/v1/signup`, `/v1/login`
+- 保護エンドポイント: `/v1/candles/:code`, `/v1/symbols`
 
-### Testing Notes
+### テストに関する注意事項
 
-- Test files follow `*_test.go` naming convention
-- Tests exist at handler and usecase layers
-- Use table-driven tests and mocks for repository interfaces
+- テストファイルは `*_test.go` の命名規則に従う
+- ハンドラー層とusecase層にテストが存在
+- テーブル駆動テストとリポジトリインターフェースのモックを使用
 
-## Adding New Features
+## 新機能の追加
 
-When adding a new feature, follow the established pattern:
+新機能を追加する際は、確立されたパターンに従ってください：
 
-1. **Create feature directory** under `internal/feature/<feature-name>/`
-2. **Define domain layer first**:
-   - `domain/entity/` - Create domain models (pure Go structs)
-3. **Implement usecase layer**: `usecase/`
-   - Define repository interfaces here (following Go convention: "interfaces are defined by the consumer")
-   - Implement business logic that orchestrates repositories
-4. **Implement adapters**: `adapters/` - Repository implementations (MySQL, etc.) that implement the interfaces defined in usecase
-5. **Add transport layer**:
-   - `transport/handler/` - HTTP handlers (may also define usecase interfaces here if needed)
-   - `transport/http/dto/` - Request/response DTOs
-6. **Wire dependencies** in `cmd/server/main.go` or `cmd/ingest/main.go`
-7. **Register routes** in `internal/app/router/router.go`
+1. **フィーチャーディレクトリを作成**: `internal/feature/<feature-name>/` 配下
+2. **ドメイン層を最初に定義**:
+   - `domain/entity/` - ドメインモデルを作成（純粋なGo構造体）
+3. **usecase層を実装**: `usecase/`
+   - ここでリポジトリインターフェースを定義（Goの慣例:「インターフェースは利用者が定義する」）
+   - リポジトリを統合するビジネスロジックを実装
+4. **adaptersを実装**: `adapters/` - usecaseで定義されたインターフェースを実装するリポジトリ実装（MySQL等）
+5. **transport層を追加**:
+   - `transport/handler/` - HTTPハンドラー（必要に応じてusecaseインターフェースもここで定義可）
+   - `transport/http/dto/` - リクエスト/レスポンスDTO
+6. **依存関係をワイヤリング**: `cmd/server/main.go` または `cmd/ingest/main.go` にて
+7. **ルートを登録**: `internal/app/router/router.go` にて
+8. **depguardルールを追加**: `.golangci.yml` に新フィーチャーの `adapters` と `transport` パッケージのdenyルールを追加
 
-**Important**: Respect the dependency rules - domain/usecase layers cannot import adapters or transport layers. This is enforced by golangci-lint depguard.
+**重要**: 依存関係ルールを遵守すること - domain/usecaseレイヤーはadaptersやtransportレイヤーをインポートできません。これはgolangci-lint depguardで強制されています。depguardはワイルドカード非対応のため、新フィーチャー追加時に `.golangci.yml` へ明示的にパッケージパスを追加する必要があります。
 
-## Creating Pull Requests
+## コミットメッセージ・PR作成の言語ルール
 
-When creating pull requests, write clear and concise PR descriptions that include:
+コミットメッセージおよびプルリクエストのタイトル・説明はすべて**日本語**で記述してください。
 
-1. **Summary**: Brief explanation of what the PR does and why
-2. **Changes**: Bulleted list of main changes
-3. **Testing**: How the changes were tested (unit tests, integration tests, manual testing, etc.)
-4. **Review Points** (optional): Specific areas or aspects that reviewers should focus on
+### コミットメッセージ
+
+- 日本語で簡潔に記述
+- プレフィックスは英語の慣例に従う（例: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`）
+- 例: `feat: ユーザー認証機能を追加`, `fix: キャッシュTTLの計算を修正`
+
+### プルリクエストの作成
+
+プルリクエストを作成する際は、日本語で明確かつ簡潔なPR説明を記述してください：
+
+1. **概要**: PRの内容と理由の簡潔な説明
+2. **変更内容**: 主な変更点の箇条書き
+3. **テスト**: 変更のテスト方法（ユニットテスト、統合テスト、手動テスト等）
+4. **レビューポイント**（任意）: レビュアーが注目すべき特定の領域や観点

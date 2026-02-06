@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// mockCandlesUsecase is a mock implementation of the candlesUsecase interface.
+// mockCandlesUsecase はcandlesUsecaseインターフェースのモック実装です。
 type mockCandlesUsecase struct {
 	GetCandlesFunc func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 }
@@ -24,10 +24,11 @@ func (m *mockCandlesUsecase) GetCandles(ctx context.Context, symbol, interval st
 	return m.GetCandlesFunc(ctx, symbol, interval, outputsize)
 }
 
+// TestCandlesHandler_GetCandlesHandler はGetCandlesHandlerのHTTPリクエスト/レスポンス処理をテストします。
 func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	// Fixed time for testing
+	// テスト用の固定時刻
 	testTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	tests := []struct {
@@ -35,7 +36,7 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 		url            string
 		mockGetCandles func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 		expectedStatus int
-		expectedBody   string // Compare as JSON string
+		expectedBody   string // JSON文字列として比較
 	}{
 		{
 			name: "success: all parameters specified",
@@ -56,8 +57,8 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 			url:  "/candles/7203.T",
 			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 				assert.Equal(t, "7203.T", symbol)
-				assert.Equal(t, "1day", interval) // default value
-				assert.Equal(t, 200, outputsize)  // default value
+				assert.Equal(t, "1day", interval) // デフォルト値
+				assert.Equal(t, 200, outputsize)  // デフォルト値
 				return []entity.Candle{}, nil
 			},
 			expectedStatus: http.StatusOK,
@@ -76,8 +77,8 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 			name: "edge case: invalid outputsize string uses default value",
 			url:  "/candles/7203.T?outputsize=invalid",
 			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
-				// Handler passes 0 (result of strconv.Atoi("invalid")) to usecase.
-				// Conversion to default value is handled by the usecase layer.
+				// ハンドラーは0（strconv.Atoi("invalid")の結果）をusecaseに渡す。
+				// デフォルト値への変換はusecaseレイヤーで処理される。
 				assert.Equal(t, 0, outputsize)
 				return []entity.Candle{}, nil
 			},
@@ -88,7 +89,7 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Instantiate mock usecase
+			// モックusecaseのインスタンスを生成
 			mockUC := &mockCandlesUsecase{
 				GetCandlesFunc: tt.mockGetCandles,
 			}

@@ -1,3 +1,4 @@
+// Package db はデータベース接続の初期化、リトライ、マイグレーションを提供します。
 package db
 
 import (
@@ -14,17 +15,17 @@ import (
 	"gorm.io/gorm"
 )
 
-// Config holds database connection configuration.
+// Config はデータベース接続設定を保持します。
 type Config struct {
 	User         string
 	Password     string
 	Name         string
 	Host         string
 	Port         string
-	InstanceName string // Cloud SQL instance connection name (optional)
+	InstanceName string // Cloud SQLインスタンス接続名（オプション）
 }
 
-// LoadConfigFromEnv loads database configuration from environment variables.
+// LoadConfigFromEnv は環境変数からデータベース設定を読み込みます。
 func LoadConfigFromEnv() Config {
 	return Config{
 		User:         os.Getenv("DB_USER"),
@@ -36,9 +37,9 @@ func LoadConfigFromEnv() Config {
 	}
 }
 
-// BuildDSN constructs a MySQL DSN string from the configuration.
-// If InstanceName is set, it creates a Cloud SQL Unix socket connection.
-// Otherwise, it creates a TCP connection using Host and Port.
+// BuildDSN は設定からMySQL DSN文字列を構築します。
+// InstanceNameが設定されている場合はCloud SQL Unixソケット接続を作成します。
+// それ以外の場合はHostとPortを使用してTCP接続を作成します。
 func BuildDSN(cfg Config) string {
 	if cfg.InstanceName != "" {
 		return fmt.Sprintf("%s:%s@unix(/cloudsql/%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
@@ -48,17 +49,17 @@ func BuildDSN(cfg Config) string {
 		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name)
 }
 
-// Opener is a function type for opening a database connection.
+// Opener はデータベース接続を開くための関数型です。
 type Opener func(dsn string) (*gorm.DB, error)
 
-// DefaultOpener opens a MySQL database using GORM.
+// DefaultOpener はGORMを使用してMySQLデータベースを開きます。
 func DefaultOpener(dsn string) (*gorm.DB, error) {
 	return gorm.Open(gmysql.Open(dsn), &gorm.Config{})
 }
 
-// ConnectWithRetry attempts to connect to the database with retry logic.
-// It retries for the specified timeout duration with a 3-second interval.
-// Returns the database connection or an error if all retries fail.
+// ConnectWithRetry はリトライロジック付きでデータベース接続を試みます。
+// 指定されたタイムアウト期間中、3秒間隔でリトライします。
+// データベース接続を返すか、すべてのリトライが失敗した場合はエラーを返します。
 func ConnectWithRetry(dsn string, timeout time.Duration, opener Opener) (*gorm.DB, error) {
 	deadline := time.Now().Add(timeout)
 	for {
@@ -74,7 +75,7 @@ func ConnectWithRetry(dsn string, timeout time.Duration, opener Opener) (*gorm.D
 	}
 }
 
-// RunMigrations runs database migrations for all registered models.
+// RunMigrations はすべての登録済みモデルのデータベースマイグレーションを実行します。
 func RunMigrations(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&authentity.User{},
@@ -83,9 +84,9 @@ func RunMigrations(db *gorm.DB) error {
 	)
 }
 
-// OpenDB opens a database connection using environment configuration.
-// It includes retry logic and optional migrations based on RUN_MIGRATIONS env var.
-// Exits the process on failure (for production use).
+// OpenDB は環境設定を使用してデータベース接続を開きます。
+// リトライロジックと、RUN_MIGRATIONS環境変数に基づくオプションのマイグレーションを含みます。
+// 失敗時はプロセスを終了します（本番環境用）。
 func OpenDB() *gorm.DB {
 	cfg := LoadConfigFromEnv()
 	dsn := BuildDSN(cfg)

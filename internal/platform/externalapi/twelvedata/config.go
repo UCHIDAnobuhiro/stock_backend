@@ -1,4 +1,4 @@
-// Package twelvedata provides a client for the Twelve Data stock market API.
+// Package twelvedata はTwelve Data株式市場APIのクライアントを提供します。
 package twelvedata
 
 import (
@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-// Config holds configuration for the Twelve Data API client.
+// Config はTwelve Data APIクライアントの設定を保持します。
 type Config struct {
-	TwelveDataAPIKey string        // API key for authentication
-	BaseURL          string        // Base URL for the API (e.g., "https://api.twelvedata.com")
-	Timeout          time.Duration // HTTP request timeout
+	TwelveDataAPIKey string        // 認証用APIキー
+	BaseURL          string        // APIのベースURL（例: "https://api.twelvedata.com"）
+	Timeout          time.Duration // HTTPリクエストタイムアウト
 }
 
-// LoadConfig loads Twelve Data configuration from environment variables.
+// LoadConfig は環境変数からTwelve Dataの設定を読み込みます。
 func LoadConfig() Config {
 	return Config{
 		TwelveDataAPIKey: os.Getenv("TWELVE_DATA_API_KEY"),

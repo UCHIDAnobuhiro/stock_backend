@@ -1,4 +1,4 @@
-// Package handler provides HTTP handlers for the auth feature.
+// Package handler はauthフィーチャーのHTTPハンドラーを提供します。
 package handler
 
 import (
@@ -11,32 +11,32 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AuthUsecase defines use cases for authentication operations.
-// Following Go convention: interfaces are defined by the consumer (handler), not the provider (usecase).
+// AuthUsecase は認証操作のユースケースを定義します。
+// Goの慣例に従い、インターフェースはプロバイダー（usecase）ではなくコンシューマー（handler）が定義します。
 type AuthUsecase interface {
-	// Signup registers a new user with the given email and password.
+	// Signup は指定されたメールアドレスとパスワードで新規ユーザーを登録します。
 	Signup(ctx context.Context, email, password string) error
-	// Login authenticates a user and returns a JWT token on success.
+	// Login はユーザーを認証し、成功時にJWTトークンを返します。
 	Login(ctx context.Context, email, password string) (string, error)
 }
 
-// AuthHandler handles HTTP requests for authentication operations.
-// It depends on the AuthUsecase interface and handles JSON requests/responses.
+// AuthHandler は認証操作のHTTPリクエストを処理します。
+// AuthUsecaseインターフェースに依存し、JSONリクエスト/レスポンスを処理します。
 type AuthHandler struct {
 	auth AuthUsecase
 }
 
-// NewAuthHandler creates a new AuthHandler instance.
-// This is a constructor for dependency injection, injecting AuthUsecase from outside.
+// NewAuthHandler はAuthHandlerの新しいインスタンスを生成します。
+// 依存性注入用のコンストラクタで、外部からAuthUsecaseを注入します。
 func NewAuthHandler(auth AuthUsecase) *AuthHandler {
 	return &AuthHandler{auth: auth}
 }
 
-// Signup handles the user registration API endpoint.
-// - Binds the request JSON to SignupReq
-// - Returns 400 on validation errors
-// - Returns 409 on user creation failure (e.g., duplicate email)
-// - Returns 201 on success
+// Signup はユーザー登録APIエンドポイントを処理します。
+// - リクエストJSONをSignupReqにバインド
+// - バリデーションエラー時は400を返却
+// - ユーザー作成失敗時（メール重複等）は409を返却
+// - 成功時は201を返却
 func (h *AuthHandler) Signup(c *gin.Context) {
 	var req dto.SignupReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -45,7 +45,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		return
 	}
 	if err := h.auth.Signup(c.Request.Context(), req.Email, req.Password); err != nil {
-		// Don't expose the actual error to prevent user enumeration attacks
+		// ユーザー列挙攻撃を防止するため、実際のエラーを公開しない
 		slog.Warn("signup failed", "error", err, "email", req.Email, "remote_addr", c.ClientIP())
 		c.JSON(http.StatusConflict, gin.H{"error": "signup failed"})
 		return
@@ -54,11 +54,11 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "ok"})
 }
 
-// Login handles the user login API endpoint.
-// - Binds the request JSON to LoginReq
-// - Returns 400 on validation errors
-// - Returns 401 on authentication failure
-// - Returns 200 with JWT token on successful authentication
+// Login はユーザーログインAPIエンドポイントを処理します。
+// - リクエストJSONをLoginReqにバインド
+// - バリデーションエラー時は400を返却
+// - 認証失敗時は401を返却
+// - 認証成功時はJWTトークン付きで200を返却
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -68,7 +68,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 	token, err := h.auth.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
-		// Don't expose the actual error to prevent user enumeration attacks
+		// ユーザー列挙攻撃を防止するため、実際のエラーを公開しない
 		slog.Warn("login failed", "error", err, "email", req.Email, "remote_addr", c.ClientIP())
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
 		return

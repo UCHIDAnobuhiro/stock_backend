@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// TestNewTwelveDataMarket はTwelveDataMarketインスタンスが正しく生成されることを検証します。
 func TestNewTwelveDataMarket(t *testing.T) {
 	t.Parallel()
 
@@ -29,6 +30,7 @@ func TestNewTwelveDataMarket(t *testing.T) {
 	}
 }
 
+// TestTwelveDataMarket_GetTimeSeries_Success は正常なAPIレスポンスからローソク足データが正しくパースされることを検証します。
 func TestTwelveDataMarket_GetTimeSeries_Success(t *testing.T) {
 	t.Parallel()
 
@@ -99,6 +101,7 @@ func TestTwelveDataMarket_GetTimeSeries_Success(t *testing.T) {
 	}
 }
 
+// TestTwelveDataMarket_GetTimeSeries_HTTPError は各種HTTPエラーステータスコードが正しくエラーとして処理されることを検証します。
 func TestTwelveDataMarket_GetTimeSeries_HTTPError(t *testing.T) {
 	t.Parallel()
 
@@ -140,6 +143,7 @@ func TestTwelveDataMarket_GetTimeSeries_HTTPError(t *testing.T) {
 	}
 }
 
+// TestTwelveDataMarket_GetTimeSeries_APIError はAPIレベルのエラーレスポンスが正しく処理されることを検証します。
 func TestTwelveDataMarket_GetTimeSeries_APIError(t *testing.T) {
 	t.Parallel()
 
@@ -168,6 +172,7 @@ func TestTwelveDataMarket_GetTimeSeries_APIError(t *testing.T) {
 	}
 }
 
+// TestTwelveDataMarket_GetTimeSeries_InvalidJSON は不正なJSONレスポンスがエラーとして処理されることを検証します。
 func TestTwelveDataMarket_GetTimeSeries_InvalidJSON(t *testing.T) {
 	t.Parallel()
 
@@ -190,6 +195,7 @@ func TestTwelveDataMarket_GetTimeSeries_InvalidJSON(t *testing.T) {
 	}
 }
 
+// TestTwelveDataMarket_GetTimeSeries_InvalidDateTime は不正な日時形式がエラーとして処理されることを検証します。
 func TestTwelveDataMarket_GetTimeSeries_InvalidDateTime(t *testing.T) {
 	t.Parallel()
 
@@ -227,6 +233,7 @@ func TestTwelveDataMarket_GetTimeSeries_InvalidDateTime(t *testing.T) {
 	}
 }
 
+// TestTwelveDataMarket_GetTimeSeries_InvalidNumbers は不正な数値データが各フィールドごとにエラーとして処理されることを検証します。
 func TestTwelveDataMarket_GetTimeSeries_InvalidNumbers(t *testing.T) {
 	t.Parallel()
 
@@ -305,6 +312,7 @@ func TestTwelveDataMarket_GetTimeSeries_InvalidNumbers(t *testing.T) {
 	}
 }
 
+// TestTwelveDataMarket_GetTimeSeries_EmptyValues は空のvalues配列で空のスライスが返されることを検証します。
 func TestTwelveDataMarket_GetTimeSeries_EmptyValues(t *testing.T) {
 	t.Parallel()
 
@@ -333,6 +341,7 @@ func TestTwelveDataMarket_GetTimeSeries_EmptyValues(t *testing.T) {
 	}
 }
 
+// TestTwelveDataMarket_GetTimeSeries_ContextCancellation はコンテキストキャンセル時にエラーが返されることを検証します。
 func TestTwelveDataMarket_GetTimeSeries_ContextCancellation(t *testing.T) {
 	t.Parallel()
 
@@ -357,6 +366,7 @@ func TestTwelveDataMarket_GetTimeSeries_ContextCancellation(t *testing.T) {
 	}
 }
 
+// TestLoadConfig はデフォルトのタイムアウト値が正しく設定されることを検証します。
 func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 

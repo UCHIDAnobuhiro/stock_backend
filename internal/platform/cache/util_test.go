@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// TestTimeUntilNext8AM は返される期間が正の値かつ24時間以内であることを検証します。
 func TestTimeUntilNext8AM(t *testing.T) {
 	t.Parallel()
 
@@ -19,6 +20,7 @@ func TestTimeUntilNext8AM(t *testing.T) {
 	}
 }
 
+// TestTimeUntilNext8AM_ReturnsValidDuration は返される期間が次の午前8時（日本時間）までの正確な時間と一致することを検証します。
 func TestTimeUntilNext8AM_ReturnsValidDuration(t *testing.T) {
 	t.Parallel()
 
@@ -49,6 +51,7 @@ func TestTimeUntilNext8AM_ReturnsValidDuration(t *testing.T) {
 	}
 }
 
+// TestTimeUntilNext8AM_AlwaysPositive は複数回呼び出しても常に正の期間が返されることを検証します。
 func TestTimeUntilNext8AM_AlwaysPositive(t *testing.T) {
 	t.Parallel()
 

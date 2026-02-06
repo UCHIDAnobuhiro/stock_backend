@@ -10,11 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// TestMain はテスト実行前にGinをテストモードに設定します。
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
 	os.Exit(m.Run())
 }
 
+// setupRouter はヘルスチェックエンドポイントを登録したテスト用ルーターを生成します。
 func setupRouter() *gin.Engine {
 	r := gin.New()
 	r.GET("/healthz", Health)
@@ -26,6 +28,7 @@ func setupRouter() *gin.Engine {
 	return r
 }
 
+// TestHealth_GET はGETリクエストでJSON形式のステータスレスポンスとCache-Controlヘッダーが返されることを検証します。
 func TestHealth_GET(t *testing.T) {
 	t.Parallel()
 
@@ -54,6 +57,7 @@ func TestHealth_GET(t *testing.T) {
 	}
 }
 
+// TestHealth_HEAD はHEADリクエストで200ステータスとレスポンスボディなしが返されることを検証します。
 func TestHealth_HEAD(t *testing.T) {
 	t.Parallel()
 
@@ -78,6 +82,7 @@ func TestHealth_HEAD(t *testing.T) {
 	}
 }
 
+// TestHealth_OPTIONS はOPTIONSリクエストで204ステータスが返されることを検証します。
 func TestHealth_OPTIONS(t *testing.T) {
 	t.Parallel()
 
@@ -97,6 +102,7 @@ func TestHealth_OPTIONS(t *testing.T) {
 	}
 }
 
+// TestHealth_POST はPOSTリクエストでJSON形式のステータスレスポンスが返されることを検証します。
 func TestHealth_POST(t *testing.T) {
 	t.Parallel()
 
@@ -120,6 +126,7 @@ func TestHealth_POST(t *testing.T) {
 	}
 }
 
+// TestHealth_AllMethods_CacheControl はすべてのHTTPメソッドでCache-Control: no-storeヘッダーが設定されることを検証します。
 func TestHealth_AllMethods_CacheControl(t *testing.T) {
 	t.Parallel()
 
@@ -151,6 +158,7 @@ func TestHealth_AllMethods_CacheControl(t *testing.T) {
 	}
 }
 
+// TestHealth_ResponseStatus は各HTTPメソッドに対して正しいステータスコードが返されることを検証します。
 func TestHealth_ResponseStatus(t *testing.T) {
 	t.Parallel()
 

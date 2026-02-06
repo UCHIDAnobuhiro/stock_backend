@@ -1,4 +1,4 @@
-// Package usecase implements the business logic for the auth feature.
+// Package usecase はauthフィーチャーのビジネスロジックを実装します。
 package usecase
 
 import (
@@ -12,40 +12,40 @@ import (
 )
 
 const (
-	// minPasswordLength defines the minimum acceptable password length.
+	// minPasswordLength はパスワードの最低文字数を定義します。
 	minPasswordLength = 8
 )
 
-// UserRepository abstracts the persistence layer for user entities.
-// Following Go convention: interfaces are defined by the consumer (usecase), not the provider (adapters).
+// UserRepository はユーザーエンティティの永続化層を抽象化します。
+// Goの慣例に従い、インターフェースはプロバイダー（adapters）ではなくコンシューマー（usecase）が定義します。
 type UserRepository interface {
-	// Create persists a new user to the storage.
-	// It returns an error if a user with the same email already exists.
+	// Create は新しいユーザーをストレージに永続化します。
+	// 同じメールアドレスのユーザーが既に存在する場合、エラーを返します。
 	Create(ctx context.Context, user *entity.User) error
 
-	// FindByEmail retrieves a user matching the specified email address.
-	// It returns an error if the user does not exist.
+	// FindByEmail は指定されたメールアドレスに一致するユーザーを取得します。
+	// ユーザーが存在しない場合、エラーを返します。
 	FindByEmail(ctx context.Context, email string) (*entity.User, error)
 
-	// FindByID retrieves a user matching the specified ID.
-	// It returns an error if the user does not exist.
+	// FindByID は指定されたIDに一致するユーザーを取得します。
+	// ユーザーが存在しない場合、エラーを返します。
 	FindByID(ctx context.Context, id uint) (*entity.User, error)
 }
 
-// JWTGenerator defines the interface for generating JWT tokens.
-// Following Go convention: interfaces are defined by the consumer (usecase), not the provider (platform/jwt).
+// JWTGenerator はJWTトークン生成のインターフェースを定義します。
+// Goの慣例に従い、インターフェースはプロバイダー（platform/jwt）ではなくコンシューマー（usecase）が定義します。
 type JWTGenerator interface {
-	// GenerateToken creates a signed JWT token for the given user.
+	// GenerateToken は指定されたユーザーの署名済みJWTトークンを生成します。
 	GenerateToken(userID uint, email string) (string, error)
 }
 
-// authUsecase implements authentication business logic.
+// authUsecase は認証ビジネスロジックを実装します。
 type authUsecase struct {
 	users        UserRepository
 	jwtGenerator JWTGenerator
 }
 
-// NewAuthUsecase creates a new authUsecase instance.
+// NewAuthUsecase はauthUsecaseの新しいインスタンスを生成します。
 func NewAuthUsecase(users UserRepository, jwtGenerator JWTGenerator) *authUsecase {
 	return &authUsecase{
 		users:        users,
@@ -53,7 +53,7 @@ func NewAuthUsecase(users UserRepository, jwtGenerator JWTGenerator) *authUsecas
 	}
 }
 
-// validatePassword checks if the password meets security requirements.
+// validatePassword はパスワードがセキュリティ要件を満たしているかチェックします。
 func validatePassword(password string) error {
 	if len(password) < minPasswordLength {
 		return fmt.Errorf("password must be at least %d characters long", minPasswordLength)
@@ -61,9 +61,9 @@ func validatePassword(password string) error {
 	return nil
 }
 
-// Signup registers a new user with a hashed password.
+// Signup はハッシュ化されたパスワードで新規ユーザーを登録します。
 func (u *authUsecase) Signup(ctx context.Context, email, password string) error {
-	// Validate password strength
+	// パスワード強度を検証
 	if err := validatePassword(password); err != nil {
 		return err
 	}
@@ -76,30 +76,30 @@ func (u *authUsecase) Signup(ctx context.Context, email, password string) error 
 	return u.users.Create(ctx, user)
 }
 
-// Login authenticates a user and returns a JWT token on success.
-// It verifies the email and password, then generates a signed JWT token.
-// To prevent timing attacks, bcrypt comparison is performed even when user doesn't exist.
+// Login はユーザーを認証し、成功時にJWTトークンを返します。
+// メールアドレスとパスワードを検証し、署名済みJWTトークンを生成します。
+// タイミング攻撃を防止するため、ユーザーが存在しない場合でもbcrypt比較を実行します。
 func (u *authUsecase) Login(ctx context.Context, email, password string) (string, error) {
-	// Find user by email
+	// メールアドレスでユーザーを検索
 	user, err := u.users.FindByEmail(ctx, email)
 
-	// Use a dummy hash for timing attack mitigation when user doesn't exist
-	// This ensures bcrypt.CompareHashAndPassword is always called
-	passwordHash := "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy" // dummy hash
+	// ユーザーが存在しない場合のタイミング攻撃緩和用ダミーハッシュ
+	// bcrypt.CompareHashAndPasswordが常に呼ばれることを保証する
+	passwordHash := "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy" // ダミーハッシュ
 	if err == nil {
 		passwordHash = user.Password
 	}
 
-	// Always verify password to prevent timing attacks
-	// First argument is the hashed password, second is the plaintext password
+	// タイミング攻撃防止のため、常にパスワードを検証
+	// 第1引数はハッシュ化パスワード、第2引数は平文パスワード
 	compareErr := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password))
 
-	// If user not found or password incorrect, return generic error
+	// ユーザー未検出またはパスワード不一致の場合、汎用エラーを返す
 	if err != nil || compareErr != nil {
 		return "", errors.New("invalid email or password")
 	}
 
-	// Generate JWT token using injected generator
+	// 注入されたジェネレーターを使用してJWTトークンを生成
 	token, tokenErr := u.jwtGenerator.GenerateToken(user.ID, user.Email)
 	if tokenErr != nil {
 		return "", fmt.Errorf("failed to generate token: %w", tokenErr)

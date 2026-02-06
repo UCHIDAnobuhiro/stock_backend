@@ -24,7 +24,7 @@ import (
 )
 
 func main() {
-	// Initialize structured logger
+	// 構造化ロガーを初期化
 	logLevel := slog.LevelInfo
 	if os.Getenv("LOG_LEVEL") == "DEBUG" {
 		logLevel = slog.LevelDebug
@@ -34,10 +34,11 @@ func main() {
 		Level: logLevel,
 	}))
 	slog.SetDefault(logger)
-	// db
+
+	// データベース接続
 	db := infradb.OpenDB()
 
-	// Redis
+	// Redis接続
 	var rdb *redisv9.Client
 	if tmp, err := infraredis.NewRedisClient(); err != nil {
 		slog.Warn("Redis unavailable, running without cache", "error", err)
@@ -51,16 +52,16 @@ func main() {
 		}()
 	}
 
-	// Repository
+	// リポジトリ
 	userRepo := authadapters.NewUserMySQL(db)
 	symbolRepo := symbollistadapters.NewSymbolRepository(db)
 	candleRepo := candlesadapters.NewCandleRepository(db)
 
-	// Wrap with Redis cache
+	// Redisキャッシュでラップ
 	ttl := cache.TimeUntilNext8AM()
 	cachedCandleRepo := cache.NewCachingCandleRepository(rdb, ttl, candleRepo, "candles")
 
-	// JWT Generator
+	// JWTジェネレータ
 	jwtSecret := os.Getenv(jwtmw.EnvKeyJWTSecret)
 	if jwtSecret == "" {
 		slog.Error("JWT_SECRET environment variable is required")
@@ -68,20 +69,20 @@ func main() {
 	}
 	jwtGen := jwtmw.NewGenerator(jwtSecret, 1*time.Hour)
 
-	// Usecase
+	// ユースケース
 	authUC := authusecase.NewAuthUsecase(userRepo, jwtGen)
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
 	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
 
-	// Handler
+	// ハンドラー
 	authH := authhandler.NewAuthHandler(authUC)
 	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
 	candlesH := candleshandler.NewCandlesHandler(candlesUC)
 
-	// Create router
+	// ルーター作成
 	router := router.NewRouter(authH, candlesH, symbolH)
 
-	// CORS middleware commented out for mobile app
+	// モバイルアプリ向けのためCORSミドルウェアはコメントアウト
 	// router.Use(cors.Default())
 
 	slog.Info("Starting server", "port", 8080)
