@@ -1,8 +1,8 @@
-// Package dto defines data transfer objects for the auth feature's HTTP transport layer.
+// Package dto はauthフィーチャーのHTTPトランスポート層のデータ転送オブジェクトを定義します。
 package dto
 
-// LoginReq represents the request body for the /login endpoint.
-// It includes validation for required fields and email format.
+// LoginReq は/loginエンドポイントのリクエストボディを表します。
+// 必須フィールドとメール形式のバリデーションを含みます。
 type LoginReq struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
