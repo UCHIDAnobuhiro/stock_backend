@@ -12,22 +12,22 @@ import (
 	"gorm.io/gorm"
 )
 
-// setupTestDB prepares an in-memory SQLite database for testing.
+// setupTestDB はテスト用のインメモリSQLiteデータベースを準備します。
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err, "failed to initialize test database")
 
-	// Create User table
+	// Userテーブルを作成
 	err = db.AutoMigrate(&entity.User{})
 	require.NoError(t, err, "failed to migrate table")
 
 	return db
 }
 
-// seedUser creates a test user in the database for testing.
-// This helper reduces code duplication and makes tests more maintainable.
+// seedUser はテスト用のユーザーをデータベースに作成します。
+// このヘルパーはコードの重複を削減し、テストの保守性を向上させます。
 func seedUser(t *testing.T, db *gorm.DB, email, password string) *entity.User {
 	t.Helper()
 
@@ -317,7 +317,7 @@ func TestUserMySQL_Timestamps(t *testing.T) {
 			assert.False(t, user.CreatedAt.IsZero(), "CreatedAt is not set")
 			assert.False(t, user.UpdatedAt.IsZero(), "UpdatedAt is not set")
 
-			// Timestamps are preserved after retrieval
+			// 取得後もタイムスタンプが保持されていることを確認
 			found, err := repo.FindByID(context.Background(), user.ID)
 			require.NoError(t, err, "failed to find user")
 
