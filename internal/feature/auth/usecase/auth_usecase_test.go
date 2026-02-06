@@ -9,61 +9,61 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// mockUserRepository is a mock implementation of repository.UserRepository interface.
-// It simulates database operations during testing.
+// mockUserRepository はUserRepositoryインターフェースのモック実装です。
+// テスト中のデータベース操作をシミュレートします。
 type mockUserRepository struct {
-	// CreateFunc is called when the Create method is invoked.
+	// CreateFunc はCreateメソッド呼び出し時に実行されます。
 	CreateFunc func(ctx context.Context, user *entity.User) error
-	// FindByEmailFunc is called when the FindByEmail method is invoked.
+	// FindByEmailFunc はFindByEmailメソッド呼び出し時に実行されます。
 	FindByEmailFunc func(ctx context.Context, email string) (*entity.User, error)
-	// FindByIDFunc is called when the FindByID method is invoked.
+	// FindByIDFunc はFindByIDメソッド呼び出し時に実行されます。
 	FindByIDFunc func(ctx context.Context, id uint) (*entity.User, error)
 }
 
-// mockJWTGenerator is a mock implementation of JWTGenerator interface.
-// It simulates JWT token generation during testing.
+// mockJWTGenerator はJWTGeneratorインターフェースのモック実装です。
+// テスト中のJWTトークン生成をシミュレートします。
 type mockJWTGenerator struct {
-	// GenerateTokenFunc is called when the GenerateToken method is invoked.
+	// GenerateTokenFunc はGenerateTokenメソッド呼び出し時に実行されます。
 	GenerateTokenFunc func(userID uint, email string) (string, error)
 }
 
-// GenerateToken is the mock implementation of the GenerateToken method.
+// GenerateToken はGenerateTokenメソッドのモック実装です。
 func (m *mockJWTGenerator) GenerateToken(userID uint, email string) (string, error) {
 	if m.GenerateTokenFunc != nil {
 		return m.GenerateTokenFunc(userID, email)
 	}
-	// Default: return a dummy token
+	// デフォルト: ダミートークンを返す
 	return "mock-jwt-token", nil
 }
 
-// Create is the mock implementation of the Create method.
+// Create はCreateメソッドのモック実装です。
 func (m *mockUserRepository) Create(ctx context.Context, user *entity.User) error {
 	if m.CreateFunc != nil {
 		return m.CreateFunc(ctx, user)
 	}
-	return nil // Default: success
+	return nil // デフォルト: 成功
 }
 
-// FindByEmail is the mock implementation of the FindByEmail method.
+// FindByEmail はFindByEmailメソッドのモック実装です。
 func (m *mockUserRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
 	if m.FindByEmailFunc != nil {
 		return m.FindByEmailFunc(ctx, email)
 	}
-	// Default: return user not found error
+	// デフォルト: ユーザー未検出エラーを返す
 	return nil, errors.New("user not found")
 }
 
-// FindByID is the mock implementation of the FindByID method.
+// FindByID はFindByIDメソッドのモック実装です。
 func (m *mockUserRepository) FindByID(ctx context.Context, id uint) (*entity.User, error) {
 	if m.FindByIDFunc != nil {
 		return m.FindByIDFunc(ctx, id)
 	}
-	// Default: return user not found error
+	// デフォルト: ユーザー未検出エラーを返す
 	return nil, errors.New("user not found")
 }
 
-// createTestUser creates a test user with hashed password for testing.
-// This helper reduces code duplication and makes tests more maintainable.
+// createTestUser はテスト用にハッシュ化パスワードを持つテストユーザーを作成します。
+// このヘルパーはコードの重複を削減し、テストの保守性を向上させます。
 func createTestUser(t *testing.T, id uint, email, password string) *entity.User {
 	t.Helper()
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
@@ -77,8 +77,8 @@ func createTestUser(t *testing.T, id uint, email, password string) *entity.User 
 	}
 }
 
-// assertError checks if an error matches expectations.
-// This helper standardizes error assertions across all tests.
+// assertError はエラーが期待値と一致するかチェックします。
+// このヘルパーは全テストのエラーアサーションを標準化します。
 func assertError(t *testing.T, err error, wantErr bool, errMsg string) {
 	t.Helper()
 	if wantErr {
@@ -95,8 +95,8 @@ func assertError(t *testing.T, err error, wantErr bool, errMsg string) {
 	}
 }
 
-// verifyBcryptHash checks if a hashed password matches the plaintext password.
-// This helper encapsulates the bcrypt verification logic.
+// verifyBcryptHash はハッシュ化パスワードが平文パスワードと一致するかチェックします。
+// このヘルパーはbcrypt検証ロジックをカプセル化します。
 func verifyBcryptHash(t *testing.T, hashedPassword, plainPassword string) {
 	t.Helper()
 	if len(hashedPassword) == 0 || hashedPassword == plainPassword {
@@ -107,8 +107,9 @@ func verifyBcryptHash(t *testing.T, hashedPassword, plainPassword string) {
 	}
 }
 
+// TestAuthUsecase_Signup はサインアップのビジネスロジック（パスワード検証、ハッシュ化、リポジトリ呼び出し）をテストします。
 func TestAuthUsecase_Signup(t *testing.T) {
-	t.Parallel() // enable parallel execution for test function
+	t.Parallel() // テスト関数の並列実行を有効化
 
 	tests := []struct {
 		name              string
@@ -165,7 +166,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel() // enable parallel execution for subtests
+			t.Parallel() // サブテストの並列実行を有効化
 
 			mockRepo := &mockUserRepository{
 				CreateFunc: func(ctx context.Context, user *entity.User) error {
@@ -256,7 +257,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel() // enable parallel execution for subtests
+			t.Parallel() // サブテストの並列実行を有効化
 
 			mockRepo := &mockUserRepository{
 				FindByEmailFunc: func(ctx context.Context, email string) (*entity.User, error) {
@@ -283,10 +284,10 @@ func TestAuthUsecase_Login(t *testing.T) {
 			uc := NewAuthUsecase(mockRepo, mockJWT)
 			token, err := uc.Login(context.Background(), tt.email, tt.password)
 
-			// Assert error expectations
+			// エラーの期待値を検証
 			assertError(t, err, tt.wantErr, tt.errMsg)
 
-			// Assert success case expectations
+			// 成功ケースの期待値を検証
 			if !tt.wantErr {
 				if token == "" {
 					t.Error("token is empty")
