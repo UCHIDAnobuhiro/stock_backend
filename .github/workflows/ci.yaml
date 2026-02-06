@@ -1,52 +1,113 @@
+# mainブランチへのPR時に実行されるCIワークフロー
 name: CI
 
 on:
-    pull_request:
-        branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-    build-test:
-        name: Build & Test
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
+  # ドキュメントのみの変更かどうかを判定する（PR全体の差分で判定）
+  docs-check:
+    name: Check changes
+    runs-on: ubuntu-latest
+    outputs:
+      code_changed: ${{ steps.docs_check.outputs.code_changed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-            - name: Check if only docs changed
-              id: docs_check
-              run: |
-                  if git diff --name-only origin/main...HEAD | grep -qvE '\.(md|txt)$|^docs/|^LICENSE$|^\.github/PULL_REQUEST_TEMPLATE\.md$'; then
-                    echo "code_changed=true" >> $GITHUB_OUTPUT
-                  else
-                    echo "code_changed=false" >> $GITHUB_OUTPUT
-                  fi
+      - name: Check if only docs changed (PR diff)
+        id: docs_check
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
 
-            - name: Setup Go
-              uses: actions/setup-go@v5
-              with:
-                  go-version: "1.24.x"
+          git fetch --no-tags --prune origin \
+            "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}" \
+            "+refs/heads/${HEAD_REF}:refs/remotes/origin/${HEAD_REF}"
 
-            - name: Install dependencies
-              if: steps.docs_check.outputs.code_changed == 'true'
-              run: go mod download
+          echo "Base: origin/${BASE_REF}"
+          echo "Head: origin/${HEAD_REF}"
 
-            - name: Run golangci-lint
-              if: steps.docs_check.outputs.code_changed == 'true'
-              uses: golangci/golangci-lint-action@v8
-              with:
-                  version: v2.6.2
-                  args: --timeout=5m
+          CHANGED_FILES="$(git diff --name-only "origin/${BASE_REF}...origin/${HEAD_REF}")"
+          echo "Changed files:"
+          echo "${CHANGED_FILES}"
 
-            - name: Run build
-              if: steps.docs_check.outputs.code_changed == 'true'
-              run: go build ./...
+          if [ -z "${CHANGED_FILES}" ]; then
+            echo "code_changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-            - name: Run tests
-              if: steps.docs_check.outputs.code_changed == 'true'
-              run: go test ./... -v -race -cover
+          if echo "${CHANGED_FILES}" | grep -qvE '\.(md|txt)$|^docs/|^LICENSE$|^\.github/PULL_REQUEST_TEMPLATE\.md$'; then
+            echo "code_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code_changed=false" >> "$GITHUB_OUTPUT"
+          fi
 
-            - name: Documentation-only change
-              if: steps.docs_check.outputs.code_changed == 'false'
-              run: echo "Only documentation files changed, skipping full CI"
+  # 静的解析（golangci-lint）
+  lint:
+    name: Lint
+    needs: docs-check
+    if: needs.docs-check.outputs.code_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.6.2
+          args: --timeout=5m
+
+  # ビルド確認とテスト実行
+  build-test:
+    name: Build & Test
+    needs: docs-check
+    if: needs.docs-check.outputs.code_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+
+      - name: Run build
+        run: go build ./...
+
+      - name: Run tests
+        run: go test ./... -v -race -cover
+
+  # 全CIジョブの結果を集約するゲートジョブ
+  # GitHub Branch Protectionではこのジョブだけをrequiredに設定する
+  ci-gate:
+    name: CI Gate
+    needs: [lint, build-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI results
+        run: |
+          LINT="${{ needs.lint.result }}"
+          BUILD_TEST="${{ needs.build-test.result }}"
+          echo "lint=${LINT} build-test=${BUILD_TEST}"
+          if [[ "${LINT}" == "success" || "${LINT}" == "skipped" ]] && \
+             [[ "${BUILD_TEST}" == "success" || "${BUILD_TEST}" == "skipped" ]]; then
+            echo "CI passed"
+          else
+            echo "CI failed"
+            exit 1
+          fi
