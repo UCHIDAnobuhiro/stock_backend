@@ -14,24 +14,13 @@ var ErrDB = errors.New("database error")
 // ErrMarketAPI はマーケットAPIのセンチネルエラーです。
 var ErrMarketAPI = errors.New("market API error")
 
-// mockCandleRepository はCandleRepositoryインターフェースのモック実装です。
-type mockCandleRepository struct {
-	FindFunc        func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+// mockCandleWriteRepository はCandleWriteRepositoryインターフェースのモック実装です。
+type mockCandleWriteRepository struct {
 	UpsertBatchFunc func(ctx context.Context, candles []entity.Candle) error
-	FindCalls       int
-}
-
-// Find はFindFuncが設定されていればそれを呼び出し、呼び出し回数を記録します。
-func (m *mockCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
-	m.FindCalls++
-	if m.FindFunc != nil {
-		return m.FindFunc(ctx, symbol, interval, outputsize)
-	}
-	return nil, errors.New("FindFunc is not implemented")
 }
 
 // UpsertBatch はUpsertBatchFuncが設定されていればそれを呼び出します。
-func (m *mockCandleRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
+func (m *mockCandleWriteRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
 	if m.UpsertBatchFunc != nil {
 		return m.UpsertBatchFunc(ctx, candles)
 	}
@@ -159,7 +148,7 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 			mockMarket := &mockMarketRepository{
 				GetTimeSeriesFunc: tc.mockGetTimeSeriesFunc,
 			}
-			mockCandle := &mockCandleRepository{
+			mockCandle := &mockCandleWriteRepository{
 				UpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
 					capturedCandles = candles
 					return tc.mockUpsertBatchFunc(ctx, candles)
@@ -285,7 +274,7 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			mockMarket := &mockMarketRepository{
 				GetTimeSeriesFunc: tc.mockGetTimeSeriesFunc,
 			}
-			mockCandle := &mockCandleRepository{
+			mockCandle := &mockCandleWriteRepository{
 				UpsertBatchFunc: tc.mockUpsertBatchFunc,
 			}
 			mockSymbol := &mockSymbolRepository{
@@ -329,7 +318,7 @@ func TestIngestUsecase_IngestAll_Intervals(t *testing.T) {
 			return mockCandles, nil
 		},
 	}
-	mockCandle := &mockCandleRepository{
+	mockCandle := &mockCandleWriteRepository{
 		UpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
 			return nil
 		},

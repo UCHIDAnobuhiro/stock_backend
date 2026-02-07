@@ -14,6 +14,13 @@ const (
 // ingestIntervals はデータ取り込みに使用する時間間隔のリストを定義します。
 var ingestIntervals = []string{"1day", "1week", "1month"}
 
+// CandleWriteRepository はローソク足データの書き込みレイヤーを抽象化します。
+// Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
+type CandleWriteRepository interface {
+	// UpsertBatch は（symbol, interval, time）をユニークキーとしてUpsert操作を行います。
+	UpsertBatch(ctx context.Context, candles []entity.Candle) error
+}
+
 // MarketRepository は株式市場データ取得のリポジトリインターフェースを定義します。
 // 外部API実装を抽象化します。
 // Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
@@ -30,13 +37,13 @@ type SymbolRepository interface {
 // IngestUsecase は外部APIからデータを取得し、データベースに永続化するユースケースを定義します。
 type IngestUsecase struct {
 	market      MarketRepository
-	candle      CandleRepository
+	candle      CandleWriteRepository
 	symbol      SymbolRepository
 	rateLimiter ratelimiter.RateLimiterInterface
 }
 
 // NewIngestUsecase はIngestUsecaseの新しいインスタンスを生成します。
-func NewIngestUsecase(market MarketRepository, candle CandleRepository, symbol SymbolRepository, rateLimiter ratelimiter.RateLimiterInterface) *IngestUsecase {
+func NewIngestUsecase(market MarketRepository, candle CandleWriteRepository, symbol SymbolRepository, rateLimiter ratelimiter.RateLimiterInterface) *IngestUsecase {
 	return &IngestUsecase{market: market, candle: candle, symbol: symbol, rateLimiter: rateLimiter}
 }
 
