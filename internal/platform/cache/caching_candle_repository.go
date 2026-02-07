@@ -11,13 +11,18 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/feature/candles/usecase"
 )
+
+// candleRepository はCachingCandleRepositoryが内部で必要とする読み書きインターフェースです。
+type candleRepository interface {
+	Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+	UpsertBatch(ctx context.Context, candles []entity.Candle) error
+}
 
 // CachingCandleRepository はCandleRepositoryにRedisキャッシュをデコレータパターンで追加します。
 // 基盤となるリポジトリを変更せずに、透過的にキャッシュを追加します。
 type CachingCandleRepository struct {
-	inner     usecase.CandleRepository
+	inner     candleRepository
 	rdb       *redis.Client
 	ttl       time.Duration
 	namespace string
@@ -25,7 +30,7 @@ type CachingCandleRepository struct {
 
 // NewCachingCandleRepository はCandleRepositoryにRedisキャッシュを追加するデコレータを生成します。
 // ttlが0の場合はデフォルト5分、namespaceが空の場合は"candles"を使用します。
-func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner usecase.CandleRepository, namespace string) *CachingCandleRepository {
+func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner candleRepository, namespace string) *CachingCandleRepository {
 	if ttl <= 0 {
 		ttl = 5 * time.Minute
 	}

@@ -15,9 +15,8 @@ var ErrDB = errors.New("database error")
 
 // mockCandleRepository はCandleRepositoryインターフェースのモック実装です。
 type mockCandleRepository struct {
-	FindFunc        func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
-	UpsertBatchFunc func(ctx context.Context, candles []entity.Candle) error
-	FindCalls       int
+	FindFunc  func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+	FindCalls int
 }
 
 // Find はFindFuncが設定されていればそれを呼び出し、呼び出し回数を記録します。
@@ -27,14 +26,6 @@ func (m *mockCandleRepository) Find(ctx context.Context, symbol, interval string
 		return m.FindFunc(ctx, symbol, interval, outputsize)
 	}
 	return nil, errors.New("FindFunc is not implemented")
-}
-
-// UpsertBatch はUpsertBatchFuncが設定されていればそれを呼び出します。
-func (m *mockCandleRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
-	if m.UpsertBatchFunc != nil {
-		return m.UpsertBatchFunc(ctx, candles)
-	}
-	return errors.New("UpsertBatchFunc is not implemented")
 }
 
 // TestCandlesUsecase_GetCandles はGetCandlesメソッドのパラメータ処理とリポジトリ呼び出しをテストします。

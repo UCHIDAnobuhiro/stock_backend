@@ -15,14 +15,11 @@ const (
 	MaxOutputSize = 5000
 )
 
-// CandleRepository はローソク足データの永続化レイヤーを抽象化します。
+// CandleRepository はローソク足データの読み取りレイヤーを抽象化します。
 // Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
 type CandleRepository interface {
 	// Find はデータベースからローソク足データを検索します。
 	Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
-
-	// UpsertBatch は（symbol, interval, time）をユニークキーとしてUpsert操作を行います。
-	UpsertBatch(ctx context.Context, candles []entity.Candle) error
 }
 
 // candlesUsecase はローソク足データ操作のユースケースを定義します。
