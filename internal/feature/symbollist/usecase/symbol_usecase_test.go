@@ -12,22 +12,13 @@ import (
 
 // mockSymbolRepository はSymbolRepositoryインターフェースのモック実装です。
 type mockSymbolRepository struct {
-	ListActiveFunc      func(ctx context.Context) ([]entity.Symbol, error)
-	ListActiveCodesFunc func(ctx context.Context) ([]string, error)
+	ListActiveFunc func(ctx context.Context) ([]entity.Symbol, error)
 }
 
 // ListActive はモックのListActive関数を呼び出します。
 func (m *mockSymbolRepository) ListActive(ctx context.Context) ([]entity.Symbol, error) {
 	if m.ListActiveFunc != nil {
 		return m.ListActiveFunc(ctx)
-	}
-	return nil, nil
-}
-
-// ListActiveCodes はモックのListActiveCodes関数を呼び出します。
-func (m *mockSymbolRepository) ListActiveCodes(ctx context.Context) ([]string, error) {
-	if m.ListActiveCodesFunc != nil {
-		return m.ListActiveCodesFunc(ctx)
 	}
 	return nil, nil
 }

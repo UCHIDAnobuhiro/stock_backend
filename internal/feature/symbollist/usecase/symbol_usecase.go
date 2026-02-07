@@ -11,8 +11,6 @@ import (
 type SymbolRepository interface {
 	// ListActive はすべてのアクティブな銘柄を返します。
 	ListActive(ctx context.Context) ([]entity.Symbol, error)
-	// ListActiveCodes はアクティブな銘柄のコードのみを返します。
-	ListActiveCodes(ctx context.Context) ([]string, error)
 }
 
 // SymbolUsecase は銘柄操作のビジネスロジックを提供します。
