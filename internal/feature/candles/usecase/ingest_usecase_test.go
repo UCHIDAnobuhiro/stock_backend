@@ -52,6 +52,20 @@ func (m *mockMarketRepository) GetTimeSeries(ctx context.Context, symbol, interv
 	return nil, errors.New("GetTimeSeriesFunc is not implemented")
 }
 
+// mockSymbolRepository はSymbolRepositoryインターフェースのモック実装です。
+type mockSymbolRepository struct {
+	ListActiveCodesFunc  func(ctx context.Context) ([]string, error)
+	ListActiveCodesCalls int
+}
+
+func (m *mockSymbolRepository) ListActiveCodes(ctx context.Context) ([]string, error) {
+	m.ListActiveCodesCalls++
+	if m.ListActiveCodesFunc != nil {
+		return m.ListActiveCodesFunc(ctx)
+	}
+	return nil, errors.New("ListActiveCodesFunc is not implemented")
+}
+
 // mockRateLimiter はRateLimiterInterfaceのモック実装です。
 type mockRateLimiter struct {
 	WaitIfNeededCalls int
@@ -152,8 +166,9 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 				},
 			}
 			mockRL := &mockRateLimiter{}
+			mockSymbol := &mockSymbolRepository{}
 
-			uc := NewIngestUsecase(mockMarket, mockCandle, mockRL)
+			uc := NewIngestUsecase(mockMarket, mockCandle, mockSymbol, mockRL)
 			err := uc.ingestOne(ctx, tc.inputSymbol, tc.inputInterval, tc.inputOutputsize)
 
 			if tc.expectedErr == nil {
@@ -273,10 +288,15 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			mockCandle := &mockCandleRepository{
 				UpsertBatchFunc: tc.mockUpsertBatchFunc,
 			}
+			mockSymbol := &mockSymbolRepository{
+				ListActiveCodesFunc: func(ctx context.Context) ([]string, error) {
+					return tc.inputSymbols, nil
+				},
+			}
 			mockRL := &mockRateLimiter{}
 
-			uc := NewIngestUsecase(mockMarket, mockCandle, mockRL)
-			err := uc.IngestAll(ctx, tc.inputSymbols)
+			uc := NewIngestUsecase(mockMarket, mockCandle, mockSymbol, mockRL)
+			err := uc.IngestAll(ctx)
 
 			if tc.expectedErr == nil {
 				if err != nil {
@@ -314,10 +334,15 @@ func TestIngestUsecase_IngestAll_Intervals(t *testing.T) {
 			return nil
 		},
 	}
+	mockSymbol := &mockSymbolRepository{
+		ListActiveCodesFunc: func(ctx context.Context) ([]string, error) {
+			return []string{"AAPL"}, nil
+		},
+	}
 	mockRL := &mockRateLimiter{}
 
-	uc := NewIngestUsecase(mockMarket, mockCandle, mockRL)
-	err := uc.IngestAll(ctx, []string{"AAPL"})
+	uc := NewIngestUsecase(mockMarket, mockCandle, mockSymbol, mockRL)
+	err := uc.IngestAll(ctx)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

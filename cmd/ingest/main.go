@@ -24,17 +24,12 @@ func main() {
 	symbolRepo := symbollistadapters.NewSymbolRepository(db)
 	rateLimiter := ratelimiter.NewRateLimiter(rateLimitPerMinute, time.Minute)
 
-	uc := candlesusecase.NewIngestUsecase(marketRepo, candleRepo, rateLimiter)
+	uc := candlesusecase.NewIngestUsecase(marketRepo, candleRepo, symbolRepo, rateLimiter)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	symbols, err := symbolRepo.ListActiveCodes(ctx)
-	if err != nil {
-		log.Fatal("failed to load symbols:", err)
-	}
-
-	if err := uc.IngestAll(ctx, symbols); err != nil {
+	if err := uc.IngestAll(ctx); err != nil {
 		log.Fatal(err)
 	}
 	log.Println("ingest ok")

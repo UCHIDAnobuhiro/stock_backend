@@ -21,16 +21,23 @@ type MarketRepository interface {
 	GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 }
 
+// SymbolRepository はデータ取り込み対象の銘柄コード取得を抽象化します。
+// Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
+type SymbolRepository interface {
+	ListActiveCodes(ctx context.Context) ([]string, error)
+}
+
 // IngestUsecase は外部APIからデータを取得し、データベースに永続化するユースケースを定義します。
 type IngestUsecase struct {
 	market      MarketRepository
 	candle      CandleRepository
+	symbol      SymbolRepository
 	rateLimiter ratelimiter.RateLimiterInterface
 }
 
 // NewIngestUsecase はIngestUsecaseの新しいインスタンスを生成します。
-func NewIngestUsecase(market MarketRepository, candle CandleRepository, rateLimiter ratelimiter.RateLimiterInterface) *IngestUsecase {
-	return &IngestUsecase{market: market, candle: candle, rateLimiter: rateLimiter}
+func NewIngestUsecase(market MarketRepository, candle CandleRepository, symbol SymbolRepository, rateLimiter ratelimiter.RateLimiterInterface) *IngestUsecase {
+	return &IngestUsecase{market: market, candle: candle, symbol: symbol, rateLimiter: rateLimiter}
 }
 
 // ingestOne は指定された銘柄とインターバルの時系列データを外部リポジトリから取得し、
@@ -49,10 +56,15 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol, interval string,
 	return iu.candle.UpsertBatch(ctx, cs)
 }
 
-// IngestAll は指定された全銘柄の時系列データを複数の時間間隔（日次、週次、月次）で取得し、
+// IngestAll はアクティブな全銘柄の時系列データを複数の時間間隔（日次、週次、月次）で取得し、
 // データベースに永続化します。
 // APIレート制限を遵守し、必要に応じてリクエスト間で待機します。
-func (iu *IngestUsecase) IngestAll(ctx context.Context, symbols []string) error {
+func (iu *IngestUsecase) IngestAll(ctx context.Context) error {
+	symbols, err := iu.symbol.ListActiveCodes(ctx)
+	if err != nil {
+		return err
+	}
+
 	for _, s := range symbols {
 		for _, interval := range ingestIntervals {
 			iu.rateLimiter.WaitIfNeeded()
