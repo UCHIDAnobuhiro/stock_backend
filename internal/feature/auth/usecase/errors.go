@@ -9,4 +9,7 @@ var (
 
 	// ErrEmailAlreadyExists は既に存在するメールアドレスでユーザーを作成しようとした場合に返されます。
 	ErrEmailAlreadyExists = errors.New("email already exists")
+
+	// ErrInvalidCredentials はメールアドレスまたはパスワードが正しくない場合に返されます。
+	ErrInvalidCredentials = errors.New("invalid email or password")
 )
