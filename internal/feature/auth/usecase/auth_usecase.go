@@ -3,7 +3,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"stock_backend/internal/feature/auth/domain/entity"
@@ -96,7 +95,7 @@ func (u *authUsecase) Login(ctx context.Context, email, password string) (string
 
 	// ユーザー未検出またはパスワード不一致の場合、汎用エラーを返す
 	if err != nil || compareErr != nil {
-		return "", errors.New("invalid email or password")
+		return "", ErrInvalidCredentials
 	}
 
 	// 注入されたジェネレーターを使用してJWTトークンを生成
