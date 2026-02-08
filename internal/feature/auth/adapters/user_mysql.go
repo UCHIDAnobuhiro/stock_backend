@@ -4,11 +4,11 @@ package adapters
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"stock_backend/internal/feature/auth/domain/entity"
 	"stock_backend/internal/feature/auth/usecase"
 
+	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -32,7 +32,8 @@ func NewUserMySQL(db *gorm.DB) *userMySQL {
 func (r *userMySQL) Create(ctx context.Context, u *entity.User) error {
 	if err := r.db.WithContext(ctx).Create(u).Error; err != nil {
 		// MySQLエラー1062: ユニークキーの重複エントリ
-		if strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "duplicate key") {
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
 			return usecase.ErrEmailAlreadyExists
 		}
 		return err
