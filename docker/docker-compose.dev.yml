@@ -52,14 +52,6 @@ services:
       - ../.env.docker
     environment:
       APP_ENV: docker-dev
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_USER: appuser
-      DB_PASSWORD: apppass
-      DB_NAME: app
-      RUN_MIGRATIONS: "true"
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
     depends_on:
       db:
         condition: service_healthy
