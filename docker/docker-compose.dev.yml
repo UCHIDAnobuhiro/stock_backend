@@ -14,7 +14,6 @@ services:
       TZ: Asia/Tokyo
     volumes:
       - db_data:/var/lib/mysql
-      - ./mysql/initdb:/docker-entrypoint-initdb.d
     ports:
       - "3306:3306"
     restart: unless-stopped
