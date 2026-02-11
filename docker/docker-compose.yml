@@ -19,4 +19,5 @@ services:
     container_name: stock-ingest
     env_file:
       - ../.env.docker
+    restart: "no"
     profiles: ["on-demand"]
