@@ -6,7 +6,7 @@ COPY . .
 # バッチ（HTTPサーバ不要）
 RUN CGO_ENABLED=0 GOOS=linux go build -o ingest ./cmd/ingest
 
-FROM alpine:latest
+FROM alpine:3.21
 WORKDIR /app
 
 RUN apk add --no-cache tzdata
