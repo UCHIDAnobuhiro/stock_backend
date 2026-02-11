@@ -4,6 +4,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.server
+    image: stock-backend
     container_name: stock-backend
     env_file:
       - ../.env.docker
@@ -15,7 +16,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.ingest
-    image: stock-ingest:local
+    image: stock-ingest
     container_name: stock-ingest
     env_file:
       - ../.env.docker
