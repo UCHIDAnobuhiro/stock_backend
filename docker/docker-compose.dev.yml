@@ -70,11 +70,14 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.server.dev
+    env_file:
+      - ../.env.docker
     volumes:
       - ..:/app
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
     command: ["go", "run", "./cmd/ingest"]
+    restart: "no"
     depends_on:
       db:
         condition: service_healthy
