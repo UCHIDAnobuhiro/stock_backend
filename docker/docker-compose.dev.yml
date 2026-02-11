@@ -67,6 +67,14 @@ services:
       - go-build-cache:/root/.cache/go-build
 
   ingest:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.server.dev
+    volumes:
+      - ..:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    command: ["go", "run", "./cmd/ingest"]
     depends_on:
       db:
         condition: service_healthy
