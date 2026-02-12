@@ -105,47 +105,13 @@ feature/<name>/
    - `cmd/server/main.go`: REST APIサーバー（ポート8080）
    - `cmd/ingest/main.go`: TwelveData APIから株価データを取得するバッチジョブ
 
-### データフロー例
-
-#### 株価リクエストフロー
-1. クライアントがJWT認証付きで `/v1/candles/:code?interval=1day&outputsize=200` をリクエスト
-2. ルーター（`app/router`）が `jwtmw.AuthRequired()` ミドルウェアでJWTを検証
-3. `candles/transport/handler/CandlesHandler.GetCandlesHandler` にルーティング
-4. ハンドラーがパラメータをパース（デフォルト: interval=1day, outputsize=200）し、usecaseを呼び出し
-5. Usecaseが `CandleRepository.Find(ctx, symbol, interval, outputsize)` を呼び出し
-6. `CachingCandleRepository` がキー形式 `candles:{symbol}:{interval}:{outputsize}` でRedisを確認
-   - **キャッシュヒット**: RedisからデシリアライズしたJSONを返却
-   - **キャッシュミス**: `candlesadapters.CandleRepository`（MySQL）を呼び出し → 結果をTTL付きでキャッシュ → データを返却
-7. ハンドラーがドメインエンティティをDTOに変換してJSONを返却
-
-#### バッチ取り込みフロー
-1. `cmd/ingest/main.go` が5分のコンテキストタイムアウトで開始
-2. `symbollistadapters.SymbolRepository` からアクティブなシンボルを読み込み
-3. 各シンボル × 各インターバル（1day, 1week, 1month）について：
-   - `RateLimiter.WaitIfNeeded()` が8リクエスト/分の制限を適用
-   - `MarketRepository.GetTimeSeries()` 経由でTwelveData APIを呼び出し
-   - `CandleRepository.UpsertBatch()` 経由でMySQLにローソク足データをUpsert
-   - キャッシュ無効化: `candles:{symbol}:{interval}:*` に一致するRedisキーを削除
-4. エラーはログに記録するが処理は停止しない（次のシンボル/インターバルに継続）
-
-### 外部依存・レートリミット
-
-- **TwelveData API**: 株式市場データプロバイダー（無料枠でレート制限: 8リクエスト/分）
-  - レートリミットは `shared/ratelimiter` パッケージで処理
-  - 取り込みバッチは3インターバル（1day, 1week, 1month）それぞれ200データポイントを取得
-  - レートリミッターは制限到達時に自動的にスリープ
-- **MySQL/Cloud SQL**: プライマリデータストア（GORM ORM）
-- **Redis**: 動的TTLによるキャッシュ層
-  - キャッシュTTLは `cache.TimeUntilNext8AM()` を使用して次の日本時間午前8時（市場開場）に設定
-  - キャッシュキーにはシンボル、インターバル、outputsizeを含む
-  - キャッシュ無効化は `UpsertBatch` 操作時に実行
+### 外部依存
+- TwelveData API（株価データ、8リクエスト/分制限） / MySQL（GORM） / Redis（キャッシュ）
+- 詳細なデータフローは各フィーチャーの README.md を参照
 
 ### 認証
-
-- `Authorization: Bearer <token>` ヘッダーによるJWTベース認証
-- ミドルウェア: `platform/jwt/AuthRequired()`
-- 公開エンドポイント: `/healthz`, `/v1/signup`, `/v1/login`
-- 保護エンドポイント: `/v1/candles/:code`, `/v1/symbols`
+- JWT認証（`platform/jwt/AuthRequired()`）
+- 公開: `/healthz`, `/v1/signup`, `/v1/login` / 保護: その他すべて
 
 ### テストに関する注意事項
 
