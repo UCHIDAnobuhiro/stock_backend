@@ -137,9 +137,10 @@ feature/<name>/
 
 **重要**: 依存関係ルールを遵守すること - domain/usecaseレイヤーはadaptersやtransportレイヤーをインポートできません。これはgolangci-lint depguardで強制されています。depguardはワイルドカード非対応のため、新フィーチャー追加時に `.golangci.yml` へ明示的にパッケージパスを追加する必要があります。
 
-## コミットメッセージ・PR作成の言語ルール
+## コミット・PR作成の言語ルール
 
 コミットメッセージおよびプルリクエストのタイトル・説明はすべて**日本語**で記述してください。
 
+- コミット前のコードレビューは `/code-check` スキル（`.claude/skills/code-check/SKILL.md`）を参照
 - コミットメッセージの詳細ルールは `/commit` スキル（`.claude/skills/commit/SKILL.md`）を参照
 - プルリクエスト作成の詳細ルールは `/pull-request` スキル（`.claude/skills/pull-request/SKILL.md`）を参照
