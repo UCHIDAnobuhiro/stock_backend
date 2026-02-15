@@ -41,17 +41,17 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 	var req api.SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Warn("signup validation failed", "error", err, "remote_addr", c.ClientIP())
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "invalid request"})
 		return
 	}
 	if err := h.auth.Signup(c.Request.Context(), req.Email, req.Password); err != nil {
 		// ユーザー列挙攻撃を防止するため、実際のエラーを公開しない
 		slog.Warn("signup failed", "error", err, "email", req.Email, "remote_addr", c.ClientIP())
-		c.JSON(http.StatusConflict, gin.H{"error": "signup failed"})
+		c.JSON(http.StatusConflict, api.ErrorResponse{Error: "signup failed"})
 		return
 	}
 	slog.Info("user signup successful", "email", req.Email, "remote_addr", c.ClientIP())
-	c.JSON(http.StatusCreated, gin.H{"message": "ok"})
+	c.JSON(http.StatusCreated, api.MessageResponse{Message: "ok"})
 }
 
 // Login はユーザーログインAPIエンドポイントを処理します。
@@ -63,16 +63,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var req api.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Warn("login validation failed", "error", err, "remote_addr", c.ClientIP())
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "invalid request"})
 		return
 	}
 	token, err := h.auth.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		// ユーザー列挙攻撃を防止するため、実際のエラーを公開しない
 		slog.Warn("login failed", "error", err, "email", req.Email, "remote_addr", c.ClientIP())
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
+		c.JSON(http.StatusUnauthorized, api.ErrorResponse{Error: "invalid email or password"})
 		return
 	}
 	slog.Info("user login successful", "email", req.Email, "remote_addr", c.ClientIP())
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, api.TokenResponse{Token: token})
 }

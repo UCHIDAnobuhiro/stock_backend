@@ -32,7 +32,7 @@ func NewSymbolHandler(uc SymbolUsecase) *SymbolHandler {
 func (h *SymbolHandler) List(c *gin.Context) {
 	symbols, err := h.uc.ListActiveSymbols(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: err.Error()})
 		return
 	}
 	out := make([]api.SymbolItem, 0, len(symbols))

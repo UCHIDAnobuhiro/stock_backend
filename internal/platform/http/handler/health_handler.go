@@ -1,7 +1,11 @@
 // Package handler はプラットフォームレベルのエンドポイント用HTTPハンドラーを提供します。
 package handler
 
-import "github.com/gin-gonic/gin"
+import (
+	"stock_backend/internal/api"
+
+	"github.com/gin-gonic/gin"
+)
 
 // Health はサービスヘルスチェック用の /healthz エンドポイントを処理します。
 // HTTPメソッドに応じて適切にレスポンスし、キャッシュを防止します。
@@ -16,6 +20,6 @@ func Health(c *gin.Context) {
 	case "OPTIONS":
 		c.Status(204)
 	default:
-		c.JSON(200, gin.H{"status": "ok"})
+		c.JSON(200, api.HealthResponse{Status: "ok"})
 	}
 }

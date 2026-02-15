@@ -42,7 +42,7 @@ func (h *CandlesHandler) GetCandlesHandler(c *gin.Context) {
 	candles, err := h.uc.GetCandles(c.Request.Context(), code, interval, outputsize)
 
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadGateway, api.ErrorResponse{Error: err.Error()})
 		return
 	}
 
