@@ -4,10 +4,10 @@ package adapters
 import (
 	"context"
 
+	"gorm.io/gorm"
+
 	"stock_backend/internal/feature/symbollist/domain/entity"
 	"stock_backend/internal/feature/symbollist/usecase"
-
-	"gorm.io/gorm"
 )
 
 // symbolMySQL はSymbolRepositoryインターフェースのMySQL実装です。

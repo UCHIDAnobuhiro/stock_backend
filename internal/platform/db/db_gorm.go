@@ -7,12 +7,12 @@ import (
 	"os"
 	"time"
 
+	gmysql "gorm.io/driver/mysql"
+	"gorm.io/gorm"
+
 	authentity "stock_backend/internal/feature/auth/domain/entity"
 	candleadapters "stock_backend/internal/feature/candles/adapters"
 	symbolentity "stock_backend/internal/feature/symbollist/domain/entity"
-
-	gmysql "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 // Config はデータベース接続設定を保持します。

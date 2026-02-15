@@ -7,6 +7,10 @@ linters:
     - errcheck
     - govet
     - ineffassign
+    - unused
+    - bodyclose
+    - unconvert
+    - misspell
 
   settings:
     depguard:
@@ -30,3 +34,15 @@ linters:
                 desc: "domain/usecase must not depend on transport"
               - pkg: "stock_backend/internal/api"
                 desc: "domain/usecase must not depend on API types (transport layer only)"
+
+formatters:
+  enable:
+    - gofmt
+    - gci
+
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(stock_backend)

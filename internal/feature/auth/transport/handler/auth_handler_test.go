@@ -7,12 +7,13 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"stock_backend/internal/feature/auth/transport/handler"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"stock_backend/internal/feature/auth/transport/handler"
 )
 
 // mockAuthUsecase はAuthUsecaseインターフェースのモック実装です。
@@ -163,9 +164,11 @@ func TestAuthHandler_Login(t *testing.T) {
 			expectedBody:   gin.H{"error": "invalid request"},
 		},
 		{
-			name:           "failure: invalid credentials (usecase error)",
-			requestBody:    gin.H{"email": "wrong@example.com", "password": "wrong-password"},
-			mockLoginFunc:  func(ctx context.Context, email, password string) (string, error) { return "", errors.New("invalid email or password") },
+			name:        "failure: invalid credentials (usecase error)",
+			requestBody: gin.H{"email": "wrong@example.com", "password": "wrong-password"},
+			mockLoginFunc: func(ctx context.Context, email, password string) (string, error) {
+				return "", errors.New("invalid email or password")
+			},
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody:   gin.H{"error": "invalid email or password"},
 		},

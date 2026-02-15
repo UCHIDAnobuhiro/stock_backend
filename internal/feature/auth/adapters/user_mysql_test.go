@@ -2,14 +2,15 @@ package adapters
 
 import (
 	"context"
-	"stock_backend/internal/feature/auth/domain/entity"
-	"stock_backend/internal/feature/auth/usecase"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"stock_backend/internal/feature/auth/domain/entity"
+	"stock_backend/internal/feature/auth/usecase"
 )
 
 // setupTestDB はテスト用のインメモリSQLiteデータベースを準備します。
@@ -56,11 +57,11 @@ func TestUserMySQL_Create(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		user          *entity.User
-		wantErr       bool
-		setupFunc     func(t *testing.T, db *gorm.DB)
-		validateFunc  func(t *testing.T, user *entity.User)
+		name         string
+		user         *entity.User
+		wantErr      bool
+		setupFunc    func(t *testing.T, db *gorm.DB)
+		validateFunc func(t *testing.T, user *entity.User)
 	}{
 		{
 			name: "success: user creation",

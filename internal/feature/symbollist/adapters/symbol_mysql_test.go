@@ -2,13 +2,14 @@ package adapters
 
 import (
 	"context"
-	"stock_backend/internal/feature/symbollist/domain/entity"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"stock_backend/internal/feature/symbollist/domain/entity"
 )
 
 // setupTestDB はテスト用のインメモリSQLiteデータベースを準備します。
@@ -66,11 +67,11 @@ func TestSymbolMySQL_ListActive(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		setupFunc      func(t *testing.T, db *gorm.DB)
-		expectedCount  int
-		expectedCodes  []string
-		wantErr        bool
+		name          string
+		setupFunc     func(t *testing.T, db *gorm.DB)
+		expectedCount int
+		expectedCodes []string
+		wantErr       bool
 	}{
 		{
 			name: "success: returns active symbols sorted by sort_key",

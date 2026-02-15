@@ -4,10 +4,11 @@ package handler
 import (
 	"context"
 	"net/http"
-	"stock_backend/internal/feature/symbollist/domain/entity"
-	"stock_backend/internal/api"
 
 	"github.com/gin-gonic/gin"
+
+	"stock_backend/internal/api"
+	"stock_backend/internal/feature/symbollist/domain/entity"
 )
 
 // SymbolUsecase は銘柄（株式コード）操作のユースケースインターフェースを定義します。

@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 
-	"stock_backend/internal/feature/auth/domain/entity"
-
 	"golang.org/x/crypto/bcrypt"
+
+	"stock_backend/internal/feature/auth/domain/entity"
 )
 
 const (

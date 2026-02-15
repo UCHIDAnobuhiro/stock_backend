@@ -3,11 +3,12 @@ package usecase_test
 import (
 	"context"
 	"errors"
-	"stock_backend/internal/feature/auth/domain/entity"
-	"stock_backend/internal/feature/auth/usecase"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
+
+	"stock_backend/internal/feature/auth/domain/entity"
+	"stock_backend/internal/feature/auth/usecase"
 )
 
 // mockUserRepository はUserRepositoryインターフェースのモック実装です。
@@ -113,13 +114,13 @@ func TestAuthUsecase_Signup(t *testing.T) {
 	t.Parallel() // テスト関数の並列実行を有効化
 
 	tests := []struct {
-		name              string
-		email             string
-		password          string
-		wantErr           bool
-		errMsg            string
-		verifyBcryptHash  bool
-		repositoryErr     error
+		name             string
+		email            string
+		password         string
+		wantErr          bool
+		errMsg           string
+		verifyBcryptHash bool
+		repositoryErr    error
 	}{
 		{
 			name:             "successful signup",

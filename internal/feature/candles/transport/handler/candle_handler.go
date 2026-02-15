@@ -4,11 +4,12 @@ package handler
 import (
 	"context"
 	"net/http"
-	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/api"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+
+	"stock_backend/internal/api"
+	"stock_backend/internal/feature/candles/domain/entity"
 )
 
 // CandlesUsecase はローソク足データ操作のユースケースインターフェースを定義します。
@@ -40,7 +41,6 @@ func (h *CandlesHandler) GetCandlesHandler(c *gin.Context) {
 	outputsize, _ := strconv.Atoi(outputsizeStr)
 
 	candles, err := h.uc.GetCandles(c.Request.Context(), code, interval, outputsize)
-
 	if err != nil {
 		c.JSON(http.StatusBadGateway, api.ErrorResponse{Error: err.Error()})
 		return

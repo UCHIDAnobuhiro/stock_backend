@@ -61,7 +61,6 @@ func TestGenerator_GenerateToken(t *testing.T) {
 
 			gen := NewGenerator("test-secret", tt.expiration)
 			tokenStr, err := gen.GenerateToken(tt.userID, tt.email)
-
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
