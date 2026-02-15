@@ -1,4 +1,4 @@
-package cache
+package adapters
 
 import (
 	"context"
@@ -12,14 +12,14 @@ import (
 	"stock_backend/internal/feature/candles/domain/entity"
 )
 
-// mockCandleRepository はテスト用のCandleRepositoryモック実装です。
-type mockCandleRepository struct {
+// mockCandleRepo はテスト用のCandleRepositoryモック実装です。
+type mockCandleRepo struct {
 	findFn        func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 	upsertBatchFn func(ctx context.Context, candles []entity.Candle) error
 }
 
 // Find はモックのFind関数を呼び出します。
-func (m *mockCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+func (m *mockCandleRepo) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	if m.findFn != nil {
 		return m.findFn(ctx, symbol, interval, outputsize)
 	}
@@ -27,7 +27,7 @@ func (m *mockCandleRepository) Find(ctx context.Context, symbol, interval string
 }
 
 // UpsertBatch はモックのUpsertBatch関数を呼び出します。
-func (m *mockCandleRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
+func (m *mockCandleRepo) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
 	if m.upsertBatchFn != nil {
 		return m.upsertBatchFn(ctx, candles)
 	}
@@ -72,7 +72,7 @@ func TestNewCachingCandleRepository_Defaults(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			repo := NewCachingCandleRepository(nil, tt.ttl, &mockCandleRepository{}, tt.namespace)
+			repo := NewCachingCandleRepository(nil, tt.ttl, &mockCandleRepo{}, tt.namespace)
 
 			if repo.ttl != tt.expectedTTL {
 				t.Errorf("expected TTL %v, got %v", tt.expectedTTL, repo.ttl)
@@ -92,7 +92,7 @@ func TestCachingCandleRepository_Find_NilRedis(t *testing.T) {
 		{Symbol: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
 	}
 
-	inner := &mockCandleRepository{
+	inner := &mockCandleRepo{
 		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 			return expectedCandles, nil
 		},
@@ -125,7 +125,7 @@ func TestCachingCandleRepository_Find_CacheHit(t *testing.T) {
 	mock.ExpectGet("candles:AAPL:1day:100").SetVal(string(cachedJSON))
 
 	innerCalled := false
-	inner := &mockCandleRepository{
+	inner := &mockCandleRepo{
 		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 			innerCalled = true
 			return nil, nil
@@ -165,7 +165,7 @@ func TestCachingCandleRepository_Find_CacheMiss(t *testing.T) {
 	// Set cache after fetching from inner
 	mock.ExpectSet("candles:AAPL:1day:100", expectedJSON, 5*time.Minute).SetVal("OK")
 
-	inner := &mockCandleRepository{
+	inner := &mockCandleRepo{
 		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 			return expectedCandles, nil
 		},
@@ -195,7 +195,7 @@ func TestCachingCandleRepository_Find_InnerError(t *testing.T) {
 
 	mock.ExpectGet("candles:AAPL:1day:100").RedisNil()
 
-	inner := &mockCandleRepository{
+	inner := &mockCandleRepo{
 		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 			return nil, expectedErr
 		},
@@ -231,7 +231,7 @@ func TestCachingCandleRepository_Find_CorruptedCache(t *testing.T) {
 	// Set new cache after fetching from inner
 	mock.ExpectSet("candles:AAPL:1day:100", expectedJSON, 5*time.Minute).SetVal("OK")
 
-	inner := &mockCandleRepository{
+	inner := &mockCandleRepo{
 		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 			return expectedCandles, nil
 		},
@@ -255,7 +255,7 @@ func TestCachingCandleRepository_UpsertBatch_NilRedis(t *testing.T) {
 	t.Parallel()
 
 	innerCalled := false
-	inner := &mockCandleRepository{
+	inner := &mockCandleRepo{
 		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
 			innerCalled = true
 			return nil
@@ -279,7 +279,7 @@ func TestCachingCandleRepository_UpsertBatch_InnerError(t *testing.T) {
 	t.Parallel()
 
 	expectedErr := errors.New("upsert error")
-	inner := &mockCandleRepository{
+	inner := &mockCandleRepo{
 		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
 			return expectedErr
 		},
@@ -302,7 +302,7 @@ func TestCachingCandleRepository_UpsertBatch_EmptyCandles(t *testing.T) {
 	rdb, _ := redismock.NewClientMock()
 	defer func() { _ = rdb.Close() }()
 
-	inner := &mockCandleRepository{
+	inner := &mockCandleRepo{
 		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
 			return nil
 		},
@@ -322,7 +322,7 @@ func TestCachingCandleRepository_UpsertBatch_CacheInvalidation(t *testing.T) {
 	rdb, mock := redismock.NewClientMock()
 	defer func() { _ = rdb.Close() }()
 
-	inner := &mockCandleRepository{
+	inner := &mockCandleRepo{
 		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
 			return nil
 		},
@@ -351,7 +351,7 @@ func TestCachingCandleRepository_UpsertBatch_DeduplicatesInvalidation(t *testing
 	rdb, mock := redismock.NewClientMock()
 	defer func() { _ = rdb.Close() }()
 
-	inner := &mockCandleRepository{
+	inner := &mockCandleRepo{
 		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
 			return nil
 		},
@@ -374,8 +374,8 @@ func TestCachingCandleRepository_UpsertBatch_DeduplicatesInvalidation(t *testing
 	}
 }
 
-// TestSafe はsafe関数がRedisキーで問題となる文字を正しくエスケープすることを検証します。
-func TestSafe(t *testing.T) {
+// TestSafeCacheKey はsafeCacheKey関数がRedisキーで問題となる文字を正しくエスケープすることを検証します。
+func TestSafeCacheKey(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -395,9 +395,9 @@ func TestSafe(t *testing.T) {
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
-			result := safe(tt.input)
+			result := safeCacheKey(tt.input)
 			if result != tt.expected {
-				t.Errorf("safe(%q) = %q, expected %q", tt.input, result, tt.expected)
+				t.Errorf("safeCacheKey(%q) = %q, expected %q", tt.input, result, tt.expected)
 			}
 		})
 	}

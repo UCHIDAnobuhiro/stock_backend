@@ -9,12 +9,14 @@ import (
 
 	"stock_backend/internal/app/router"
 	authadapters "stock_backend/internal/feature/auth/adapters"
+	authentity "stock_backend/internal/feature/auth/domain/entity"
 	authhandler "stock_backend/internal/feature/auth/transport/handler"
 	authusecase "stock_backend/internal/feature/auth/usecase"
 	candlesadapters "stock_backend/internal/feature/candles/adapters"
 	candleshandler "stock_backend/internal/feature/candles/transport/handler"
 	candlesusecase "stock_backend/internal/feature/candles/usecase"
 	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
+	symbolentity "stock_backend/internal/feature/symbollist/domain/entity"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
 	"stock_backend/internal/platform/cache"
@@ -38,6 +40,18 @@ func main() {
 	// データベース接続
 	db := infradb.OpenDB()
 
+	// マイグレーション
+	if os.Getenv("RUN_MIGRATIONS") == "true" {
+		if err := infradb.RunMigrations(db,
+			&authentity.User{},
+			&candlesadapters.CandleModel{},
+			&symbolentity.Symbol{},
+		); err != nil {
+			slog.Error("failed to migrate", "error", err)
+			os.Exit(1)
+		}
+	}
+
 	// Redis接続
 	var rdb *redisv9.Client
 	if tmp, err := infraredis.NewRedisClient(); err != nil {
@@ -59,7 +73,7 @@ func main() {
 
 	// Redisキャッシュでラップ
 	ttl := cache.TimeUntilNext8AM()
-	cachedCandleRepo := cache.NewCachingCandleRepository(rdb, ttl, candleRepo, "candles")
+	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, ttl, candleRepo, "candles")
 
 	// JWTジェネレータ
 	jwtSecret := os.Getenv(jwtmw.EnvKeyJWTSecret)

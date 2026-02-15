@@ -2,7 +2,7 @@
 package di
 
 import (
-	"stock_backend/internal/platform/externalapi/twelvedata"
+	"stock_backend/internal/feature/candles/adapters/twelvedata"
 	infrahttp "stock_backend/internal/platform/http"
 )
 

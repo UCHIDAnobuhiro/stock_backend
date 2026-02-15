@@ -9,10 +9,6 @@ import (
 
 	gmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
-
-	authentity "stock_backend/internal/feature/auth/domain/entity"
-	candleadapters "stock_backend/internal/feature/candles/adapters"
-	symbolentity "stock_backend/internal/feature/symbollist/domain/entity"
 )
 
 // Config はデータベース接続設定を保持します。
@@ -75,18 +71,13 @@ func ConnectWithRetry(dsn string, timeout time.Duration, opener Opener) (*gorm.D
 	}
 }
 
-// RunMigrations はすべての登録済みモデルのデータベースマイグレーションを実行します。
-func RunMigrations(db *gorm.DB) error {
-	return db.AutoMigrate(
-		&authentity.User{},
-		&candleadapters.CandleModel{},
-		&symbolentity.Symbol{},
-	)
+// RunMigrations は指定されたモデルのデータベースマイグレーションを実行します。
+func RunMigrations(db *gorm.DB, models ...any) error {
+	return db.AutoMigrate(models...)
 }
 
 // OpenDB は環境設定を使用してデータベース接続を開きます。
-// リトライロジックと、RUN_MIGRATIONS環境変数に基づくオプションのマイグレーションを含みます。
-// 失敗時はプロセスを終了します（本番環境用）。
+// リトライロジックを含み、失敗時はプロセスを終了します（本番環境用）。
 func OpenDB() *gorm.DB {
 	cfg := LoadConfigFromEnv()
 	dsn := BuildDSN(cfg)
@@ -95,13 +86,6 @@ func OpenDB() *gorm.DB {
 	if err != nil {
 		slog.Error("DB connect failed", "error", err)
 		os.Exit(1)
-	}
-
-	if os.Getenv("RUN_MIGRATIONS") == "true" {
-		if err := RunMigrations(db); err != nil {
-			slog.Error("failed to migrate", "error", err)
-			os.Exit(1)
-		}
 	}
 
 	return db
