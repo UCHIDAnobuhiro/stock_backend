@@ -16,24 +16,24 @@ linters:
     depguard:
       rules:
         main:
-            files:
-              - "**/internal/feature/**/domain/**"
-              - "**/internal/feature/**/usecase/**"
-            deny:
-              - pkg: "stock_backend/internal/feature/auth/adapters"
-                desc: "domain/usecase must not depend on adapters"
-              - pkg: "stock_backend/internal/feature/candles/adapters"
-                desc: "domain/usecase must not depend on adapters"
-              - pkg: "stock_backend/internal/feature/symbollist/adapters"
-                desc: "domain/usecase must not depend on adapters"
-              - pkg: "stock_backend/internal/feature/auth/transport"
-                desc: "domain/usecase must not depend on transport"
-              - pkg: "stock_backend/internal/feature/candles/transport"
-                desc: "domain/usecase must not depend on transport"
-              - pkg: "stock_backend/internal/feature/symbollist/transport"
-                desc: "domain/usecase must not depend on transport"
-              - pkg: "stock_backend/internal/api"
-                desc: "domain/usecase must not depend on API types (transport layer only)"
+          files:
+            - "**/internal/feature/**/domain/**"
+            - "**/internal/feature/**/usecase/**"
+          deny:
+            - pkg: "stock_backend/internal/feature/auth/adapters"
+              desc: "domain/usecase must not depend on adapters"
+            - pkg: "stock_backend/internal/feature/candles/adapters"
+              desc: "domain/usecase must not depend on adapters"
+            - pkg: "stock_backend/internal/feature/symbollist/adapters"
+              desc: "domain/usecase must not depend on adapters"
+            - pkg: "stock_backend/internal/feature/auth/transport"
+              desc: "domain/usecase must not depend on transport"
+            - pkg: "stock_backend/internal/feature/candles/transport"
+              desc: "domain/usecase must not depend on transport"
+            - pkg: "stock_backend/internal/feature/symbollist/transport"
+              desc: "domain/usecase must not depend on transport"
+            - pkg: "stock_backend/internal/api"
+              desc: "domain/usecase must not depend on API types (transport layer only)"
 
 formatters:
   enable:
