@@ -163,9 +163,11 @@ func TestAuthHandler_Login(t *testing.T) {
 			expectedBody:   gin.H{"error": "invalid request"},
 		},
 		{
-			name:           "failure: invalid credentials (usecase error)",
-			requestBody:    gin.H{"email": "wrong@example.com", "password": "wrong-password"},
-			mockLoginFunc:  func(ctx context.Context, email, password string) (string, error) { return "", errors.New("invalid email or password") },
+			name:        "failure: invalid credentials (usecase error)",
+			requestBody: gin.H{"email": "wrong@example.com", "password": "wrong-password"},
+			mockLoginFunc: func(ctx context.Context, email, password string) (string, error) {
+				return "", errors.New("invalid email or password")
+			},
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody:   gin.H{"error": "invalid email or password"},
 		},

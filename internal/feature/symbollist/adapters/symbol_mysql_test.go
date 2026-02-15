@@ -66,11 +66,11 @@ func TestSymbolMySQL_ListActive(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		setupFunc      func(t *testing.T, db *gorm.DB)
-		expectedCount  int
-		expectedCodes  []string
-		wantErr        bool
+		name          string
+		setupFunc     func(t *testing.T, db *gorm.DB)
+		expectedCount int
+		expectedCodes []string
+		wantErr       bool
 	}{
 		{
 			name: "success: returns active symbols sorted by sort_key",

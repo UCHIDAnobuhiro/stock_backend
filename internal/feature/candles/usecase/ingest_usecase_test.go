@@ -75,14 +75,14 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name                 string
-		inputSymbol          string
-		inputInterval        string
-		inputOutputsize      int
+		name                  string
+		inputSymbol           string
+		inputInterval         string
+		inputOutputsize       int
 		mockGetTimeSeriesFunc func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
-		mockUpsertBatchFunc  func(ctx context.Context, candles []entity.Candle) error
-		expectedErr          error
-		verifyCandles        func(t *testing.T, candles []entity.Candle)
+		mockUpsertBatchFunc   func(ctx context.Context, candles []entity.Candle) error
+		expectedErr           error
+		verifyCandles         func(t *testing.T, candles []entity.Candle)
 	}{
 		{
 			name:            "success: data fetch and save succeed",
@@ -188,11 +188,11 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name                    string
-		inputSymbols            []string
-		mockGetTimeSeriesFunc   func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
-		mockUpsertBatchFunc     func(ctx context.Context, candles []entity.Candle) error
-		expectedErr             error
+		name                       string
+		inputSymbols               []string
+		mockGetTimeSeriesFunc      func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+		mockUpsertBatchFunc        func(ctx context.Context, candles []entity.Candle) error
+		expectedErr                error
 		expectedGetTimeSeriesCalls int
 	}{
 		{

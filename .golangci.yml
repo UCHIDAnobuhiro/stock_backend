@@ -30,3 +30,8 @@ linters:
                 desc: "domain/usecase must not depend on transport"
               - pkg: "stock_backend/internal/api"
                 desc: "domain/usecase must not depend on API types (transport layer only)"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

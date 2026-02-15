@@ -4,8 +4,8 @@ package handler
 import (
 	"context"
 	"net/http"
-	"stock_backend/internal/feature/symbollist/domain/entity"
 	"stock_backend/internal/api"
+	"stock_backend/internal/feature/symbollist/domain/entity"
 
 	"github.com/gin-gonic/gin"
 )

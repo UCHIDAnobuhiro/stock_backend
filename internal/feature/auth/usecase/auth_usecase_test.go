@@ -113,13 +113,13 @@ func TestAuthUsecase_Signup(t *testing.T) {
 	t.Parallel() // テスト関数の並列実行を有効化
 
 	tests := []struct {
-		name              string
-		email             string
-		password          string
-		wantErr           bool
-		errMsg            string
-		verifyBcryptHash  bool
-		repositoryErr     error
+		name             string
+		email            string
+		password         string
+		wantErr          bool
+		errMsg           string
+		verifyBcryptHash bool
+		repositoryErr    error
 	}{
 		{
 			name:             "successful signup",

@@ -56,11 +56,11 @@ func TestUserMySQL_Create(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name          string
-		user          *entity.User
-		wantErr       bool
-		setupFunc     func(t *testing.T, db *gorm.DB)
-		validateFunc  func(t *testing.T, user *entity.User)
+		name         string
+		user         *entity.User
+		wantErr      bool
+		setupFunc    func(t *testing.T, db *gorm.DB)
+		validateFunc func(t *testing.T, user *entity.User)
 	}{
 		{
 			name: "success: user creation",
