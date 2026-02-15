@@ -27,11 +27,11 @@ func TestTimeUntilNext8AM_ReturnsValidDuration(t *testing.T) {
 	duration := TimeUntilNext8AM()
 
 	// Calculate what the next 8 AM should be
-	now := time.Now()
 	loc, err := time.LoadLocation("Asia/Tokyo")
 	if err != nil {
 		t.Fatalf("failed to load Asia/Tokyo timezone: %v", err)
 	}
+	now := time.Now().In(loc)
 
 	next8am := time.Date(now.Year(), now.Month(), now.Day(), 8, 0, 0, 0, loc)
 	if now.After(next8am) {
