@@ -121,7 +121,7 @@ sequenceDiagram
 - **400 Bad Request** - バリデーションエラー
   ```json
   {
-    "error": "Key: 'SignupReq.Password' Error:Field validation for 'Password' failed on the 'min' tag"
+    "error": "Key: 'SignupRequest.Password' Error:Field validation for 'Password' failed on the 'min' tag"
   }
   ```
 
@@ -166,7 +166,7 @@ sequenceDiagram
 - **400 Bad Request** - バリデーションエラー
   ```json
   {
-    "error": "Key: 'LoginReq.Email' Error:Field validation for 'Email' failed on the 'email' tag"
+    "error": "Key: 'LoginRequest.Email' Error:Field validation for 'Email' failed on the 'email' tag"
   }
   ```
 
@@ -183,7 +183,10 @@ sequenceDiagram
 graph TB
     subgraph "Transport Layer"
         Handler[AuthHandler<br/>transport/handler]
-        DTO[DTOs<br/>transport/http/dto]
+    end
+
+    subgraph "API Types (Generated)"
+        APITypes[SignupRequest / LoginRequest<br/>internal/api/types.gen.go]
     end
 
     subgraph "Usecase Layer"
@@ -210,7 +213,7 @@ graph TB
     end
 
     Handler -->|depends on| Usecase
-    Handler -->|uses| DTO
+    Handler -->|uses| APITypes
     Usecase -->|defines| RepoInterface
     Usecase -->|defines| Errors
     Usecase -->|uses| Entity
@@ -233,9 +236,9 @@ graph TB
 
 #### Transport層（[transport/handler/auth_handler.go](transport/handler/auth_handler.go)）
 - **AuthHandler**: HTTPリクエストを処理し、AuthUsecaseを呼び出す
-- **DTO**（[transport/http/dto/](transport/http/dto/)）: リクエスト/レスポンスのデータ構造を定義
-  - [SignupReq](transport/http/dto/signup_request.go): ユーザー登録リクエスト
-  - [LoginReq](transport/http/dto/login_request.go): ログインリクエスト
+- **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成されたリクエスト/レスポンス型を使用
+  - `api.SignupRequest`: ユーザー登録リクエスト
+  - `api.LoginRequest`: ログインリクエスト
 
 #### Usecase層
 - **AuthUsecase**（[usecase/auth_usecase.go](usecase/auth_usecase.go)）: 認証ビジネスロジックを実装
@@ -288,12 +291,9 @@ auth/
 │   ├── user_mysql.go                 # MySQLリポジトリ実装
 │   └── user_mysql_test.go            # リポジトリテスト
 └── transport/
-    ├── handler/
-    │   ├── auth_handler.go           # HTTPハンドラー
-    │   └── auth_handler_test.go      # ハンドラーテスト
-    └── http/dto/
-        ├── signup_request.go         # サインアップリクエストDTO
-        └── login_request.go          # ログインリクエストDTO
+    └── handler/
+        ├── auth_handler.go           # HTTPハンドラー
+        └── auth_handler_test.go      # ハンドラーテスト
 ```
 
 ## テスト

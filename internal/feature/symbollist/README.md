@@ -81,7 +81,10 @@ sequenceDiagram
 graph TB
     subgraph "Transport Layer"
         Handler[SymbolHandler<br/>transport/handler]
-        DTO[SymbolItem DTO<br/>transport/http/dto]
+    end
+
+    subgraph "API Types (Generated)"
+        APITypes[SymbolItem<br/>internal/api/types.gen.go]
     end
 
     subgraph "Usecase Layer"
@@ -105,7 +108,7 @@ graph TB
     end
 
     Handler -->|depends on| Usecase
-    Handler -->|uses| DTO
+    Handler -->|uses| APITypes
     Usecase -->|defines| RepoInterface
     Usecase -->|uses| Entity
     RepoImpl -.->|implements| RepoInterface
@@ -124,7 +127,7 @@ graph TB
 
 #### Transport層 ([transport/handler/symbol_handler.go](transport/handler/symbol_handler.go))
 - **SymbolHandler**: HTTPリクエストを処理し、SymbolUsecaseを呼び出す
-- **SymbolItem DTO** ([transport/http/dto/symbol_list.go](transport/http/dto/symbol_list.go)): `code` と `name` のみを含むレスポンスデータ構造
+- **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成された `api.SymbolItem` を使用
 
 #### Usecase層 ([usecase/symbol_usecase.go](usecase/symbol_usecase.go))
 - **SymbolUsecase**: 銘柄操作のビジネスロジックを実装
@@ -168,12 +171,9 @@ symbollist/
 │   ├── symbol_mysql.go               # MySQLリポジトリ実装
 │   └── symbol_mysql_test.go          # リポジトリテスト
 └── transport/
-    ├── handler/
-    │   ├── symbol_handler.go         # HTTPハンドラー
-    │   └── symbol_handler_test.go    # ハンドラーテスト
-    └── http/
-        └── dto/
-            └── symbol_list.go        # レスポンスDTO
+    └── handler/
+        ├── symbol_handler.go         # HTTPハンドラー
+        └── symbol_handler_test.go    # ハンドラーテスト
 ```
 
 ## テスト
