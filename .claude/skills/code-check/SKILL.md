@@ -20,7 +20,7 @@ CLAUDE.md のアーキテクチャルールに基づき、以下を検査する�
 - **依存関係ルール違反**: domain/ や usecase/ から adapters/ や transport/ をインポートしていないか
 - **レイヤー責務の混在**: ビジネスロジックが handler に書かれていないか、HTTP固有の処理が usecase に入っていないか
 - **リポジトリインターフェースの配置**: インターフェースが usecase 層で定義されているか（domain/repository/ に配置していないか）
-- **DTO とエンティティの混同**: transport 層の DTO を usecase やドメイン層で使っていないか
+- **API型とエンティティの混同**: OpenAPI生成型（`internal/api`）を usecase やドメイン層で使っていないか（API型は transport 層のみで使用）
 
 ### Step 3: 命名規則
 

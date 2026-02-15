@@ -5,7 +5,7 @@ import (
 	"context"
 	"net/http"
 	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/feature/candles/transport/http/dto"
+	"stock_backend/internal/api"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -42,14 +42,14 @@ func (h *CandlesHandler) GetCandlesHandler(c *gin.Context) {
 	candles, err := h.uc.GetCandles(c.Request.Context(), code, interval, outputsize)
 
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadGateway, api.ErrorResponse{Error: err.Error()})
 		return
 	}
 
 	// データをフォーマット
-	out := make([]dto.CandleResponse, 0, len(candles))
+	out := make([]api.CandleResponse, 0, len(candles))
 	for _, x := range candles {
-		out = append(out, dto.CandleResponse{
+		out = append(out, api.CandleResponse{
 			Time:   x.Time.UTC().Format("2006-01-02"),
 			Open:   x.Open,
 			High:   x.High,

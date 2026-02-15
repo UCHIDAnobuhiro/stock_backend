@@ -42,6 +42,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 | DB              | MySQL / Cloud SQL                                                   |
 | キャッシュ      | Redis                                                               |
 | 認証            | JWT / bcrypt                                                        |
+| API仕様         | OpenAPI 3.0.3 / oapi-codegen（型生成）                              |
 | 設定管理        | **.env.docker（ローカル）/ Secret Manager（本番）+ os.Getenv()**    |
 | コンテナ        | Docker / Docker Compose                                             |
 | クラウド        | Google Cloud Run / Cloud SQL / Secret Manager / Artifact Registry   |
@@ -51,11 +52,19 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 
 ```text
 .
+├── api/
+│   ├── openapi.yaml            # OpenAPI 3.0.3 仕様（APIコントラクトの単一ソース）
+│   └── oapi-codegen.cfg.yaml   # oapi-codegen設定（型のみ生成）
+│
 ├── cmd/
 │   ├── ingest/                 # データ取得・取り込み（バッチジョブ）
 │   └── server/                 # メインエントリーポイント（main.go）
 │
 ├── internal/
+│   ├── api/                    # OpenAPIから自動生成された型定義
+│   │   ├── generate.go         # go:generateディレクティブ
+│   │   └── types.gen.go        # 生成コード（手動編集不可）
+│   │
 │   ├── app/                    # アプリケーション基盤
 │   │   ├── di/                 # 依存性注入
 │   │   └── router/             # ルーティング設定
@@ -66,9 +75,8 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │   │   │   └── entity/     # エンティティ（User）
 │   │   │   ├── usecase/        # ユースケース（リポジトリインターフェース定義、ビジネスロジック）
 │   │   │   ├── adapters/       # アダプター（リポジトリ実装）
-│   │   │   └── transport/      # トランスポート層
-│   │   │       ├── handler/    # HTTPハンドラー
-│   │   │       └── http/dto/   # リクエスト/レスポンスDTO
+│   │   │   └── transport/
+│   │   │       └── handler/    # HTTPハンドラー
 │   │   │
 │   │   ├── candles/            # ローソク足データ機能
 │   │   │   ├── domain/
@@ -76,8 +84,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │   │   ├── usecase/        # ユースケース（リポジトリインターフェース定義、取得/保存ロジック）
 │   │   │   ├── adapters/       # MySQL実装
 │   │   │   └── transport/
-│   │   │       ├── handler/    # HTTPハンドラー
-│   │   │       └── http/dto/   # リクエスト/レスポンスDTO
+│   │   │       └── handler/    # HTTPハンドラー
 │   │   │
 │   │   └── symbollist/         # シンボルリスト機能
 │   │       ├── domain/
@@ -85,8 +92,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │       ├── usecase/        # ユースケース（リポジトリインターフェース定義）
 │   │       ├── adapters/       # リポジトリ実装
 │   │       └── transport/
-│   │           ├── handler/    # HTTPハンドラー
-│   │           └── http/dto/   # リクエスト/レスポンスDTO
+│   │           └── handler/    # HTTPハンドラー
 │   │
 │   ├── platform/               # インフラストラクチャ層（外部依存）
 │   │   ├── cache/              # Redisキャッシュデコレータ
@@ -114,6 +120,31 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 └── .github/
     └── workflows/              # CI/CD（テスト、ビルド、デプロイ）
 ```
+
+## API仕様（OpenAPI）
+
+API仕様は `api/openapi.yaml`（OpenAPI 3.0.3）で管理しています。
+この仕様ファイルから [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen) を使って Go の型定義を自動生成しています。
+
+### 仕様の確認（Swagger UI）
+
+開発環境の起動時に Swagger UI も自動で立ち上がります：
+
+```bash
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock up backend-dev swagger-ui
+```
+
+ブラウザで http://localhost:8081 を開くとAPI仕様を確認できます。
+
+### 型の再生成
+
+OpenAPI仕様（`api/openapi.yaml`）を変更した場合、以下のコマンドで Go の型定義を再生成してください：
+
+```bash
+go generate ./internal/api/...
+```
+
+生成されるファイル: `internal/api/types.gen.go`（手動編集不可）
 
 ## 認証設計（JWT + リフレッシュトークン）
 

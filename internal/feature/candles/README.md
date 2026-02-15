@@ -174,7 +174,10 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 graph TB
     subgraph "Transport Layer"
         Handler[CandlesHandler<br/>transport/handler]
-        DTO[CandleResponse DTO<br/>transport/http/dto]
+    end
+
+    subgraph "API Types (Generated)"
+        APITypes[CandleResponse<br/>internal/api/types.gen.go]
     end
 
     subgraph "Usecase Layer"
@@ -205,7 +208,7 @@ graph TB
     end
 
     Handler -->|depends on| CandlesUC
-    Handler -->|uses| DTO
+    Handler -->|uses| APITypes
     CandlesUC -->|defines| RepoInterface
     CandlesUC -->|uses| Entity
     IngestUC -->|defines| MarketInterface
@@ -238,7 +241,7 @@ graph TB
 
 #### トランスポート層（[transport/handler/candle_handler.go](transport/handler/candle_handler.go)）
 - **CandlesHandler**: HTTPリクエストを処理し、CandlesUsecaseを呼び出す
-- **CandleResponse DTO**（[transport/http/dto/candle_response.go](transport/http/dto/candle_response.go)）: JSONシリアライゼーション付きのレスポンスデータ構造
+- **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成された `api.CandleResponse` を使用
 
 #### ユースケース層
 - **CandlesUsecase**（[usecase/candles_usecase.go](usecase/candles_usecase.go)）: パラメータバリデーション付きのローソク足データ取得
@@ -296,12 +299,9 @@ candles/
 │   ├── candle_mysql.go                # MySQLリポジトリ実装
 │   └── candle_mysql_test.go           # リポジトリテスト
 └── transport/
-    ├── handler/
-    │   ├── candle_handler.go          # HTTPハンドラー
-    │   └── candle_handler_test.go     # ハンドラーテスト
-    └── http/
-        └── dto/
-            └── candle_response.go     # レスポンスDTO
+    └── handler/
+        ├── candle_handler.go          # HTTPハンドラー
+        └── candle_handler_test.go     # ハンドラーテスト
 ```
 
 ## テスト

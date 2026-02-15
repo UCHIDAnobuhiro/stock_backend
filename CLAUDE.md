@@ -47,7 +47,12 @@ go build ./...
 ### ディレクトリ構成
 
 ```
+api/
+├── openapi.yaml          # OpenAPI 3.0.3 仕様（APIコントラクトの単一ソース）
+└── oapi-codegen.cfg.yaml # oapi-codegen設定（型のみ生成）
+
 internal/
+├── api/              # OpenAPIから自動生成された型定義（types.gen.go）
 ├── app/
 │   ├── di/           # 依存性注入ファクトリ
 │   └── router/       # HTTPルーター設定
@@ -77,9 +82,10 @@ feature/<name>/
 ├── usecase/          # アプリケーションロジック（リポジトリインターフェース定義、ビジネスロジック統合）
 ├── adapters/         # リポジトリ実装（MySQL等）
 └── transport/
-    ├── handler/      # HTTPハンドラー（Gin）
-    └── http/dto/     # リクエスト/レスポンスDTO
+    └── handler/      # HTTPハンドラー（Gin）
 ```
+
+**注意**: リクエスト/レスポンスの型は `internal/api/types.gen.go`（OpenAPI仕様から自動生成）を使用します。各フィーチャーにDTOは配置しません。
 
 **注意**: Goの慣例に従い、**リポジトリインターフェースはusecaseレイヤー**（利用者側）で定義します。別途domain/repositoryディレクトリには配置しません。これにより、インターフェースは使用される場所で定義されます。
 
@@ -87,7 +93,7 @@ feature/<name>/
 
 **domain/** と **usecase/** レイヤーは以下をインポートしてはなりません：
 - `adapters/`（リポジトリ実装）
-- `transport/`（HTTPハンドラー、DTO）
+- `transport/`（HTTPハンドラー）
 
 これにより、ドメインロジックがインフラストラクチャの詳細から独立した状態を保ちます。
 
@@ -130,7 +136,7 @@ feature/<name>/
 4. **adaptersを実装**: `adapters/` - usecaseで定義されたインターフェースを実装するリポジトリ実装（MySQL等）
 5. **transport層を追加**:
    - `transport/handler/` - HTTPハンドラー（必要に応じてusecaseインターフェースもここで定義可）
-   - `transport/http/dto/` - リクエスト/レスポンスDTO
+   - リクエスト/レスポンス型は `api/openapi.yaml` に定義し、`go generate ./internal/api/...` で生成
 6. **依存関係をワイヤリング**: `cmd/server/main.go` または `cmd/ingest/main.go` にて
 7. **ルートを登録**: `internal/app/router/router.go` にて
 8. **depguardルールを追加**: `.golangci.yml` に新フィーチャーの `adapters` と `transport` パッケージのdenyルールを追加
