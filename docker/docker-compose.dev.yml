@@ -92,8 +92,6 @@ services:
       SWAGGER_JSON: /app/openapi.yaml
     volumes:
       - ../api/openapi.yaml:/app/openapi.yaml:ro
-    depends_on:
-      - backend-dev
     restart: unless-stopped
 
 volumes:
