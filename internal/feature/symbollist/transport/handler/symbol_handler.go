@@ -5,7 +5,7 @@ import (
 	"context"
 	"net/http"
 	"stock_backend/internal/feature/symbollist/domain/entity"
-	"stock_backend/internal/feature/symbollist/transport/http/dto"
+	"stock_backend/internal/api"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,9 +35,9 @@ func (h *SymbolHandler) List(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	out := make([]dto.SymbolItem, 0, len(symbols))
+	out := make([]api.SymbolItem, 0, len(symbols))
 	for _, s := range symbols {
-		out = append(out, dto.SymbolItem{Code: s.Code, Name: s.Name})
+		out = append(out, api.SymbolItem{Code: s.Code, Name: s.Name})
 	}
 	c.JSON(http.StatusOK, out)
 }

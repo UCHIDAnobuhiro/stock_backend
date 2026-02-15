@@ -1,0 +1,286 @@
+openapi: "3.0.3"
+info:
+  title: Stock Backend API
+  description: 株価データを提供するREST API
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8080
+    description: ローカル開発サーバー
+
+paths:
+  /healthz:
+    get:
+      summary: ヘルスチェック
+      operationId: getHealth
+      tags:
+        - health
+      responses:
+        "200":
+          description: サービス正常稼働
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /v1/signup:
+    post:
+      summary: ユーザー登録
+      operationId: signup
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupRequest"
+      responses:
+        "201":
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: 登録失敗（メールアドレス重複等）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/login:
+    post:
+      summary: ログイン
+      operationId: login
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: 認証成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: 認証失敗
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/candles/{code}:
+    get:
+      summary: ローソク足データ取得
+      operationId: getCandles
+      tags:
+        - candles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          description: "銘柄コード（例: AAPL, 7203.T）"
+          schema:
+            type: string
+        - name: interval
+          in: query
+          required: false
+          description: "時間間隔"
+          schema:
+            type: string
+            default: "1day"
+        - name: outputsize
+          in: query
+          required: false
+          description: 取得件数
+          schema:
+            type: integer
+            default: 200
+      responses:
+        "200":
+          description: ローソク足データ一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CandleResponse"
+        "502":
+          description: 外部API通信エラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/symbols:
+    get:
+      summary: アクティブ銘柄一覧取得
+      operationId: getSymbols
+      tags:
+        - symbols
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 銘柄一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SymbolItem"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    SignupRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: メールアドレス
+          x-go-type: string
+          x-oapi-codegen-extra-tags:
+            binding: "required,email"
+        password:
+          type: string
+          minLength: 8
+          description: パスワード（8文字以上）
+          x-oapi-codegen-extra-tags:
+            binding: "required,min=8"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: メールアドレス
+          x-go-type: string
+          x-oapi-codegen-extra-tags:
+            binding: "required,email"
+        password:
+          type: string
+          description: パスワード
+          x-oapi-codegen-extra-tags:
+            binding: "required"
+
+    CandleResponse:
+      type: object
+      required:
+        - time
+        - open
+        - high
+        - low
+        - close
+        - volume
+      properties:
+        time:
+          type: string
+          description: 日付（YYYY-MM-DD形式）
+          example: "2024-01-15"
+        open:
+          type: number
+          format: double
+          description: 始値
+        high:
+          type: number
+          format: double
+          description: 高値
+        low:
+          type: number
+          format: double
+          description: 安値
+        close:
+          type: number
+          format: double
+          description: 終値
+        volume:
+          type: integer
+          format: int64
+          description: 出来高
+
+    SymbolItem:
+      type: object
+      required:
+        - code
+        - name
+      properties:
+        code:
+          type: string
+          description: "銘柄コード（例: AAPL, 7203.T）"
+        name:
+          type: string
+          description: 企業名
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: エラーメッセージ
+
+    MessageResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
+    TokenResponse:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: JWTトークン
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: サービスステータス

@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"stock_backend/internal/feature/auth/transport/http/dto"
+	"stock_backend/internal/api"
 
 	"github.com/gin-gonic/gin"
 )
@@ -38,7 +38,7 @@ func NewAuthHandler(auth AuthUsecase) *AuthHandler {
 // - ユーザー作成失敗時（メール重複等）は409を返却
 // - 成功時は201を返却
 func (h *AuthHandler) Signup(c *gin.Context) {
-	var req dto.SignupReq
+	var req api.SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Warn("signup validation failed", "error", err, "remote_addr", c.ClientIP())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -60,7 +60,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 // - 認証失敗時は401を返却
 // - 認証成功時はJWTトークン付きで200を返却
 func (h *AuthHandler) Login(c *gin.Context) {
-	var req dto.LoginReq
+	var req api.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Warn("login validation failed", "error", err, "remote_addr", c.ClientIP())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
