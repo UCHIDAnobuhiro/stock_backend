@@ -3,9 +3,10 @@ package usecase
 import (
 	"context"
 	"errors"
-	"stock_backend/internal/feature/candles/domain/entity"
 	"testing"
 	"time"
+
+	"stock_backend/internal/feature/candles/domain/entity"
 )
 
 // ErrDB はデータベースのセンチネルエラーです。
@@ -332,7 +333,6 @@ func TestIngestUsecase_IngestAll_Intervals(t *testing.T) {
 
 	uc := NewIngestUsecase(mockMarket, mockCandle, mockSymbol, mockRL)
 	err := uc.IngestAll(ctx)
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

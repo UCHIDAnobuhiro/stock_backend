@@ -7,12 +7,13 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"stock_backend/internal/feature/auth/transport/handler"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"stock_backend/internal/feature/auth/transport/handler"
 )
 
 // mockAuthUsecase はAuthUsecaseインターフェースのモック実装です。

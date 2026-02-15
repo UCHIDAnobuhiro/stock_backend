@@ -7,13 +7,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/feature/candles/transport/handler"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+
+	"stock_backend/internal/feature/candles/domain/entity"
+	"stock_backend/internal/feature/candles/transport/handler"
 )
 
 // mockCandlesUsecase はcandlesUsecaseインターフェースのモック実装です。

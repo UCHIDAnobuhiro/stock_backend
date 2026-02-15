@@ -7,6 +7,10 @@ linters:
     - errcheck
     - govet
     - ineffassign
+    - unused
+    - bodyclose
+    - unconvert
+    - misspell
 
   settings:
     depguard:
@@ -34,4 +38,11 @@ linters:
 formatters:
   enable:
     - gofmt
-    - goimports
+    - gci
+
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(stock_backend)

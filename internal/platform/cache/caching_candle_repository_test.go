@@ -134,7 +134,6 @@ func TestCachingCandleRepository_Find_CacheHit(t *testing.T) {
 
 	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
 	candles, err := repo.Find(context.Background(), "AAPL", "1day", 100)
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -174,7 +173,6 @@ func TestCachingCandleRepository_Find_CacheMiss(t *testing.T) {
 
 	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
 	candles, err := repo.Find(context.Background(), "AAPL", "1day", 100)
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -241,7 +239,6 @@ func TestCachingCandleRepository_Find_CorruptedCache(t *testing.T) {
 
 	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
 	candles, err := repo.Find(context.Background(), "AAPL", "1day", 100)
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -269,7 +266,6 @@ func TestCachingCandleRepository_UpsertBatch_NilRedis(t *testing.T) {
 	err := repo.UpsertBatch(context.Background(), []entity.Candle{
 		{Symbol: "AAPL", Interval: "1day"},
 	})
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -314,7 +310,6 @@ func TestCachingCandleRepository_UpsertBatch_EmptyCandles(t *testing.T) {
 
 	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
 	err := repo.UpsertBatch(context.Background(), []entity.Candle{})
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -341,7 +336,6 @@ func TestCachingCandleRepository_UpsertBatch_CacheInvalidation(t *testing.T) {
 	err := repo.UpsertBatch(context.Background(), []entity.Candle{
 		{Symbol: "AAPL", Interval: "1day"},
 	})
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -372,7 +366,6 @@ func TestCachingCandleRepository_UpsertBatch_DeduplicatesInvalidation(t *testing
 		{Symbol: "AAPL", Interval: "1day", Time: time.Now().Add(-24 * time.Hour)},
 		{Symbol: "AAPL", Interval: "1day", Time: time.Now().Add(-48 * time.Hour)},
 	})
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

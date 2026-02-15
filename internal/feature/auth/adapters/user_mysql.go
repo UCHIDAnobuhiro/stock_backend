@@ -5,11 +5,11 @@ import (
 	"context"
 	"errors"
 
-	"stock_backend/internal/feature/auth/domain/entity"
-	"stock_backend/internal/feature/auth/usecase"
-
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
+
+	"stock_backend/internal/feature/auth/domain/entity"
+	"stock_backend/internal/feature/auth/usecase"
 )
 
 // userMySQL はUserRepositoryインターフェースのMySQL実装です。

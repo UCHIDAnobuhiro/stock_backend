@@ -83,7 +83,6 @@ func TestConnectWithRetry_SuccessOnFirstTry(t *testing.T) {
 	}
 
 	db, err := ConnectWithRetry("test-dsn", 5*time.Second, opener)
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -109,7 +108,6 @@ func TestConnectWithRetry_RetriesOnFailure(t *testing.T) {
 
 	// Use a timeout that allows for 2 retries (retry interval is 3 seconds)
 	db, err := ConnectWithRetry("test-dsn", 10*time.Second, opener)
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

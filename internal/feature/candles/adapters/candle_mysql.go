@@ -3,12 +3,13 @@ package adapters
 
 import (
 	"context"
-	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/feature/candles/usecase"
 	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"stock_backend/internal/feature/candles/domain/entity"
+	"stock_backend/internal/feature/candles/usecase"
 )
 
 // candleMySQL はCandleRepositoryインターフェースのMySQL実装です。

@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"reflect"
-	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/feature/candles/usecase"
 	"testing"
 	"time"
+
+	"stock_backend/internal/feature/candles/domain/entity"
+	"stock_backend/internal/feature/candles/usecase"
 )
 
 // ErrDB はモックと期待値の間で共有されるセンチネルエラーです。

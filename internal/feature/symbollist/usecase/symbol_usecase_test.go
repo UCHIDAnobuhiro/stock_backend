@@ -3,11 +3,12 @@ package usecase_test
 import (
 	"context"
 	"errors"
-	"stock_backend/internal/feature/symbollist/domain/entity"
-	"stock_backend/internal/feature/symbollist/usecase"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"stock_backend/internal/feature/symbollist/domain/entity"
+	"stock_backend/internal/feature/symbollist/usecase"
 )
 
 // mockSymbolRepository はSymbolRepositoryインターフェースのモック実装です。

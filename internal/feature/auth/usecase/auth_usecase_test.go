@@ -3,11 +3,12 @@ package usecase_test
 import (
 	"context"
 	"errors"
-	"stock_backend/internal/feature/auth/domain/entity"
-	"stock_backend/internal/feature/auth/usecase"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
+
+	"stock_backend/internal/feature/auth/domain/entity"
+	"stock_backend/internal/feature/auth/usecase"
 )
 
 // mockUserRepository はUserRepositoryインターフェースのモック実装です。

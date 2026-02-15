@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"log/slog"
+
 	"stock_backend/internal/feature/candles/domain/entity"
 	"stock_backend/internal/shared/ratelimiter"
 )

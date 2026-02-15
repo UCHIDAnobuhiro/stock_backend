@@ -2,14 +2,15 @@ package adapters
 
 import (
 	"context"
-	"stock_backend/internal/feature/auth/domain/entity"
-	"stock_backend/internal/feature/auth/usecase"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"stock_backend/internal/feature/auth/domain/entity"
+	"stock_backend/internal/feature/auth/usecase"
 )
 
 // setupTestDB はテスト用のインメモリSQLiteデータベースを準備します。

@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"stock_backend/internal/api"
-
 	"github.com/gin-gonic/gin"
+
+	"stock_backend/internal/api"
 )
 
 // AuthUsecase は認証操作のユースケースを定義します。

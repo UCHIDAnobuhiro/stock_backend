@@ -2,9 +2,9 @@
 package handler
 
 import (
-	"stock_backend/internal/api"
-
 	"github.com/gin-gonic/gin"
+
+	"stock_backend/internal/api"
 )
 
 // Health はサービスヘルスチェック用の /healthz エンドポイントを処理します。

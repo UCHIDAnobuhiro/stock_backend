@@ -2,19 +2,20 @@
 package router
 
 import (
+	"github.com/gin-gonic/gin"
+
 	authhandler "stock_backend/internal/feature/auth/transport/handler"
 	candleshandler "stock_backend/internal/feature/candles/transport/handler"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	handler "stock_backend/internal/platform/http/handler"
 	jwtmw "stock_backend/internal/platform/jwt"
-
-	"github.com/gin-gonic/gin"
 )
 
 // NewRouter はすべてのアプリケーションルートを設定したGinルーターを生成します。
 // 公開ルート（signup, login）とJWT認証ミドルウェア付きの保護ルート（candles, symbols）を設定します。
 func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.CandlesHandler,
-	symbol *symbollisthandler.SymbolHandler) *gin.Engine {
+	symbol *symbollisthandler.SymbolHandler,
+) *gin.Engine {
 	r := gin.Default()
 
 	// ヘルスチェックエンドポイント（バージョンなし）

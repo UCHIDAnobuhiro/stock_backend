@@ -5,12 +5,13 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"stock_backend/internal/feature/symbollist/domain/entity"
-	"stock_backend/internal/feature/symbollist/transport/handler"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+
+	"stock_backend/internal/feature/symbollist/domain/entity"
+	"stock_backend/internal/feature/symbollist/transport/handler"
 )
 
 // mockSymbolUsecase はSymbolUsecaseインターフェースのモック実装です。
