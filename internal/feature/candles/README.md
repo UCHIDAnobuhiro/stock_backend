@@ -183,8 +183,10 @@ graph TB
     subgraph "Usecase Layer"
         CandlesUC[CandlesUsecase<br/>usecase]
         IngestUC[IngestUsecase<br/>usecase]
-        RepoInterface[CandleRepository Interface<br/>usecase/candles_usecase.go]
+        ReadInterface[CandleRepository Interface<br/>usecase/candles_usecase.go]
+        WriteInterface[CandleWriteRepository Interface<br/>usecase/ingest_usecase.go]
         MarketInterface[MarketRepository Interface<br/>usecase/ingest_usecase.go]
+        SymbolInterface[SymbolRepository Interface<br/>usecase/ingest_usecase.go]
     end
 
     subgraph "Domain Layer"
@@ -193,11 +195,11 @@ graph TB
 
     subgraph "Adapters Layer"
         RepoImpl[CandleMySQL<br/>adapters]
+        Cache[CachingCandleRepository<br/>adapters]
+        TwelveData[TwelveDataMarket<br/>adapters/twelvedata]
     end
 
-    subgraph "Platform Layer"
-        Cache[CachingCandleRepository<br/>platform/cache]
-        TwelveData[TwelveDataRepository<br/>platform/externalapi]
+    subgraph "Shared"
         RateLimiter[RateLimiter<br/>shared/ratelimiter]
     end
 
@@ -209,15 +211,16 @@ graph TB
 
     Handler -->|depends on| CandlesUC
     Handler -->|uses| APITypes
-    CandlesUC -->|defines| RepoInterface
+    CandlesUC -->|defines| ReadInterface
     CandlesUC -->|uses| Entity
+    IngestUC -->|defines| WriteInterface
     IngestUC -->|defines| MarketInterface
-    IngestUC -->|uses| RepoInterface
+    IngestUC -->|defines| SymbolInterface
     IngestUC -->|uses| RateLimiter
-    Cache -.->|implements| RepoInterface
+    Cache -.->|implements| ReadInterface
+    Cache -.->|implements| WriteInterface
     Cache -->|decorates| RepoImpl
     Cache -->|uses| Redis
-    RepoImpl -.->|implements| RepoInterface
     RepoImpl -->|uses| Entity
     RepoImpl -->|accesses| DB
     TwelveData -.->|implements| MarketInterface
@@ -227,8 +230,10 @@ graph TB
     style CandlesUC fill:#fff4e1
     style IngestUC fill:#fff4e1
     style Entity fill:#e8f5e9
-    style RepoInterface fill:#fff4e1
+    style ReadInterface fill:#fff4e1
+    style WriteInterface fill:#fff4e1
     style MarketInterface fill:#fff4e1
+    style SymbolInterface fill:#fff4e1
     style RepoImpl fill:#f3e5f5
     style Cache fill:#f3e5f5
     style TwelveData fill:#f3e5f5
@@ -247,11 +252,13 @@ graph TB
 - **CandlesUsecase**（[usecase/candles_usecase.go](usecase/candles_usecase.go)）: パラメータバリデーション付きのローソク足データ取得
   - インターバルとoutputsizeのデフォルト値を適用
   - 最大outputsize制限（5000）を適用
-  - `CandleRepository`インターフェースを定義（Goの「インターフェースは利用者が定義する」慣例に従う）
+  - `CandleRepository`インターフェース（読み取り専用）を定義（Goの「インターフェースは利用者が定義する」慣例に従う）
 - **IngestUsecase**（[usecase/ingest_usecase.go](usecase/ingest_usecase.go)）: 外部APIからのバッチデータ取り込み
-  - 銘柄とインターバルをイテレーション
+  - アクティブな銘柄コードを取得し、各インターバルごとにイテレーション
   - RateLimiterによるレート制限を遵守
-  - `MarketRepository`インターフェースを定義
+  - `CandleWriteRepository`インターフェース（書き込み専用）を定義
+  - `MarketRepository`インターフェース（外部API抽象化）を定義
+  - `SymbolRepository`インターフェース（銘柄コード取得）を定義
 
 #### ドメイン層
 - **Candle Entity**（[domain/entity/candle.go](domain/entity/candle.go)）: OHLCVローソク足データモデル
@@ -267,20 +274,25 @@ graph TB
   - `UpsertBatch`: `ON DUPLICATE KEY UPDATE`によるバッチ挿入/更新
   - （symbol, interval, time）の複合ユニークインデックス
 
-#### プラットフォーム層
-- **CachingCandleRepository**（[platform/cache/caching_candle_repository.go](../../platform/cache/caching_candle_repository.go)）: Redisキャッシュデコレータ
+#### アダプター層（キャッシュ）
+- **CachingCandleRepository**（[adapters/caching_candle_repository.go](adapters/caching_candle_repository.go)）: Redisキャッシュデコレータ
   - CandleMySQLをラップするデコレータパターンを実装
+  - `CandleRepository`（読み取り）と`CandleWriteRepository`（書き込み）の両インターフェースを実装
   - キャッシュキー形式: `candles:{symbol}:{interval}:{outputsize}`
   - UpsertBatch時の自動キャッシュ無効化
   - Redis利用不可時のグレースフルデグレード
+- **TwelveDataMarket**（[adapters/twelvedata/repository.go](adapters/twelvedata/repository.go)）: TwelveData APIクライアント
+  - `MarketRepository`インターフェースを実装
+  - 外部APIからの時系列データ取得
 
 ### アーキテクチャの特徴
 
 1. **クリーンアーキテクチャ**: ドメイン層がインフラストラクチャから独立
-2. **依存性逆転**: UsecaseがCandleRepositoryインターフェースを定義し、adaptersが実装
-3. **デコレータパターン**: CachingCandleRepositoryが透過的にキャッシュを追加
+2. **依存性逆転**: Usecaseが読み取り用（CandleRepository）・書き込み用（CandleWriteRepository）の分離されたインターフェースを定義し、adaptersが実装
+3. **デコレータパターン**: CachingCandleRepositoryが透過的にキャッシュを追加（adapters層内で完結）
 4. **インターフェース所有権**: インターフェースは利用される場所で定義（Goのベストプラクティス）
 5. **グレースフルデグレード**: Redis利用不可時もシステムは継続して動作
+6. **フィーチャー内完結**: TwelveData APIクライアントとキャッシュデコレータがcandles feature内のadaptersに配置され、関心の分離を実現
 
 ## ディレクトリ構成
 
@@ -293,11 +305,19 @@ candles/
 ├── usecase/
 │   ├── candles_usecase.go             # クエリロジック + CandleRepositoryインターフェース
 │   ├── candles_usecase_test.go        # ユースケーステスト
-│   ├── ingest_usecase.go              # バッチ取り込み + MarketRepositoryインターフェース
+│   ├── ingest_usecase.go             # バッチ取り込み + MarketRepository / CandleWriteRepository / SymbolRepositoryインターフェース
 │   └── ingest_usecase_test.go         # 取り込みテスト
 ├── adapters/
+│   ├── caching_candle_repository.go   # Redisキャッシュデコレータ
+│   ├── caching_candle_repository_test.go
 │   ├── candle_mysql.go                # MySQLリポジトリ実装
-│   └── candle_mysql_test.go           # リポジトリテスト
+│   ├── candle_mysql_test.go           # リポジトリテスト
+│   └── twelvedata/                    # TwelveData APIクライアント
+│       ├── config.go                  # API設定
+│       ├── dto/
+│       │   └── time_series_reponse.go # APIレスポンスDTO
+│       ├── repository.go             # MarketRepository実装
+│       └── repository_test.go
 └── transport/
     └── handler/
         ├── candle_handler.go          # HTTPハンドラー
@@ -447,7 +467,8 @@ go test ./internal/feature/candles/... -v -race -cover
 | 設定 | 値 | 説明 |
 |------|-----|------|
 | キー形式 | `candles:{symbol}:{interval}:{outputsize}` | クエリごとの一意なキー |
-| デフォルトTTL | 5分 | コンストラクタで設定可能 |
+| 本番TTL | 翌朝8時（JST）まで | `platform/cache.TimeUntilNext8AM()`で動的計算 |
+| デフォルトTTL | 5分 | コンストラクタにttl=0を渡した場合のフォールバック |
 | 名前空間 | `candles` | 分離のためのキープレフィックス |
 
 ### キャッシュ動作

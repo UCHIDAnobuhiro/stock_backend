@@ -24,13 +24,14 @@ sequenceDiagram
     participant DB as MySQL
 
     Client->>Handler: POST /signup<br/>{email, password}
-    Handler->>Handler: Validate Request (email format, min 8 chars)
+    Handler->>Handler: Validate Request (JSON binding)
 
     alt Validation Failed
-        Handler-->>Client: 400 Bad Request
+        Handler-->>Client: 400 Bad Request<br/>{error: "invalid request"}
     end
 
     Handler->>Usecase: Signup(email, password)
+    Usecase->>Usecase: Validate password (min 8 chars)
     Usecase->>Usecase: Hash password with bcrypt
     Usecase->>Repository: Create(user)
     Repository->>DB: INSERT user
@@ -39,7 +40,7 @@ sequenceDiagram
         DB-->>Repository: Error (duplicate key)
         Repository-->>Usecase: Error
         Usecase-->>Handler: Error
-        Handler-->>Client: 409 Conflict
+        Handler-->>Client: 409 Conflict<br/>{error: "signup failed"}
     end
 
     DB-->>Repository: Success
@@ -55,14 +56,15 @@ sequenceDiagram
     participant Client
     participant Handler as AuthHandler
     participant Usecase as AuthUsecase
+    participant JWTGenerator as JWTGenerator
     participant Repository as UserRepository
     participant DB as MySQL
 
     Client->>Handler: POST /login<br/>{email, password}
-    Handler->>Handler: Validate Request
+    Handler->>Handler: Validate Request (JSON binding)
 
     alt Validation Failed
-        Handler-->>Client: 400 Bad Request
+        Handler-->>Client: 400 Bad Request<br/>{error: "invalid request"}
     end
 
     Handler->>Usecase: Login(email, password)
@@ -72,21 +74,20 @@ sequenceDiagram
     alt User Not Found
         DB-->>Repository: Not Found
         Repository-->>Usecase: Error
-        Usecase-->>Handler: Error
-        Handler-->>Client: 401 Unauthorized<br/>"invalid email or password"
+        Usecase->>Usecase: Use dummy hash (timing attack prevention)
     end
 
     DB-->>Repository: User Entity
     Repository-->>Usecase: User Entity
-    Usecase->>Usecase: bcrypt.CompareHashAndPassword()
+    Usecase->>Usecase: bcrypt.CompareHashAndPassword()<br/>(always executed for timing attack prevention)
 
-    alt Password Mismatch
-        Usecase-->>Handler: Error
-        Handler-->>Client: 401 Unauthorized<br/>"invalid email or password"
+    alt User Not Found or Password Mismatch
+        Usecase-->>Handler: ErrInvalidCredentials
+        Handler-->>Client: 401 Unauthorized<br/>{error: "invalid email or password"}
     end
 
-    Usecase->>Usecase: Generate JWT Token<br/>(sub: userID, exp: 1h, email)
-    Usecase->>Usecase: Sign with JWT_SECRET
+    Usecase->>JWTGenerator: GenerateToken(userID, email)
+    JWTGenerator-->>Usecase: JWT Token
     Usecase-->>Handler: JWT Token
     Handler-->>Client: 200 OK<br/>{token: "eyJhbGc..."}
 ```
@@ -121,7 +122,7 @@ sequenceDiagram
 - **400 Bad Request** - バリデーションエラー
   ```json
   {
-    "error": "Key: 'SignupRequest.Password' Error:Field validation for 'Password' failed on the 'min' tag"
+    "error": "invalid request"
   }
   ```
 
@@ -166,7 +167,7 @@ sequenceDiagram
 - **400 Bad Request** - バリデーションエラー
   ```json
   {
-    "error": "Key: 'LoginRequest.Email' Error:Field validation for 'Email' failed on the 'email' tag"
+    "error": "invalid request"
   }
   ```
 
@@ -199,6 +200,7 @@ graph TB
 
     subgraph "Usecase Interfaces"
         RepoInterface[UserRepository Interface<br/>usecase/auth_usecase.go]
+        JWTInterface[JWTGenerator Interface<br/>usecase/auth_usecase.go]
         Errors[Domain Errors<br/>usecase/errors.go]
     end
 
@@ -206,29 +208,35 @@ graph TB
         RepoImpl[UserMySQL<br/>adapters]
     end
 
+    subgraph "Platform Layer"
+        JWTImpl[JWTGenerator<br/>platform/jwt]
+    end
+
     subgraph "External Dependencies"
         DB[(MySQL)]
         BCrypt[bcrypt<br/>Password Hashing]
-        JWT[golang-jwt/jwt<br/>Token Generation]
     end
 
     Handler -->|depends on| Usecase
     Handler -->|uses| APITypes
     Usecase -->|defines| RepoInterface
+    Usecase -->|defines| JWTInterface
     Usecase -->|defines| Errors
     Usecase -->|uses| Entity
     Usecase -->|uses| BCrypt
-    Usecase -->|uses| JWT
     RepoImpl -.->|implements| RepoInterface
     RepoImpl -->|uses| Entity
     RepoImpl -->|accesses| DB
+    JWTImpl -.->|implements| JWTInterface
 
     style Handler fill:#e1f5ff
     style Usecase fill:#fff4e1
     style Entity fill:#e8f5e9
     style RepoInterface fill:#fff4e1
+    style JWTInterface fill:#fff4e1
     style Errors fill:#fff4e1
     style RepoImpl fill:#f3e5f5
+    style JWTImpl fill:#f3e5f5
     style DB fill:#ffebee
 ```
 
@@ -242,13 +250,15 @@ graph TB
 
 #### Usecase層
 - **AuthUsecase**（[usecase/auth_usecase.go](usecase/auth_usecase.go)）: 認証ビジネスロジックを実装
+  - パスワードバリデーション（最低8文字）
   - パスワードハッシュ化（bcrypt）
-  - パスワード検証
-  - JWTトークンの生成と署名
+  - タイミング攻撃を防止するパスワード検証（ユーザー未検出時もbcrypt比較を実行）
   - UserRepositoryインターフェースを定義（Goの「インターフェースは利用者が定義する」慣例に従う）
+  - JWTGeneratorインターフェースを定義（JWT生成の依存性逆転）
 - **ドメインエラー**（[usecase/errors.go](usecase/errors.go)）: エラー定義の一元管理
   - `ErrUserNotFound`: ユーザー検索が失敗した場合に返却
   - `ErrEmailAlreadyExists`: メールアドレスが既に登録されている場合に返却
+  - `ErrInvalidCredentials`: メールアドレスまたはパスワードが正しくない場合に返却
 
 #### Domain層
 - **User Entity**（[domain/entity/user.go](domain/entity/user.go)）: ユーザードメインモデル
@@ -258,9 +268,12 @@ graph TB
   - `Create(user)`: ユーザーを作成
   - `FindByEmail(email)`: メールアドレスでユーザーを検索
   - `FindByID(id)`: IDでユーザーを検索
+- **JWTGeneratorインターフェース**（[usecase/auth_usecase.go](usecase/auth_usecase.go)）: usecase層で定義されたJWT生成インターフェース
+  - `GenerateToken(userID, email)`: 署名済みJWTトークンを生成
 - **エラー定義**（[usecase/errors.go](usecase/errors.go)）: ドメインエラー
   - `ErrUserNotFound`: ユーザー未検出エラー
   - `ErrEmailAlreadyExists`: メールアドレス重複エラー
+  - `ErrInvalidCredentials`: 認証情報不正エラー
 
 #### Adapters層（[adapters/user_mysql.go](adapters/user_mysql.go)）
 - **UserMySQL**: UserRepositoryのMySQL実装（GORMを使用）
@@ -268,12 +281,14 @@ graph TB
 ### アーキテクチャ上の特徴
 
 1. **クリーンアーキテクチャ**: ドメイン層はインフラストラクチャ層から独立
-2. **依存性逆転**: Usecaseは具体的な実装ではなく、UserRepositoryインターフェースを定義・依存（Goの「インターフェースは利用者が定義する」原則に従う）
-3. **インターフェースの所有権**: リポジトリインターフェースは、別のリポジトリパッケージではなく、使用されるusecase層で定義（Goのベストプラクティス）
+2. **依存性逆転**: Usecaseは具体的な実装ではなく、UserRepositoryインターフェースとJWTGeneratorインターフェースを定義・依存（Goの「インターフェースは利用者が定義する」原則に従う）
+3. **インターフェースの所有権**: リポジトリインターフェースとJWT生成インターフェースは、使用されるusecase層で定義（Goのベストプラクティス）
 4. **セキュリティ**:
    - パスワードは保存前にbcryptでハッシュ化
-   - JWTトークンはHS256アルゴリズムで署名
+   - タイミング攻撃の防止（ユーザー未検出時もbcrypt比較を実行）
+   - JWTトークンはHS256アルゴリズムで署名（`platform/jwt` で実装）
    - 署名には環境変数 `JWT_SECRET` を使用
+   - ハンドラーレベルで汎用エラーメッセージを返却し、列挙攻撃を防止
 
 ## ディレクトリ構成
 
@@ -446,9 +461,14 @@ JWT_SECRET=your-super-secret-key-change-this-in-production
 ## セキュリティに関する注意事項
 
 1. **パスワードハッシュ化**: bcryptを使用（デフォルトコスト: 10）
-2. **JWTの有効期限**: 1時間で自動的に失効
-3. **エラーメッセージ**: ログイン失敗時は統一された "invalid email or password" メッセージを返却（列挙攻撃を防止）
-4. **JWT_SECRET**: 環境変数で管理。本番環境では強力な秘密鍵を使用すること
+2. **タイミング攻撃防止**: ユーザーが存在しない場合でもダミーハッシュを使用してbcrypt比較を実行し、レスポンス時間の差異による情報漏洩を防止
+3. **JWTの有効期限**: 1時間で自動的に失効
+4. **エラーメッセージの統一化**:
+   - バリデーションエラー: 汎用 "invalid request" メッセージを返却
+   - ログイン失敗: 統一された "invalid email or password" メッセージを返却
+   - サインアップ失敗: 汎用 "signup failed" メッセージを返却
+   - 列挙攻撃を防止するため、詳細なエラー情報はサーバーログにのみ記録
+5. **JWT_SECRET**: 環境変数で管理。本番環境では強力な秘密鍵を使用すること
 
 ## 今後の拡張
 

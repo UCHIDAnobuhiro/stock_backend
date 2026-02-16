@@ -61,10 +61,9 @@ internal/
 │   ├── candles/
 │   └── symbollist/
 ├── platform/         # インフラストラクチャ層（旧 "infrastructure"）
-│   ├── cache/        # Redisキャッシュデコレータ
+│   ├── cache/        # キャッシュユーティリティ（TimeUntilNext8AM等）
 │   ├── db/           # データベース初期化
-│   ├── externalapi/  # 外部APIクライアント（TwelveData）
-│   ├── http/         # HTTPクライアント設定
+│   ├── http/         # HTTPクライアント設定 + ヘルスチェックハンドラー
 │   ├── jwt/          # JWT生成・ミドルウェア
 │   └── redis/        # Redisクライアントセットアップ
 └── shared/           # 共有ユーティリティ（例: レートリミッター）
@@ -80,7 +79,7 @@ feature/<name>/
 ├── domain/
 │   └── entity/       # ドメインモデル（例: Candle, Symbol, User）
 ├── usecase/          # アプリケーションロジック（リポジトリインターフェース定義、ビジネスロジック統合）
-├── adapters/         # リポジトリ実装（MySQL等）
+├── adapters/         # リポジトリ実装（MySQL、キャッシュデコレータ、外部APIクライアント等）
 └── transport/
     └── handler/      # HTTPハンドラー（Gin）
 ```
@@ -91,17 +90,20 @@ feature/<name>/
 
 ### 依存関係ルール（golangci-lint depguardで強制）
 
-**domain/** と **usecase/** レイヤーは以下をインポートしてはなりません：
-- `adapters/`（リポジトリ実装）
-- `transport/`（HTTPハンドラー）
+1. **レイヤー分離**: **domain/** と **usecase/** は以下をインポート不可：
+   - `adapters/`（リポジトリ実装）
+   - `transport/`（HTTPハンドラー）
+   - `internal/api`（API型定義 - transport層のみ使用可）
+2. **フィーチャー分離**: 各フィーチャーは他のフィーチャーをインポート不可
+3. **platform分離**: `platform/` は `feature/` をインポート不可
 
 これにより、ドメインロジックがインフラストラクチャの詳細から独立した状態を保ちます。
 
 ### 主要なアーキテクチャパターン
 
 1. **リポジトリパターン**: すべてのデータアクセスは `usecase/` レイヤーで定義されたリポジトリインターフェースを経由します（Goの「インターフェースは利用者が定義する」慣例に従う）
-2. **キャッシュ用デコレータパターン**: `platform/cache/CachingCandleRepository` がベースリポジトリをラップ
-   - 同じ `CandleRepository` インターフェースを実装
+2. **キャッシュ用デコレータパターン**: `feature/candles/adapters/CachingCandleRepository` がベースリポジトリをラップ
+   - `CandleRepository`（読み取り）と `CandleWriteRepository`（書き込み）の両インターフェースを実装
    - usecaseコードを変更せずにRedisキャッシュを透過的に追加
    - Redisが利用できない場合はグレースフルデグレード（警告ログを出力し、キャッシュなしで動作）
 3. **依存性注入**: `cmd/server/main.go` で手動DI
@@ -139,7 +141,11 @@ feature/<name>/
    - リクエスト/レスポンス型は `api/openapi.yaml` に定義し、`go generate ./internal/api/...` で生成
 6. **依存関係をワイヤリング**: `cmd/server/main.go` または `cmd/ingest/main.go` にて
 7. **ルートを登録**: `internal/app/router/router.go` にて
-8. **depguardルールを追加**: `.golangci.yml` に新フィーチャーの `adapters` と `transport` パッケージのdenyルールを追加
+8. **depguardルールを追加**: `.golangci.yml` に以下を追加：
+   - `layer-isolation` ルールに新フィーチャーの `adapters` と `transport` パッケージのdenyエントリ
+   - 新フィーチャー用の `<name>-isolation` ルール（他フィーチャーへの依存禁止）
+   - 既存フィーチャーの isolation ルールに新フィーチャーのdenyエントリ
+   - `platform-isolation` ルールに新フィーチャーのdenyエントリ
 
 **重要**: 依存関係ルールを遵守すること - domain/usecaseレイヤーはadaptersやtransportレイヤーをインポートできません。これはgolangci-lint depguardで強制されています。depguardはワイルドカード非対応のため、新フィーチャー追加時に `.golangci.yml` へ明示的にパッケージパスを追加する必要があります。
 
