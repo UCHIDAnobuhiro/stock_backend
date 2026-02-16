@@ -1,5 +1,4 @@
-// Package cache はリポジトリインターフェースのキャッシュ実装を提供します。
-package cache
+package adapters
 
 import (
 	"context"
@@ -106,8 +105,8 @@ func (c *CachingCandleRepository) Find(ctx context.Context, symbol, interval str
 func (c *CachingCandleRepository) cacheKey(symbol, interval string, outputsize int) string {
 	return fmt.Sprintf("%s:%s:%s:%d",
 		c.namespace,
-		safe(symbol),
-		safe(interval),
+		safeCacheKey(symbol),
+		safeCacheKey(interval),
 		outputsize,
 	)
 }
@@ -116,8 +115,8 @@ func (c *CachingCandleRepository) cacheKey(symbol, interval string, outputsize i
 func (c *CachingCandleRepository) cacheKeyPrefix(symbol, interval string) string {
 	return fmt.Sprintf("%s:%s:%s:",
 		c.namespace,
-		safe(symbol),
-		safe(interval),
+		safeCacheKey(symbol),
+		safeCacheKey(interval),
 	)
 }
 
@@ -142,8 +141,8 @@ func (c *CachingCandleRepository) deleteByPattern(ctx context.Context, pattern s
 	return nil
 }
 
-// safe はRedisキーで問題となる文字をエスケープします。
-func safe(s string) string {
+// safeCacheKey はRedisキーで問題となる文字をエスケープします。
+func safeCacheKey(s string) string {
 	// Redisキーで問題となる文字の簡易エスケープ
 	s = strings.ReplaceAll(s, " ", "_")
 	s = strings.ReplaceAll(s, ":", "_")

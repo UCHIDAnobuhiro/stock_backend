@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"time"
 
+	"stock_backend/internal/feature/candles/adapters/twelvedata/dto"
 	"stock_backend/internal/feature/candles/domain/entity"
 	"stock_backend/internal/feature/candles/usecase"
-	"stock_backend/internal/platform/externalapi/twelvedata/dto"
 )
 
 // TwelveDataMarket はTwelve Data外部APIから株価データを取得するMarketRepository実装です。
