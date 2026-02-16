@@ -1,13 +1,9 @@
 version: "2"
 
 linters:
+  default: standard
   enable:
     - depguard
-    - staticcheck
-    - errcheck
-    - govet
-    - ineffassign
-    - unused
     - bodyclose
     - unconvert
     - misspell
@@ -15,7 +11,8 @@ linters:
   settings:
     depguard:
       rules:
-        main:
+        # domain/usecaseからadapters/transportへの依存禁止
+        layer-isolation:
           files:
             - "**/internal/feature/**/domain/**"
             - "**/internal/feature/**/usecase/**"
@@ -34,6 +31,44 @@ linters:
               desc: "domain/usecase must not depend on transport"
             - pkg: "stock_backend/internal/api"
               desc: "domain/usecase must not depend on API types (transport layer only)"
+
+        # feature同士の依存禁止
+        auth-isolation:
+          files:
+            - "**/internal/feature/auth/**"
+          deny:
+            - pkg: "stock_backend/internal/feature/candles"
+              desc: "feature must not depend on other features"
+            - pkg: "stock_backend/internal/feature/symbollist"
+              desc: "feature must not depend on other features"
+        candles-isolation:
+          files:
+            - "**/internal/feature/candles/**"
+          deny:
+            - pkg: "stock_backend/internal/feature/auth"
+              desc: "feature must not depend on other features"
+            - pkg: "stock_backend/internal/feature/symbollist"
+              desc: "feature must not depend on other features"
+        symbollist-isolation:
+          files:
+            - "**/internal/feature/symbollist/**"
+          deny:
+            - pkg: "stock_backend/internal/feature/auth"
+              desc: "feature must not depend on other features"
+            - pkg: "stock_backend/internal/feature/candles"
+              desc: "feature must not depend on other features"
+
+        # platformからfeatureへの依存禁止
+        platform-isolation:
+          files:
+            - "**/internal/platform/**"
+          deny:
+            - pkg: "stock_backend/internal/feature/auth"
+              desc: "platform must not depend on feature"
+            - pkg: "stock_backend/internal/feature/candles"
+              desc: "platform must not depend on feature"
+            - pkg: "stock_backend/internal/feature/symbollist"
+              desc: "platform must not depend on feature"
 
 formatters:
   enable:
