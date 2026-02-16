@@ -134,7 +134,6 @@ graph TB
   - SymbolRepositoryインターフェースを定義（Goの「インターフェースは利用者が定義する」慣例に従う）
 - **SymbolRepositoryインターフェース**: リポジトリインターフェース:
   - `ListActive(ctx)`: すべてのアクティブな銘柄を返す
-  - `ListActiveCodes(ctx)`: アクティブな銘柄のコードのみを返す（バッチ取り込みで使用）
 
 #### Domain層 ([domain/entity/symbol.go](domain/entity/symbol.go))
 - **Symbolエンティティ**: 株式銘柄のドメインモデル。以下のフィールドを持つ:
@@ -148,6 +147,8 @@ graph TB
 
 #### Adapters層 ([adapters/symbol_mysql.go](adapters/symbol_mysql.go))
 - **symbolMySQL**: SymbolRepositoryのMySQL実装（GORMを使用）
+  - `ListActive(ctx)`: usecaseのSymbolRepositoryインターフェースを実装
+  - `ListActiveCodes(ctx)`: アクティブな銘柄のコードのみを返す（candlesフィーチャーのIngestUsecaseで定義されたSymbolRepositoryインターフェースを満たす）
 
 ### アーキテクチャ特性
 
@@ -228,15 +229,18 @@ go test ./internal/feature/symbollist/... -v -race -cover
 
 ## バッチ取り込みでの使用
 
-`ListActiveCodes` メソッドはバッチ取り込みプロセス（`cmd/ingest/main.go`）で使用され、どの銘柄の市場データを取得するかを決定します。これにより、管理者はデータベースの `is_active` を設定することで、アクティブにトラッキングする銘柄を制御できます。
+`ListActiveCodes` メソッドはバッチ取り込みプロセスで使用され、どの銘柄の市場データを取得するかを決定します。
+
+このメソッドは `symbolMySQL` の具象実装として定義されていますが、candlesフィーチャーの `IngestUsecase` が定義する `SymbolRepository` インターフェース（`ListActiveCodes` メソッドのみ）を満たします。Goの暗黙的インターフェース実装により、symbollistフィーチャーがcandlesフィーチャーに依存することなく連携が実現されています。
 
 ```go
-// バッチ取り込み内
-codes, err := symbolRepo.ListActiveCodes(ctx)
-for _, code := range codes {
-    // 各アクティブ銘柄の市場データを取得
+// candles/usecase/ingest_usecase.go で定義
+type SymbolRepository interface {
+    ListActiveCodes(ctx context.Context) ([]string, error)
 }
 ```
+
+管理者はデータベースの `is_active` を設定することで、アクティブにトラッキングする銘柄を制御できます。
 
 ## 今後の拡張予定
 

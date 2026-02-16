@@ -36,7 +36,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 
 | カテゴリ        | 技術                                                                |
 | --------------- | ------------------------------------------------------------------- |
-| 言語            | Go (1.24)                                                           |
+| 言語            | Go (1.24.5)                                                         |
 | Webフレームワーク | Gin                                                                 |
 | ORM             | GORM                                                                |
 | DB              | MySQL / Cloud SQL                                                   |
@@ -82,7 +82,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │   │   ├── domain/
 │   │   │   │   └── entity/     # エンティティ（Candle）
 │   │   │   ├── usecase/        # ユースケース（リポジトリインターフェース定義、取得/保存ロジック）
-│   │   │   ├── adapters/       # MySQL実装
+│   │   │   ├── adapters/       # MySQL実装 / Redisキャッシュデコレータ / TwelveData APIクライアント
 │   │   │   └── transport/
 │   │   │       └── handler/    # HTTPハンドラー
 │   │   │
@@ -95,11 +95,10 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │           └── handler/    # HTTPハンドラー
 │   │
 │   ├── platform/               # インフラストラクチャ層（外部依存）
-│   │   ├── cache/              # Redisキャッシュデコレータ
+│   │   ├── cache/              # キャッシュユーティリティ（TimeUntilNext8AM等）
 │   │   ├── db/                 # データベース接続初期化
-│   │   ├── externalapi/        # 外部APIクライアント
-│   │   │   └── twelvedata/     # Twelve Data API実装
 │   │   ├── http/               # HTTPクライアント設定
+│   │   │   └── handler/        # ヘルスチェックハンドラー
 │   │   ├── jwt/                # JWT生成/検証/ミドルウェア
 │   │   └── redis/              # Redisクライアント実装
 │   │
