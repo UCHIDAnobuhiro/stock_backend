@@ -6,17 +6,21 @@ import (
 
 	authhandler "stock_backend/internal/feature/auth/transport/handler"
 	candleshandler "stock_backend/internal/feature/candles/transport/handler"
+	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	handler "stock_backend/internal/platform/http/handler"
 	jwtmw "stock_backend/internal/platform/jwt"
 )
 
 // NewRouter はすべてのアプリケーションルートを設定したGinルーターを生成します。
-// 公開ルート（signup, login）とJWT認証ミドルウェア付きの保護ルート（candles, symbols）を設定します。
+// 公開ルート（signup, login）とJWT認証ミドルウェア付きの保護ルート（candles, symbols, logo）を設定します。
 func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.CandlesHandler,
-	symbol *symbollisthandler.SymbolHandler,
+	symbol *symbollisthandler.SymbolHandler, logo *logohandler.LogoDetectionHandler,
 ) *gin.Engine {
 	r := gin.Default()
+
+	// 画像アップロードのサイズ制限を設定（10MB）
+	r.MaxMultipartMemory = 10 << 20
 
 	// ヘルスチェックエンドポイント（バージョンなし）
 	r.GET("/healthz", handler.Health)
@@ -34,6 +38,8 @@ func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.Can
 		{
 			auth.GET("/candles/:code", candles.GetCandlesHandler)
 			auth.GET("/symbols", symbol.List)
+			auth.POST("/logo/detect", logo.DetectLogos)
+			auth.POST("/logo/analyze", logo.AnalyzeCompany)
 		}
 	}
 
