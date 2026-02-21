@@ -40,6 +40,9 @@ func (g *GeminiAnalyzer) Analyze(ctx context.Context, prompt string) (string, er
 	if err != nil {
 		return "", fmt.Errorf("gemini API request failed: %w", err)
 	}
+	if resp == nil {
+		return "", fmt.Errorf("gemini API returned nil response")
+	}
 
 	return resp.Text(), nil
 }

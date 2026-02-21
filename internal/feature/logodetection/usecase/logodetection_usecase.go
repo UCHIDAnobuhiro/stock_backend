@@ -4,6 +4,8 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"unicode/utf8"
 
 	"stock_backend/internal/feature/logodetection/domain/entity"
 )
@@ -13,7 +15,12 @@ const (
 	MaxImageSize = 10 * 1024 * 1024
 	// AnalysisPromptTemplate は企業分析のプロンプトテンプレートです。
 	AnalysisPromptTemplate = "日本語で、企業分析の観点から%sの強みを3つ挙げて。"
+	// MaxCompanyNameLength は企業名の最大文字数（rune数）です。
+	MaxCompanyNameLength = 100
 )
+
+// validCompanyName は企業名に許可される文字パターンです（英数字・日本語・スペース・中黒）。
+var validCompanyName = regexp.MustCompile(`^[\p{L}\p{N}\s・\-\.&,]+$`)
 
 // LogoDetector は画像からロゴを検出するリポジトリインターフェースです。
 // Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
@@ -56,10 +63,16 @@ func (u *logodetectionUsecase) AnalyzeCompany(ctx context.Context, companyName s
 	if companyName == "" {
 		return nil, fmt.Errorf("company name is required")
 	}
+	if utf8.RuneCountInString(companyName) > MaxCompanyNameLength {
+		return nil, fmt.Errorf("company name exceeds maximum length of %d characters", MaxCompanyNameLength)
+	}
+	if !validCompanyName.MatchString(companyName) {
+		return nil, fmt.Errorf("company name contains invalid characters")
+	}
 	prompt := fmt.Sprintf(AnalysisPromptTemplate, companyName)
 	summary, err := u.companyAnalyzer.Analyze(ctx, prompt)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("company analyzer failed for %q: %w", companyName, err)
 	}
 	return &entity.CompanyAnalysis{
 		CompanyName: companyName,

@@ -65,7 +65,7 @@ services:
       - ..:/app
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
-      - ${HOST_GOOGLE_ADC_PATH}:${GOOGLE_APPLICATION_CREDENTIALS}:ro
+      - ${HOST_GOOGLE_ADC_PATH:-/dev/null}:${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:ro
 
   ingest:
     build:

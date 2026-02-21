@@ -36,10 +36,18 @@ func NewLogoDetectionHandler(uc LogoDetectionUsecase) *LogoDetectionHandler {
 // Content-Type: multipart/form-data
 // フィールド: image（画像ファイル、最大10MB）
 func (h *LogoDetectionHandler) DetectLogos(c *gin.Context) {
+	const maxImageSize = 10 * 1024 * 1024 // 10MB
+
 	file, err := c.FormFile("image")
 	if err != nil {
 		slog.Warn("画像ファイルの取得に失敗", "error", err, "remote_addr", c.ClientIP())
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "画像ファイルが必要です"})
+		return
+	}
+
+	if file.Size > maxImageSize {
+		slog.Warn("画像ファイルサイズ超過", "size", file.Size, "max", maxImageSize, "remote_addr", c.ClientIP())
+		c.JSON(http.StatusRequestEntityTooLarge, api.ErrorResponse{Error: "画像サイズが上限（10MB）を超えています"})
 		return
 	}
 
@@ -55,7 +63,7 @@ func (h *LogoDetectionHandler) DetectLogos(c *gin.Context) {
 		}
 	}()
 
-	imageData, err := io.ReadAll(f)
+	imageData, err := io.ReadAll(io.LimitReader(f, maxImageSize+1))
 	if err != nil {
 		slog.Error("画像データの読み取りに失敗", "error", err)
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "画像の読み込みに失敗しました"})

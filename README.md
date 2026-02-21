@@ -41,7 +41,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 
 | カテゴリ        | 技術                                                                |
 | --------------- | ------------------------------------------------------------------- |
-| 言語            | Go (1.24.5)                                                         |
+| 言語            | Go (1.24.13)                                                         |
 | Webフレームワーク | Gin                                                                 |
 | ORM             | GORM                                                                |
 | DB              | MySQL / Cloud SQL                                                   |
@@ -297,7 +297,7 @@ gcloud auth application-default login
 
 ```env
 GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
-HOST_GOOGLE_ADC_PATH=~/.config/gcloud/application_default_credentials.json
+HOST_GOOGLE_ADC_PATH=$HOME/.config/gcloud/application_default_credentials.json
 ```
 
 4. `.env.docker` に以下を追加
