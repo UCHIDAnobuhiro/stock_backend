@@ -20,7 +20,7 @@ const (
 )
 
 // validCompanyName は企業名に許可される文字パターンです（英数字・日本語・スペース・中黒）。
-var validCompanyName = regexp.MustCompile(`^[\p{L}\p{N}\s・\-\.&,]+$`)
+var validCompanyName = regexp.MustCompile(`^[\p{L}\p{N} ・\-\.&,]+$`)
 
 // LogoDetector は画像からロゴを検出するリポジトリインターフェースです。
 // Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。

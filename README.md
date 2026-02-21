@@ -217,8 +217,8 @@ go generate ./internal/api/...
 
 | メソッド | パス                | 認証   | 説明                                              |
 | -------- | ------------------- | ------ | ------------------------------------------------- |
-| POST     | `/v1/logo/detect`   | 不要   | 画像からロゴを検出（multipart/form-data）          |
-| POST     | `/v1/logo/analyze`  | 不要   | 企業分析サマリーを生成（JSON）                     |
+| POST     | `/v1/logo/detect`   | 必要   | 画像からロゴを検出（multipart/form-data）          |
+| POST     | `/v1/logo/analyze`  | 必要   | 企業分析サマリーを生成（JSON）                     |
 
 ### 補足
 
