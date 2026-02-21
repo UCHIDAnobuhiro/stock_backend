@@ -95,7 +95,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │   ├── logodetection/       # ロゴ検出・企業分析機能
 │   │   │   ├── domain/
 │   │   │   │   └── entity/     # エンティティ（DetectedLogo, CompanyAnalysis）
-│   │   │   ├── usecase/        # ユースケース（リポジトリインターフェース定義）
+│   │   │   ├── usecase/        # ユースケース（Detector/Analyzerインターフェース定義、ビジネスロジック）
 │   │   │   ├── adapters/       # Cloud Vision API / Gemini APIクライアント
 │   │   │   └── transport/
 │   │   │       └── handler/    # HTTPハンドラー
@@ -296,6 +296,7 @@ gcloud auth application-default login
 3. `docker/.env` に以下を設定
 
 ```env
+# コンテナ内のパス（root実行時: /root/... 、非root実行時は適宜変更）
 GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
 HOST_GOOGLE_ADC_PATH=$HOME/.config/gcloud/application_default_credentials.json
 ```
