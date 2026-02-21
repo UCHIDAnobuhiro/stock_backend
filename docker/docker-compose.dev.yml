@@ -51,6 +51,7 @@ services:
       - ../.env.docker
     environment:
       APP_ENV: docker-dev
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
     depends_on:
       db:
         condition: service_healthy
@@ -64,6 +65,7 @@ services:
       - ..:/app
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
+      - ${HOST_GOOGLE_ADC_PATH:-/dev/null}:${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:ro
 
   ingest:
     build:

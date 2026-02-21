@@ -26,6 +26,11 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
   - TTL設定と自動リフレッシュ
   - キャッシュミス時: API呼び出し + DB保存
 
+- **ロゴ検出・企業分析**
+
+  - 画像からロゴを検出（Cloud Vision API）
+  - 検出した企業の分析サマリーを生成（Gemini API / Vertex AI）
+
 - **データベース永続化**
   - MySQL / Cloud SQLによるデータ永続化
   - GORM ORMによるデータ管理
@@ -36,11 +41,12 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 
 | カテゴリ        | 技術                                                                |
 | --------------- | ------------------------------------------------------------------- |
-| 言語            | Go (1.24.5)                                                         |
+| 言語            | Go (1.24.13)                                                         |
 | Webフレームワーク | Gin                                                                 |
 | ORM             | GORM                                                                |
 | DB              | MySQL / Cloud SQL                                                   |
 | キャッシュ      | Redis                                                               |
+| AI / ML         | Cloud Vision API / Gemini API（Vertex AI）                          |
 | 認証            | JWT / bcrypt                                                        |
 | API仕様         | OpenAPI 3.0.3 / oapi-codegen（型生成）                              |
 | 設定管理        | **.env.docker（ローカル）/ Secret Manager（本番）+ os.Getenv()**    |
@@ -86,6 +92,14 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │   │   └── transport/
 │   │   │       └── handler/    # HTTPハンドラー
 │   │   │
+│   │   ├── logodetection/       # ロゴ検出・企業分析機能
+│   │   │   ├── domain/
+│   │   │   │   └── entity/     # エンティティ（DetectedLogo, CompanyAnalysis）
+│   │   │   ├── usecase/        # ユースケース（Detector/Analyzerインターフェース定義、ビジネスロジック）
+│   │   │   ├── adapters/       # Cloud Vision API / Gemini APIクライアント
+│   │   │   └── transport/
+│   │   │       └── handler/    # HTTPハンドラー
+│   │   │
 │   │   └── symbollist/         # シンボルリスト機能
 │   │       ├── domain/
 │   │       │   └── entity/     # エンティティ（Symbol）
@@ -111,6 +125,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   ├── Dockerfile.server.dev   # APIサーバー用Dockerfile（ローカル開発）
 │   ├── docker-compose.yml      # Docker共通設定（サービス定義・ネットワーク設定）
 │   ├── docker-compose.dev.yml  # ローカル開発用オーバーライド設定
+│   ├── example.env             # docker-compose変数展開用テンプレート
 │   └── mysql/                  # MySQL初期化スクリプト
 │
 ├── .env.docker                 # ローカル環境変数（.gitignoreに追加推奨）
@@ -196,6 +211,15 @@ go generate ./internal/api/...
 | GET      | `/v1/symbols`       | 必要   | シンボルリストの取得                               |
 | GET      | `/v1/candles/:code` | 必要   | 指定コードのローソク足データを取得（例: AAPL）     |
 
+---
+
+### ロゴ検出・企業分析
+
+| メソッド | パス                | 認証   | 説明                                              |
+| -------- | ------------------- | ------ | ------------------------------------------------- |
+| POST     | `/v1/logo/detect`   | 必要   | 画像からロゴを検出（multipart/form-data）          |
+| POST     | `/v1/logo/analyze`  | 必要   | 企業分析サマリーを生成（JSON）                     |
+
 ### 補足
 
 - `/v1/candles` と `/v1/symbols` は **JWT認証（`Authorization: Bearer <token>`）** が必要です。
@@ -236,6 +260,7 @@ cd stock_backend
 
 # 環境変数ファイルをコピー
 cp example.env.docker .env.docker
+cp docker/example.env docker/.env
 ```
 
 ### Twelve Data APIキーの取得
@@ -256,6 +281,33 @@ cp example.env.docker .env.docker
 
 - **スケジュールバッチ（ingest）プロセスによるデータの事前取得**
 - **Redisキャッシュによるリクエスト数の最小化**
+
+### GCP認証の設定（ロゴ検出・企業分析機能を使用する場合）
+
+ロゴ検出・企業分析機能は Google Cloud の Vision API と Vertex AI（Gemini）を使用します。
+
+1. [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) をインストール
+2. ADC（Application Default Credentials）で認証
+
+```bash
+gcloud auth application-default login
+```
+
+3. `docker/.env` に以下を設定
+
+```env
+# コンテナ内のパス（root実行時: /root/... 、非root実行時は適宜変更）
+GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+HOST_GOOGLE_ADC_PATH=$HOME/.config/gcloud/application_default_credentials.json
+```
+
+4. `.env.docker` に以下を追加
+
+```env
+GOOGLE_GENAI_USE_VERTEXAI=true
+GOOGLE_CLOUD_PROJECT=<GCPプロジェクトID>
+GOOGLE_CLOUD_LOCATION=asia-northeast1
+```
 
 ### APIサーバーの起動
 

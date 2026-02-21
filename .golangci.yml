@@ -29,6 +29,10 @@ linters:
               desc: "domain/usecase must not depend on transport"
             - pkg: "stock_backend/internal/feature/symbollist/transport"
               desc: "domain/usecase must not depend on transport"
+            - pkg: "stock_backend/internal/feature/logodetection/adapters"
+              desc: "domain/usecase must not depend on adapters"
+            - pkg: "stock_backend/internal/feature/logodetection/transport"
+              desc: "domain/usecase must not depend on transport"
             - pkg: "stock_backend/internal/api"
               desc: "domain/usecase must not depend on API types (transport layer only)"
 
@@ -41,6 +45,8 @@ linters:
               desc: "feature must not depend on other features"
             - pkg: "stock_backend/internal/feature/symbollist"
               desc: "feature must not depend on other features"
+            - pkg: "stock_backend/internal/feature/logodetection"
+              desc: "feature must not depend on other features"
         candles-isolation:
           files:
             - "**/internal/feature/candles/**"
@@ -49,6 +55,8 @@ linters:
               desc: "feature must not depend on other features"
             - pkg: "stock_backend/internal/feature/symbollist"
               desc: "feature must not depend on other features"
+            - pkg: "stock_backend/internal/feature/logodetection"
+              desc: "feature must not depend on other features"
         symbollist-isolation:
           files:
             - "**/internal/feature/symbollist/**"
@@ -56,6 +64,18 @@ linters:
             - pkg: "stock_backend/internal/feature/auth"
               desc: "feature must not depend on other features"
             - pkg: "stock_backend/internal/feature/candles"
+              desc: "feature must not depend on other features"
+            - pkg: "stock_backend/internal/feature/logodetection"
+              desc: "feature must not depend on other features"
+        logodetection-isolation:
+          files:
+            - "**/internal/feature/logodetection/**"
+          deny:
+            - pkg: "stock_backend/internal/feature/auth"
+              desc: "feature must not depend on other features"
+            - pkg: "stock_backend/internal/feature/candles"
+              desc: "feature must not depend on other features"
+            - pkg: "stock_backend/internal/feature/symbollist"
               desc: "feature must not depend on other features"
 
         # platformからfeatureへの依存禁止
@@ -68,6 +88,8 @@ linters:
             - pkg: "stock_backend/internal/feature/candles"
               desc: "platform must not depend on feature"
             - pkg: "stock_backend/internal/feature/symbollist"
+              desc: "platform must not depend on feature"
+            - pkg: "stock_backend/internal/feature/logodetection"
               desc: "platform must not depend on feature"
 
 formatters:

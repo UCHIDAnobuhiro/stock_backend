@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"time"
@@ -15,6 +16,10 @@ import (
 	candlesadapters "stock_backend/internal/feature/candles/adapters"
 	candleshandler "stock_backend/internal/feature/candles/transport/handler"
 	candlesusecase "stock_backend/internal/feature/candles/usecase"
+	logogemini "stock_backend/internal/feature/logodetection/adapters/gemini"
+	logovision "stock_backend/internal/feature/logodetection/adapters/vision"
+	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
+	logousecase "stock_backend/internal/feature/logodetection/usecase"
 	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
 	symbolentity "stock_backend/internal/feature/symbollist/domain/entity"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
@@ -83,18 +88,38 @@ func main() {
 	}
 	jwtGen := jwtmw.NewGenerator(jwtSecret, 1*time.Hour)
 
+	// Google Cloudクライアント初期化
+	visionDetector, err := logovision.NewVisionLogoDetector(context.Background())
+	if err != nil {
+		slog.Error("failed to create vision client", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := visionDetector.Close(); err != nil {
+			slog.Error("Failed to close vision client", "error", err)
+		}
+	}()
+
+	geminiAnalyzer, err := logogemini.NewGeminiAnalyzer(context.Background())
+	if err != nil {
+		slog.Error("failed to create gemini client", "error", err)
+		os.Exit(1)
+	}
+
 	// ユースケース
 	authUC := authusecase.NewAuthUsecase(userRepo, jwtGen)
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
 	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
+	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
 
 	// ハンドラー
 	authH := authhandler.NewAuthHandler(authUC)
 	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
 	candlesH := candleshandler.NewCandlesHandler(candlesUC)
+	logoH := logohandler.NewLogoDetectionHandler(logoUC)
 
 	// ルーター作成
-	router := router.NewRouter(authH, candlesH, symbolH)
+	router := router.NewRouter(authH, candlesH, symbolH, logoH)
 
 	// モバイルアプリ向けのためCORSミドルウェアはコメントアウト
 	// router.Use(cors.Default())
