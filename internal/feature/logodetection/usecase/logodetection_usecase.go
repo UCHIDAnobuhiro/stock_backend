@@ -3,6 +3,7 @@ package usecase
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"regexp"
 	"unicode/utf8"
@@ -13,11 +14,18 @@ import (
 const (
 	// MaxImageSize は画像アップロードの最大サイズ（10MB）です。
 	MaxImageSize = 10 * 1024 * 1024
-	// AnalysisPromptTemplate は企業分析のプロンプトテンプレートです。
-	AnalysisPromptTemplate = "日本語で、企業分析の観点から%sの強みを3つ挙げて。"
 	// MaxCompanyNameLength は企業名の最大文字数（rune数）です。
 	MaxCompanyNameLength = 100
 )
+
+//go:embed prompts/analysis.md
+var analysisPrompt string
+
+//go:embed prompts/format.md
+var analysisFormat string
+
+// AnalysisPromptTemplate は指示文とフォーマットを結合した企業分析のプロンプトテンプレートです。
+var AnalysisPromptTemplate = analysisPrompt + "\n## 出力フォーマット\n" + analysisFormat
 
 // validCompanyName は企業名に許可される文字パターンです（英数字・日本語・スペース・中黒）。
 var validCompanyName = regexp.MustCompile(`^[\p{L}\p{N} ・\-\.&,]+$`)
