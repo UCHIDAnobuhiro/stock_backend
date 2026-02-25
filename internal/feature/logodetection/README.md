@@ -98,12 +98,13 @@ sequenceDiagram
 **Content-Type**: `multipart/form-data`
 
 **リクエストフィールド**
+
 | フィールド | 型 | 必須 | 説明 |
 |-----------|------|------|------|
 | `image` | binary | はい | ロゴ検出対象の画像ファイル（最大10MB） |
 
 **リクエスト例**
-```
+```http
 POST /v1/logo/detect
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Content-Type: multipart/form-data; boundary=----FormBoundary
@@ -160,11 +161,13 @@ Content-Type: image/jpeg
 **Content-Type**: `application/json`
 
 **リクエストボディ**
+
 | フィールド | 型 | 必須 | 説明 |
 |-----------|------|------|------|
 | `company_name` | string | はい | 分析対象の企業名 |
 
 **バリデーションルール**
+
 | ルール | 詳細 |
 |--------|------|
 | 必須チェック | `company_name`は空文字不可 |
@@ -172,7 +175,7 @@ Content-Type: image/jpeg
 | 文字パターン | `[\p{L}\p{N} ・\-\.&,'']+`（英数字・日本語・スペース・中黒・ハイフン・ピリオド・アンパサンド・カンマ・アポストロフィ） |
 
 **リクエスト例**
-```
+```http
 POST /v1/logo/analyze
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Content-Type: application/json
@@ -306,7 +309,7 @@ graph TB
 
 ## ディレクトリ構成
 
-```
+```text
 logodetection/
 ├── README.md                          # 本ファイル
 ├── domain/
@@ -417,7 +420,7 @@ go test ./internal/feature/logodetection/... -v -race -cover
 
 ### テスト出力例
 
-```
+```text
 === RUN   TestLogoDetectionUsecase_DetectLogos
 === RUN   TestLogoDetectionUsecase_DetectLogos/success:_logos_detected
 === RUN   TestLogoDetectionUsecase_DetectLogos/error:_empty_image_data
@@ -480,7 +483,7 @@ var AnalysisPromptTemplate = analysisPrompt + "\n## 出力フォーマット\n" 
 
 | 変数 | 説明 | 必須 |
 |------|------|------|
-| `GOOGLE_GENAI_USE_VERTEXAI` | Vertex AI経由でGemini APIを使用するフラグ | はい |
+| `GOOGLE_GENAI_USE_VERTEXAI` | Vertex AI経由でGemini APIを使用するフラグ（`true`に設定） | はい（Vertex AI使用時） |
 | `GOOGLE_CLOUD_PROJECT` | Google CloudプロジェクトID | はい（Vertex AI使用時） |
 | `GOOGLE_CLOUD_LOCATION` | Google Cloudリージョン（例: `asia-northeast1`） | はい（Vertex AI使用時） |
 | `GOOGLE_APPLICATION_CREDENTIALS` | サービスアカウントキーのパス（ADC） | はい（Docker環境） |
