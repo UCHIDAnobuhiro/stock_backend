@@ -2,6 +2,9 @@ package usecase_test
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"testing"
 
@@ -10,6 +13,18 @@ import (
 	"stock_backend/internal/feature/auth/domain/entity"
 	"stock_backend/internal/feature/auth/usecase"
 )
+
+const testPepper = "test-pepper-secret-32chars-long!"
+
+// pepperPasswordForTest はテスト用にHMAC-SHA256でパスワードにペッパーを適用します。
+func pepperPasswordForTest(password, pepper string) string {
+	if pepper == "" {
+		return password
+	}
+	mac := hmac.New(sha256.New, []byte(pepper))
+	mac.Write([]byte(password))
+	return hex.EncodeToString(mac.Sum(nil))
+}
 
 // mockUserRepository はUserRepositoryインターフェースのモック実装です。
 // テスト中のデータベース操作をシミュレートします。
@@ -68,7 +83,8 @@ func (m *mockUserRepository) FindByID(ctx context.Context, id uint) (*entity.Use
 // このヘルパーはコードの重複を削減し、テストの保守性を向上させます。
 func createTestUser(t *testing.T, id uint, email, password string) *entity.User {
 	t.Helper()
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+	pepperedPassword := pepperPasswordForTest(password, testPepper)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(pepperedPassword), bcrypt.MinCost)
 	if err != nil {
 		t.Fatalf("failed to hash password: %v", err)
 	}
@@ -104,7 +120,8 @@ func verifyBcryptHash(t *testing.T, hashedPassword, plainPassword string) {
 	if len(hashedPassword) == 0 || hashedPassword == plainPassword {
 		t.Error("password is not hashed")
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(plainPassword)); err != nil {
+	pepperedPassword := pepperPasswordForTest(plainPassword, testPepper)
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(pepperedPassword)); err != nil {
 		t.Errorf("invalid bcrypt hash: %v", err)
 	}
 }
@@ -183,7 +200,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			}
 			mockJWT := &mockJWTGenerator{}
 
-			uc := usecase.NewAuthUsecase(mockRepo, mockJWT)
+			uc := usecase.NewAuthUsecase(mockRepo, mockJWT, testPepper)
 			err := uc.Signup(context.Background(), tt.email, tt.password)
 
 			// Assert error expectations
@@ -283,7 +300,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 				},
 			}
 
-			uc := usecase.NewAuthUsecase(mockRepo, mockJWT)
+			uc := usecase.NewAuthUsecase(mockRepo, mockJWT, testPepper)
 			token, err := uc.Login(context.Background(), tt.email, tt.password)
 
 			// エラーの期待値を検証
@@ -300,4 +317,67 @@ func TestAuthUsecase_Login(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestAuthUsecase_PepperApplied はペッパーが正しくパスワードに適用されることを検証します。
+func TestAuthUsecase_PepperApplied(t *testing.T) {
+	t.Parallel()
+
+	t.Run("signup hash does not match raw password", func(t *testing.T) {
+		t.Parallel()
+
+		mockRepo := &mockUserRepository{
+			CreateFunc: func(ctx context.Context, user *entity.User) error {
+				// 生パスワードではハッシュが一致しないことを確認
+				err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("password123"))
+				if err == nil {
+					t.Error("hash should not match raw password when pepper is applied")
+				}
+				// ペッパー適用済みパスワードでは一致することを確認
+				peppered := pepperPasswordForTest("password123", testPepper)
+				if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(peppered)); err != nil {
+					t.Errorf("hash should match peppered password: %v", err)
+				}
+				return nil
+			},
+		}
+		mockJWT := &mockJWTGenerator{}
+
+		uc := usecase.NewAuthUsecase(mockRepo, mockJWT, testPepper)
+		err := uc.Signup(context.Background(), "test@example.com", "password123")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("long password is not truncated by bcrypt", func(t *testing.T) {
+		t.Parallel()
+
+		// 72バイト超のパスワード（bcryptの入力制限を超える）
+		longPassword := "this-is-a-very-long-password-that-exceeds-72-bytes-limit-of-bcrypt-algorithm-and-should-still-work"
+		var storedHash string
+
+		mockRepo := &mockUserRepository{
+			CreateFunc: func(ctx context.Context, user *entity.User) error {
+				storedHash = user.Password
+				return nil
+			},
+		}
+		mockJWT := &mockJWTGenerator{}
+
+		uc := usecase.NewAuthUsecase(mockRepo, mockJWT, testPepper)
+		err := uc.Signup(context.Background(), "test@example.com", longPassword)
+		if err != nil {
+			t.Fatalf("unexpected signup error: %v", err)
+		}
+
+		// HMAC-SHA256により64文字固定のhex出力になるため、bcryptの72バイト制限に収まる
+		peppered := pepperPasswordForTest(longPassword, testPepper)
+		if len(peppered) != 64 {
+			t.Errorf("expected peppered password length 64, got %d", len(peppered))
+		}
+		if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(peppered)); err != nil {
+			t.Errorf("hash should match peppered long password: %v", err)
+		}
+	})
 }

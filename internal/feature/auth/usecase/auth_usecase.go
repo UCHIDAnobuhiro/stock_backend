@@ -3,6 +3,9 @@ package usecase
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
@@ -13,6 +16,9 @@ import (
 const (
 	// minPasswordLength はパスワードの最低文字数を定義します。
 	minPasswordLength = 8
+
+	// EnvKeyPasswordPepper はパスワードペッパーの環境変数キーです。
+	EnvKeyPasswordPepper = "PASSWORD_PEPPER"
 )
 
 // UserRepository はユーザーエンティティの永続化層を抽象化します。
@@ -42,14 +48,33 @@ type JWTGenerator interface {
 type authUsecase struct {
 	users        UserRepository
 	jwtGenerator JWTGenerator
+	pepper       string
+	dummyHash    string // タイミング攻撃防止用のダミーハッシュ
 }
 
 // NewAuthUsecase はauthUsecaseの新しいインスタンスを生成します。
-func NewAuthUsecase(users UserRepository, jwtGenerator JWTGenerator) *authUsecase {
-	return &authUsecase{
+func NewAuthUsecase(users UserRepository, jwtGenerator JWTGenerator, pepper string) *authUsecase {
+	uc := &authUsecase{
 		users:        users,
 		jwtGenerator: jwtGenerator,
+		pepper:       pepper,
 	}
+	// ペッパー適用済みのダミーハッシュを事前計算（タイミング攻撃防止用）
+	pepperedDummy := uc.pepperPassword("dummy")
+	dummyHash, _ := bcrypt.GenerateFromPassword([]byte(pepperedDummy), bcrypt.DefaultCost)
+	uc.dummyHash = string(dummyHash)
+	return uc
+}
+
+// pepperPassword はHMAC-SHA256を使用してパスワードにペッパーを適用します。
+// bcryptの72バイト制限を回避するため、HMAC-SHA256で固定長のハッシュを生成します。
+func (u *authUsecase) pepperPassword(password string) string {
+	if u.pepper == "" {
+		return password
+	}
+	mac := hmac.New(sha256.New, []byte(u.pepper))
+	mac.Write([]byte(password))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // validatePassword はパスワードがセキュリティ要件を満たしているかチェックします。
@@ -67,7 +92,8 @@ func (u *authUsecase) Signup(ctx context.Context, email, password string) error 
 		return err
 	}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	pepperedPassword := u.pepperPassword(password)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(pepperedPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
@@ -84,14 +110,15 @@ func (u *authUsecase) Login(ctx context.Context, email, password string) (string
 
 	// ユーザーが存在しない場合のタイミング攻撃緩和用ダミーハッシュ
 	// bcrypt.CompareHashAndPasswordが常に呼ばれることを保証する
-	passwordHash := "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy" // ダミーハッシュ
+	passwordHash := u.dummyHash
 	if err == nil {
 		passwordHash = user.Password
 	}
 
 	// タイミング攻撃防止のため、常にパスワードを検証
 	// 第1引数はハッシュ化パスワード、第2引数は平文パスワード
-	compareErr := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password))
+	pepperedPassword := u.pepperPassword(password)
+	compareErr := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(pepperedPassword))
 
 	// ユーザー未検出またはパスワード不一致の場合、汎用エラーを返す
 	if err != nil || compareErr != nil {
