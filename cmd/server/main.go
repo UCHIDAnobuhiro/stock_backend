@@ -88,6 +88,13 @@ func main() {
 	}
 	jwtGen := jwtmw.NewGenerator(jwtSecret, 1*time.Hour)
 
+	// パスワードペッパー
+	passwordPepper := os.Getenv(authusecase.EnvKeyPasswordPepper)
+	if passwordPepper == "" {
+		slog.Error("PASSWORD_PEPPER environment variable is required")
+		os.Exit(1)
+	}
+
 	// Google Cloudクライアント初期化
 	visionDetector, err := logovision.NewVisionLogoDetector(context.Background())
 	if err != nil {
@@ -107,7 +114,7 @@ func main() {
 	}
 
 	// ユースケース
-	authUC := authusecase.NewAuthUsecase(userRepo, jwtGen)
+	authUC := authusecase.NewAuthUsecase(userRepo, jwtGen, passwordPepper)
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
 	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
 	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
