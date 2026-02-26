@@ -120,7 +120,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 			t.Parallel()
 
 			mockUC := &mockAuthUsecase{SignupFunc: tt.mockSignupFunc}
-			h := handler.NewAuthHandler(mockUC)
+			h := handler.NewAuthHandler(mockUC, nil)
 
 			router := gin.New()
 			router.POST("/signup", h.Signup)
@@ -188,7 +188,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			t.Parallel()
 
 			mockUC := &mockAuthUsecase{LoginFunc: tt.mockLoginFunc}
-			h := handler.NewAuthHandler(mockUC)
+			h := handler.NewAuthHandler(mockUC, nil)
 
 			router := gin.New()
 			router.POST("/login", h.Login)

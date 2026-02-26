@@ -27,6 +27,7 @@ import (
 	"stock_backend/internal/platform/cache"
 	infradb "stock_backend/internal/platform/db"
 	jwtmw "stock_backend/internal/platform/jwt"
+	"stock_backend/internal/platform/ratelimit"
 	infraredis "stock_backend/internal/platform/redis"
 )
 
@@ -113,6 +114,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	// レートリミッター
+	rateLimiter := ratelimit.NewLimiter(rdb)
+
 	// ユースケース
 	authUC := authusecase.NewAuthUsecase(userRepo, jwtGen, passwordPepper)
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
@@ -120,13 +124,13 @@ func main() {
 	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
 
 	// ハンドラー
-	authH := authhandler.NewAuthHandler(authUC)
+	authH := authhandler.NewAuthHandler(authUC, rateLimiter)
 	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
 	candlesH := candleshandler.NewCandlesHandler(candlesUC)
 	logoH := logohandler.NewLogoDetectionHandler(logoUC)
 
 	// ルーター作成
-	router := router.NewRouter(authH, candlesH, symbolH, logoH)
+	router := router.NewRouter(authH, candlesH, symbolH, logoH, rateLimiter)
 
 	// モバイルアプリ向けのためCORSミドルウェアはコメントアウト
 	// router.Use(cors.Default())

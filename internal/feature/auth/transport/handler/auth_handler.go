@@ -3,12 +3,17 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"stock_backend/internal/api"
+	"stock_backend/internal/platform/ratelimit"
 )
 
 // AuthUsecase は認証操作のユースケースを定義します。
@@ -20,16 +25,23 @@ type AuthUsecase interface {
 	Login(ctx context.Context, email, password string) (string, error)
 }
 
+// ログインのメールベースレートリミット設定
+const (
+	loginEmailLimit  = 5                // 15分間のメールアドレスあたりの最大ログイン試行回数
+	loginEmailWindow = 15 * time.Minute // メールベースレートリミットのウィンドウ
+)
+
 // AuthHandler は認証操作のHTTPリクエストを処理します。
 // AuthUsecaseインターフェースに依存し、JSONリクエスト/レスポンスを処理します。
 type AuthHandler struct {
-	auth AuthUsecase
+	auth    AuthUsecase
+	limiter *ratelimit.Limiter
 }
 
 // NewAuthHandler はAuthHandlerの新しいインスタンスを生成します。
-// 依存性注入用のコンストラクタで、外部からAuthUsecaseを注入します。
-func NewAuthHandler(auth AuthUsecase) *AuthHandler {
-	return &AuthHandler{auth: auth}
+// 依存性注入用のコンストラクタで、外部からAuthUsecaseとレートリミッターを注入します。
+func NewAuthHandler(auth AuthUsecase, limiter *ratelimit.Limiter) *AuthHandler {
+	return &AuthHandler{auth: auth, limiter: limiter}
 }
 
 // Signup はユーザー登録APIエンドポイントを処理します。
@@ -66,6 +78,21 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "invalid request"})
 		return
 	}
+
+	// メールベースのレートリミットチェック
+	key := fmt.Sprintf("rl:login:email:%s", strings.ToLower(req.Email))
+	result := h.limiter.Allow(c.Request.Context(), key, loginEmailLimit, loginEmailWindow)
+	if !result.Allowed {
+		slog.Warn("login rate limit exceeded",
+			"type", "email",
+			"email", req.Email,
+			"remote_addr", c.ClientIP(),
+		)
+		c.Header("Retry-After", strconv.Itoa(int(result.RetryAfter.Seconds())))
+		c.JSON(http.StatusTooManyRequests, api.ErrorResponse{Error: "too many requests"})
+		return
+	}
+
 	token, err := h.auth.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		// ユーザー列挙攻撃を防止するため、実際のエラーを公開しない
