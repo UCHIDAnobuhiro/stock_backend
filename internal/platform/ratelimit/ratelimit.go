@@ -3,6 +3,7 @@ package ratelimit
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"log/slog"
 	"time"
@@ -47,8 +48,10 @@ func (l *Limiter) Allow(ctx context.Context, key string, limit int, window time.
 	// 現在のエントリ数を取得（ZADD前）
 	cardCmd := pipe.ZCard(ctx, key)
 
-	// 現在のリクエストを追加（スコア=ナノ秒タイムスタンプ、メンバー=ナノ秒文字列で一意性確保）
-	member := fmt.Sprintf("%d", nowNano)
+	// 現在のリクエストを追加（スコア=ナノ秒タイムスタンプ、メンバー=ナノ秒+ランダムバイトで一意性確保）
+	var randBuf [8]byte
+	_, _ = rand.Read(randBuf[:])
+	member := fmt.Sprintf("%d:%x", nowNano, randBuf[:])
 	pipe.ZAdd(ctx, key, redis.Z{Score: float64(nowNano), Member: member})
 
 	// キーの有効期限を設定（安全ネット）

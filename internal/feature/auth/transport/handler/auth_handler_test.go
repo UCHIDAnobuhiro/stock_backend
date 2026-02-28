@@ -8,12 +8,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redismock/v9"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"stock_backend/internal/feature/auth/transport/handler"
+	"stock_backend/internal/platform/ratelimit"
 )
 
 // mockAuthUsecase はAuthUsecaseインターフェースのモック実装です。
@@ -129,6 +133,47 @@ func TestAuthHandler_Signup(t *testing.T) {
 			assertJSONResponse(t, w, tt.expectedStatus, tt.expectedBody)
 		})
 	}
+}
+
+// TestAuthHandler_Login_RateLimited はメールベースのレートリミット超過時に429が返されることを検証します。
+func TestAuthHandler_Login_RateLimited(t *testing.T) {
+	t.Parallel()
+
+	rdb, mock := redismock.NewClientMock()
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	// パイプラインモック: ZCardが5（= loginEmailLimit）を返しレートリミット超過
+	match := mock.CustomMatch(func(expected, actual []interface{}) error {
+		return nil
+	})
+	key := "rl:login:email:test@example.com"
+	window := 15 * time.Minute
+	match.ExpectZRemRangeByScore(key, "-inf", "0").SetVal(0)
+	mock.ExpectZCard(key).SetVal(5)
+	match.ExpectZAdd(key, redis.Z{}).SetVal(1)
+	mock.ExpectExpire(key, window).SetVal(true)
+
+	limiter := ratelimit.NewLimiter(rdb)
+	mockUC := &mockAuthUsecase{} // LoginFuncは呼ばれない
+	h := handler.NewAuthHandler(mockUC, limiter)
+
+	router := gin.New()
+	router.POST("/login", h.Login)
+
+	w := makeRequest(t, router, http.MethodPost, "/login", gin.H{
+		"email":    "test@example.com",
+		"password": "password123",
+	})
+
+	assert.Equal(t, http.StatusTooManyRequests, w.Code)
+	assert.Equal(t, "900", w.Header().Get("Retry-After"))
+
+	var body map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &body)
+	require.NoError(t, err)
+	assert.Equal(t, "too many requests", body["error"])
+
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 // TestAuthHandler_Login はログインハンドラーのHTTPリクエスト/レスポンス処理をテストします。

@@ -23,6 +23,10 @@ func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.Can
 ) *gin.Engine {
 	r := gin.Default()
 
+	// リバースプロキシを使用しない構成のため、X-Forwarded-For等のヘッダーを信頼しない
+	// c.ClientIP()がRemoteAddr（実際のTCP接続元）を返すようにする
+	_ = r.SetTrustedProxies(nil)
+
 	// 画像アップロードのサイズ制限を設定（10MB）
 	r.MaxMultipartMemory = 10 << 20
 
