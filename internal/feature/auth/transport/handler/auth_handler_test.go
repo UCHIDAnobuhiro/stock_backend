@@ -8,11 +8,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redismock/v9"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -143,15 +141,13 @@ func TestAuthHandler_Login_RateLimited(t *testing.T) {
 	t.Cleanup(func() { _ = rdb.Close() })
 
 	// パイプラインモック: ZCardが5（= loginEmailLimit）を返しレートリミット超過
+	// Phase 1のみ（拒否時はPhase 2のZADD/Expireは実行されない）
 	match := mock.CustomMatch(func(expected, actual []interface{}) error {
 		return nil
 	})
 	key := "rl:login:email:test@example.com"
-	window := 15 * time.Minute
 	match.ExpectZRemRangeByScore(key, "-inf", "0").SetVal(0)
 	mock.ExpectZCard(key).SetVal(5)
-	match.ExpectZAdd(key, redis.Z{}).SetVal(1)
-	mock.ExpectExpire(key, window).SetVal(true)
 
 	limiter := ratelimit.NewLimiter(rdb)
 	mockUC := &mockAuthUsecase{} // LoginFuncは呼ばれない

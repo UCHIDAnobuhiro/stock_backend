@@ -11,13 +11,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// setupPipelineMock はAllow()で使用するRedisパイプラインのモック期待値を設定します。
-func setupPipelineMock(mock redismock.ClientMock, key string, cardVal int64, window time.Duration) {
+// setupCheckMock はAllow() Phase 1（カウント確認）のRedisパイプラインモック期待値を設定します。
+func setupCheckMock(mock redismock.ClientMock, key string, cardVal int64) {
 	match := mock.CustomMatch(func(expected, actual []interface{}) error {
 		return nil // すべての引数を許可
 	})
 	match.ExpectZRemRangeByScore(key, "-inf", "0").SetVal(0)
 	mock.ExpectZCard(key).SetVal(cardVal)
+}
+
+// setupRecordMock はAllow() Phase 2（エントリ追加）のRedisパイプラインモック期待値を設定します。
+func setupRecordMock(mock redismock.ClientMock, key string, window time.Duration) {
+	match := mock.CustomMatch(func(expected, actual []interface{}) error {
+		return nil // すべての引数を許可
+	})
 	match.ExpectZAdd(key, redis.Z{}).SetVal(1)
 	mock.ExpectExpire(key, window).SetVal(true)
 }
@@ -76,7 +83,10 @@ func TestLimiter_Allow(t *testing.T) {
 			defer func() { _ = rdb.Close() }()
 
 			window := time.Minute
-			setupPipelineMock(mock, "test:key", tt.cardVal, window)
+			setupCheckMock(mock, "test:key", tt.cardVal)
+			if tt.wantAllowed {
+				setupRecordMock(mock, "test:key", window)
+			}
 
 			limiter := NewLimiter(rdb)
 			result := limiter.Allow(context.Background(), "test:key", tt.limit, window)
@@ -106,8 +116,6 @@ func TestLimiter_Allow_RedisError_GracefulDegradation(t *testing.T) {
 	})
 	match.ExpectZRemRangeByScore("test:key", "-inf", "0").SetErr(connErr)
 	mock.ExpectZCard("test:key").SetErr(connErr)
-	match.ExpectZAdd("test:key", redis.Z{}).SetErr(connErr)
-	mock.ExpectExpire("test:key", time.Minute).SetErr(connErr)
 
 	limiter := NewLimiter(rdb)
 	result := limiter.Allow(context.Background(), "test:key", 5, time.Minute)

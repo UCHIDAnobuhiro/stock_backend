@@ -40,22 +40,10 @@ func (l *Limiter) Allow(ctx context.Context, key string, limit int, window time.
 	nowNano := now.UnixNano()
 	windowStart := now.Add(-window).UnixNano()
 
+	// Phase 1: ウィンドウ外の古いエントリを削除し、現在のカウントを取得
 	pipe := l.rdb.Pipeline()
-
-	// ウィンドウ外の古いエントリを削除
 	pipe.ZRemRangeByScore(ctx, key, "-inf", fmt.Sprintf("%d", windowStart))
-
-	// 現在のエントリ数を取得（ZADD前）
 	cardCmd := pipe.ZCard(ctx, key)
-
-	// 現在のリクエストを追加（スコア=ナノ秒タイムスタンプ、メンバー=ナノ秒+ランダムバイトで一意性確保）
-	var randBuf [8]byte
-	_, _ = rand.Read(randBuf[:])
-	member := fmt.Sprintf("%d:%x", nowNano, randBuf[:])
-	pipe.ZAdd(ctx, key, redis.Z{Score: float64(nowNano), Member: member})
-
-	// キーの有効期限を設定（安全ネット）
-	pipe.Expire(ctx, key, window)
 
 	if _, err := pipe.Exec(ctx); err != nil {
 		slog.Warn("rate limit check failed, allowing request", "key", key, "error", err)
@@ -68,6 +56,19 @@ func (l *Limiter) Allow(ctx context.Context, key string, limit int, window time.
 			Allowed:    false,
 			RetryAfter: window,
 		}
+	}
+
+	// Phase 2: リクエストが許可された場合のみエントリを追加
+	var randBuf [8]byte
+	_, _ = rand.Read(randBuf[:])
+	member := fmt.Sprintf("%d:%x", nowNano, randBuf[:])
+
+	pipe = l.rdb.Pipeline()
+	pipe.ZAdd(ctx, key, redis.Z{Score: float64(nowNano), Member: member})
+	pipe.Expire(ctx, key, window)
+
+	if _, err := pipe.Exec(ctx); err != nil {
+		slog.Warn("rate limit record failed", "key", key, "error", err)
 	}
 
 	return Result{Allowed: true}

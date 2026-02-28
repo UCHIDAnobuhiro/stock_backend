@@ -27,7 +27,8 @@ func TestByIP_Allowed(t *testing.T) {
 	defer func() { _ = rdb.Close() }()
 
 	window := time.Minute
-	setupPipelineMock(mock, "rl:test:ip:192.0.2.1", 0, window)
+	setupCheckMock(mock, "rl:test:ip:192.0.2.1", 0)
+	setupRecordMock(mock, "rl:test:ip:192.0.2.1", window)
 
 	limiter := NewLimiter(rdb)
 	cfg := IPRateLimitConfig{Prefix: "rl:test:ip", Limit: 10, Window: window}
@@ -55,7 +56,7 @@ func TestByIP_RateLimited(t *testing.T) {
 	defer func() { _ = rdb.Close() }()
 
 	window := time.Minute
-	setupPipelineMock(mock, "rl:test:ip:192.0.2.1", 10, window) // at limit
+	setupCheckMock(mock, "rl:test:ip:192.0.2.1", 10) // at limit
 
 	limiter := NewLimiter(rdb)
 	cfg := IPRateLimitConfig{Prefix: "rl:test:ip", Limit: 10, Window: window}
