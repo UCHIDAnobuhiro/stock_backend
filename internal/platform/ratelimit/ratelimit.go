@@ -78,7 +78,7 @@ func (l *Limiter) Allow(ctx context.Context, key string, limit int, window time.
 		ttlSeconds,
 	).Int64Slice()
 
-	if err != nil {
+	if err != nil || len(res) < 1 {
 		slog.Warn("rate limit check failed, allowing request",
 			"prefix", keyPrefix(key), "error", err)
 		return Result{Allowed: true}
