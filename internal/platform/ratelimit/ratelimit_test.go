@@ -7,26 +7,28 @@ import (
 	"time"
 
 	"github.com/go-redis/redismock/v9"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 )
 
-// setupCheckMock はAllow() Phase 1（カウント確認）のRedisパイプラインモック期待値を設定します。
-func setupCheckMock(mock redismock.ClientMock, key string, cardVal int64) {
+// setupEvalMock はAllow()のLuaスクリプト実行（EvalSha）のモック期待値を設定します。
+// allowed=1, count=現在のカウント を返すように設定します。
+// redismockはCustomMatchの前に引数数をチェックするため、ARGV分のダミー引数（5個）を渡します。
+func setupEvalMock(mock redismock.ClientMock, key string, allowed int64, count int64) {
 	match := mock.CustomMatch(func(expected, actual []interface{}) error {
-		return nil // すべての引数を許可
+		return nil
 	})
-	match.ExpectZRemRangeByScore(key, "-inf", "0").SetVal(0)
-	mock.ExpectZCard(key).SetVal(cardVal)
+	match.ExpectEvalSha(rateLimitScript.Hash(), []string{key},
+		"_", "_", "_", "_", "_"). // ARGV[1]~[5]のダミー値（CustomMatchにより無視される）
+		SetVal([]interface{}{allowed, count})
 }
 
-// setupRecordMock はAllow() Phase 2（エントリ追加）のRedisパイプラインモック期待値を設定します。
-func setupRecordMock(mock redismock.ClientMock, key string, window time.Duration) {
+// setupEvalErrorMock はAllow()のLuaスクリプト実行がエラーを返すように設定します。
+func setupEvalErrorMock(mock redismock.ClientMock, key string, err error) {
 	match := mock.CustomMatch(func(expected, actual []interface{}) error {
-		return nil // すべての引数を許可
+		return nil
 	})
-	match.ExpectZAdd(key, redis.Z{}).SetVal(1)
-	mock.ExpectExpire(key, window).SetVal(true)
+	match.ExpectEvalSha(rateLimitScript.Hash(), []string{key},
+		"_", "_", "_", "_", "_").SetErr(err)
 }
 
 // TestLimiter_Allow_NilRedis はRedisクライアントがnilの場合にリクエストが許可されることを検証します。
@@ -47,28 +49,28 @@ func TestLimiter_Allow(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		cardVal     int64
+		count       int64
 		limit       int
 		wantAllowed bool
 		wantRetry   bool
 	}{
 		{
 			name:        "under limit: request allowed",
-			cardVal:     2,
+			count:       2,
 			limit:       5,
 			wantAllowed: true,
 			wantRetry:   false,
 		},
 		{
 			name:        "at limit: request denied",
-			cardVal:     5,
+			count:       5,
 			limit:       5,
 			wantAllowed: false,
 			wantRetry:   true,
 		},
 		{
 			name:        "over limit: request denied",
-			cardVal:     10,
+			count:       10,
 			limit:       5,
 			wantAllowed: false,
 			wantRetry:   true,
@@ -82,18 +84,18 @@ func TestLimiter_Allow(t *testing.T) {
 			rdb, mock := redismock.NewClientMock()
 			defer func() { _ = rdb.Close() }()
 
-			window := time.Minute
-			setupCheckMock(mock, "test:key", tt.cardVal)
+			var allowed int64
 			if tt.wantAllowed {
-				setupRecordMock(mock, "test:key", window)
+				allowed = 1
 			}
+			setupEvalMock(mock, "test:key", allowed, tt.count)
 
 			limiter := NewLimiter(rdb)
-			result := limiter.Allow(context.Background(), "test:key", tt.limit, window)
+			result := limiter.Allow(context.Background(), "test:key", tt.limit, time.Minute)
 
 			assert.Equal(t, tt.wantAllowed, result.Allowed)
 			if tt.wantRetry {
-				assert.Equal(t, window, result.RetryAfter)
+				assert.Equal(t, time.Minute, result.RetryAfter)
 			} else {
 				assert.Zero(t, result.RetryAfter)
 			}
@@ -111,14 +113,11 @@ func TestLimiter_Allow_RedisError_GracefulDegradation(t *testing.T) {
 	defer func() { _ = rdb.Close() }()
 
 	connErr := fmt.Errorf("connection refused")
-	match := mock.CustomMatch(func(expected, actual []interface{}) error {
-		return nil
-	})
-	match.ExpectZRemRangeByScore("test:key", "-inf", "0").SetErr(connErr)
-	mock.ExpectZCard("test:key").SetErr(connErr)
+	setupEvalErrorMock(mock, "test:key", connErr)
 
 	limiter := NewLimiter(rdb)
 	result := limiter.Allow(context.Background(), "test:key", 5, time.Minute)
 
 	assert.True(t, result.Allowed, "Redisエラー時はリクエストを許可すべき")
+	assert.NoError(t, mock.ExpectationsWereMet())
 }

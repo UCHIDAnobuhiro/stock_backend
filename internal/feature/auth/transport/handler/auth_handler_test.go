@@ -140,14 +140,14 @@ func TestAuthHandler_Login_RateLimited(t *testing.T) {
 	rdb, mock := redismock.NewClientMock()
 	t.Cleanup(func() { _ = rdb.Close() })
 
-	// パイプラインモック: ZCardが5（= loginEmailLimit）を返しレートリミット超過
-	// Phase 1のみ（拒否時はPhase 2のZADD/Expireは実行されない）
+	// Luaスクリプトモック: allowed=0（レートリミット超過）を返す
 	match := mock.CustomMatch(func(expected, actual []interface{}) error {
 		return nil
 	})
 	key := "rl:login:email:test@example.com"
-	match.ExpectZRemRangeByScore(key, "-inf", "0").SetVal(0)
-	mock.ExpectZCard(key).SetVal(5)
+	match.ExpectEvalSha(ratelimit.ScriptHash(), []string{key},
+		"_", "_", "_", "_", "_").
+		SetVal([]interface{}{int64(0), int64(5)})
 
 	limiter := ratelimit.NewLimiter(rdb)
 	mockUC := &mockAuthUsecase{} // LoginFuncは呼ばれない
