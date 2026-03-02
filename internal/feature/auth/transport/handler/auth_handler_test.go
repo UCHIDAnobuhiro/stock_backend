@@ -150,7 +150,13 @@ func TestAuthHandler_Login_RateLimited(t *testing.T) {
 		SetVal([]interface{}{int64(0), int64(5)})
 
 	limiter := ratelimit.NewLimiter(rdb)
-	mockUC := &mockAuthUsecase{} // LoginFuncは呼ばれない
+	loginCalled := false
+	mockUC := &mockAuthUsecase{
+		LoginFunc: func(ctx context.Context, email, password string) (string, error) {
+			loginCalled = true
+			return "", errors.New("should not be called")
+		},
+	}
 	h := handler.NewAuthHandler(mockUC, limiter)
 
 	router := gin.New()
@@ -169,6 +175,7 @@ func TestAuthHandler_Login_RateLimited(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "too many requests", body["error"])
 
+	assert.False(t, loginCalled, "レートリミット超過時はUsecaseが呼ばれないこと")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 

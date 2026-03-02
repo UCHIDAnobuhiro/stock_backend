@@ -100,10 +100,16 @@ func ScriptHash() string {
 }
 
 // keyPrefix はレートリミットキーからPIIを含まないプレフィックス部分を抽出します。
+// 固定の先頭3セグメントのみを返すことで、IPv6アドレス等のコロンを含む値でも安全です。
 // 例: "rl:login:email:user@example.com" → "rl:login:email"
+// 例: "rl:login:ip:2001:db8::1"        → "rl:login:ip"
 func keyPrefix(key string) string {
-	if idx := strings.LastIndex(key, ":"); idx > 0 {
-		return key[:idx]
+	parts := strings.SplitN(key, ":", 4)
+	if len(parts) >= 3 {
+		return strings.Join(parts[:3], ":")
 	}
-	return key
+	if len(parts) >= 1 {
+		return parts[0]
+	}
+	return "unknown"
 }
