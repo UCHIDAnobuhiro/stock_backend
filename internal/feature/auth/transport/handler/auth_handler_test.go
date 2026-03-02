@@ -10,10 +10,12 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redismock/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"stock_backend/internal/feature/auth/transport/handler"
+	"stock_backend/internal/platform/ratelimit"
 )
 
 // mockAuthUsecase はAuthUsecaseインターフェースのモック実装です。
@@ -120,7 +122,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 			t.Parallel()
 
 			mockUC := &mockAuthUsecase{SignupFunc: tt.mockSignupFunc}
-			h := handler.NewAuthHandler(mockUC)
+			h := handler.NewAuthHandler(mockUC, nil)
 
 			router := gin.New()
 			router.POST("/signup", h.Signup)
@@ -129,6 +131,52 @@ func TestAuthHandler_Signup(t *testing.T) {
 			assertJSONResponse(t, w, tt.expectedStatus, tt.expectedBody)
 		})
 	}
+}
+
+// TestAuthHandler_Login_RateLimited はメールベースのレートリミット超過時に429が返されることを検証します。
+func TestAuthHandler_Login_RateLimited(t *testing.T) {
+	t.Parallel()
+
+	rdb, mock := redismock.NewClientMock()
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	// Luaスクリプトモック: allowed=0（レートリミット超過）を返す
+	match := mock.CustomMatch(func(expected, actual []interface{}) error {
+		return nil
+	})
+	key := "rl:login:email:test@example.com"
+	match.ExpectEvalSha(ratelimit.ScriptHash(), []string{key},
+		"_", "_", "_", "_", "_").
+		SetVal([]interface{}{int64(0), int64(5)})
+
+	limiter := ratelimit.NewLimiter(rdb)
+	loginCalled := false
+	mockUC := &mockAuthUsecase{
+		LoginFunc: func(ctx context.Context, email, password string) (string, error) {
+			loginCalled = true
+			return "", errors.New("should not be called")
+		},
+	}
+	h := handler.NewAuthHandler(mockUC, limiter)
+
+	router := gin.New()
+	router.POST("/login", h.Login)
+
+	w := makeRequest(t, router, http.MethodPost, "/login", gin.H{
+		"email":    "test@example.com",
+		"password": "password123",
+	})
+
+	assert.Equal(t, http.StatusTooManyRequests, w.Code)
+	assert.Equal(t, "900", w.Header().Get("Retry-After"))
+
+	var body map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &body)
+	require.NoError(t, err)
+	assert.Equal(t, "too many requests", body["error"])
+
+	assert.False(t, loginCalled, "レートリミット超過時はUsecaseが呼ばれないこと")
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 // TestAuthHandler_Login はログインハンドラーのHTTPリクエスト/レスポンス処理をテストします。
@@ -188,7 +236,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			t.Parallel()
 
 			mockUC := &mockAuthUsecase{LoginFunc: tt.mockLoginFunc}
-			h := handler.NewAuthHandler(mockUC)
+			h := handler.NewAuthHandler(mockUC, nil)
 
 			router := gin.New()
 			router.POST("/login", h.Login)
