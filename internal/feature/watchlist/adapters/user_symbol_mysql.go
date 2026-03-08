@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"stock_backend/internal/feature/watchlist/domain/entity"
 	"stock_backend/internal/feature/watchlist/usecase"
@@ -38,21 +39,24 @@ func (r *userSymbolMySQL) ListByUser(ctx context.Context, userID uint) ([]entity
 }
 
 // AddWithAtomicSortKey はsort_keyをトランザクション内でアトミックに採番しながら銘柄を追加します。
-// SELECT MAX(sort_key) + INSERT を1トランザクションで実行するため、
-// 同時リクエストによるsort_key衝突を大幅に低減します。
+// SELECT ... FOR UPDATE + INSERT を1トランザクションで実行するため、
+// 同時リクエストによるsort_key衝突を防止します。
 func (r *userSymbolMySQL) AddWithAtomicSortKey(ctx context.Context, userID uint, symbolCode string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var maxKey *int
-		if err := tx.Model(&entity.UserSymbol{}).
+		var last entity.UserSymbol
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("user_id = ?", userID).
-			Select("MAX(sort_key)").
-			Scan(&maxKey).Error; err != nil {
+			Order("sort_key DESC").
+			Limit(1).
+			Take(&last).Error
+
+		nextKey := 10
+		if err == nil {
+			nextKey = last.SortKey + 10
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
-		nextKey := 10
-		if maxKey != nil {
-			nextKey = *maxKey + 10
-		}
+
 		us := entity.UserSymbol{
 			UserID:     userID,
 			SymbolCode: symbolCode,

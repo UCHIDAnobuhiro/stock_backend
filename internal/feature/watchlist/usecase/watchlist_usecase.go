@@ -60,7 +60,7 @@ func (u *WatchlistUsecase) RemoveSymbol(ctx context.Context, userID uint, symbol
 // codeOrderは現在のウォッチリストと同じ銘柄集合・同じ件数・重複なしであることを検証します。
 func (u *WatchlistUsecase) ReorderSymbols(ctx context.Context, userID uint, codeOrder []string) error {
 	if len(codeOrder) == 0 {
-		return fmt.Errorf("code order must not be empty")
+		return ErrInvalidReorder
 	}
 
 	current, err := u.repo.ListByUser(ctx, userID)
