@@ -54,6 +54,11 @@ func (r *userMySQL) FindByEmail(ctx context.Context, email string) (*entity.User
 	return &u, nil
 }
 
+// DeleteByID は指定されたIDのユーザーを削除します。
+func (r *userMySQL) DeleteByID(ctx context.Context, id uint) error {
+	return r.db.WithContext(ctx).Delete(&entity.User{}, id).Error
+}
+
 // FindByID はIDでユーザーを取得します。
 // ユーザーが存在しない場合、usecase.ErrUserNotFoundを返します。
 func (r *userMySQL) FindByID(ctx context.Context, id uint) (*entity.User, error) {

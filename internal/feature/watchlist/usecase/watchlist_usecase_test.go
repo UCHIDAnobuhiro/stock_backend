@@ -14,12 +14,11 @@ import (
 
 // mockUserSymbolRepository はUserSymbolRepositoryインターフェースのモック実装です。
 type mockUserSymbolRepository struct {
-	ListByUserFunc     func(ctx context.Context, userID uint) ([]entity.UserSymbol, error)
-	AddFunc            func(ctx context.Context, us *entity.UserSymbol) error
-	RemoveFunc         func(ctx context.Context, userID uint, symbolCode string) error
-	UpdateSortKeysFunc func(ctx context.Context, userID uint, codeOrder []string) error
-	AddBatchFunc       func(ctx context.Context, userSymbols []entity.UserSymbol) error
-	MaxSortKeyFunc     func(ctx context.Context, userID uint) (int, error)
+	ListByUserFunc           func(ctx context.Context, userID uint) ([]entity.UserSymbol, error)
+	AddWithAtomicSortKeyFunc func(ctx context.Context, userID uint, symbolCode string) error
+	RemoveFunc               func(ctx context.Context, userID uint, symbolCode string) error
+	UpdateSortKeysFunc       func(ctx context.Context, userID uint, codeOrder []string) error
+	AddBatchFunc             func(ctx context.Context, userSymbols []entity.UserSymbol) error
 }
 
 func (m *mockUserSymbolRepository) ListByUser(ctx context.Context, userID uint) ([]entity.UserSymbol, error) {
@@ -29,9 +28,9 @@ func (m *mockUserSymbolRepository) ListByUser(ctx context.Context, userID uint) 
 	return nil, nil
 }
 
-func (m *mockUserSymbolRepository) Add(ctx context.Context, us *entity.UserSymbol) error {
-	if m.AddFunc != nil {
-		return m.AddFunc(ctx, us)
+func (m *mockUserSymbolRepository) AddWithAtomicSortKey(ctx context.Context, userID uint, symbolCode string) error {
+	if m.AddWithAtomicSortKeyFunc != nil {
+		return m.AddWithAtomicSortKeyFunc(ctx, userID, symbolCode)
 	}
 	return nil
 }
@@ -55,13 +54,6 @@ func (m *mockUserSymbolRepository) AddBatch(ctx context.Context, userSymbols []e
 		return m.AddBatchFunc(ctx, userSymbols)
 	}
 	return nil
-}
-
-func (m *mockUserSymbolRepository) MaxSortKey(ctx context.Context, userID uint) (int, error) {
-	if m.MaxSortKeyFunc != nil {
-		return m.MaxSortKeyFunc(ctx, userID)
-	}
-	return 0, nil
 }
 
 func TestWatchlistUsecase_ListUserSymbols(t *testing.T) {
@@ -131,8 +123,7 @@ func TestWatchlistUsecase_AddSymbol(t *testing.T) {
 		name       string
 		userID     uint
 		symbolCode string
-		maxSortKey int
-		addErr     error
+		repoErr    error
 		wantErr    bool
 		errIs      error
 	}{
@@ -140,7 +131,6 @@ func TestWatchlistUsecase_AddSymbol(t *testing.T) {
 			name:       "success: add symbol",
 			userID:     1,
 			symbolCode: "TSLA",
-			maxSortKey: 20,
 		},
 		{
 			name:       "failure: empty symbol code",
@@ -152,7 +142,7 @@ func TestWatchlistUsecase_AddSymbol(t *testing.T) {
 			name:       "failure: duplicate symbol",
 			userID:     1,
 			symbolCode: "AAPL",
-			addErr:     usecase.ErrSymbolAlreadyExists,
+			repoErr:    usecase.ErrSymbolAlreadyExists,
 			wantErr:    true,
 			errIs:      usecase.ErrSymbolAlreadyExists,
 		},
@@ -162,14 +152,13 @@ func TestWatchlistUsecase_AddSymbol(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			var addedSymbol *entity.UserSymbol
+			var calledUserID uint
+			var calledSymbolCode string
 			repo := &mockUserSymbolRepository{
-				MaxSortKeyFunc: func(ctx context.Context, userID uint) (int, error) {
-					return tt.maxSortKey, nil
-				},
-				AddFunc: func(ctx context.Context, us *entity.UserSymbol) error {
-					addedSymbol = us
-					return tt.addErr
+				AddWithAtomicSortKeyFunc: func(ctx context.Context, userID uint, symbolCode string) error {
+					calledUserID = userID
+					calledSymbolCode = symbolCode
+					return tt.repoErr
 				},
 			}
 			uc := usecase.NewWatchlistUsecase(repo)
@@ -182,9 +171,8 @@ func TestWatchlistUsecase_AddSymbol(t *testing.T) {
 				}
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tt.userID, addedSymbol.UserID)
-				assert.Equal(t, tt.symbolCode, addedSymbol.SymbolCode)
-				assert.Equal(t, tt.maxSortKey+10, addedSymbol.SortKey)
+				assert.Equal(t, tt.userID, calledUserID)
+				assert.Equal(t, tt.symbolCode, calledSymbolCode)
 			}
 		})
 	}
@@ -237,11 +225,18 @@ func TestWatchlistUsecase_RemoveSymbol(t *testing.T) {
 func TestWatchlistUsecase_ReorderSymbols(t *testing.T) {
 	t.Parallel()
 
+	currentSymbols := []entity.UserSymbol{
+		{UserID: 1, SymbolCode: "AAPL", SortKey: 10},
+		{UserID: 1, SymbolCode: "MSFT", SortKey: 20},
+		{UserID: 1, SymbolCode: "GOOGL", SortKey: 30},
+	}
+
 	tests := []struct {
 		name      string
 		codeOrder []string
 		repoErr   error
 		wantErr   bool
+		errIs     error
 	}{
 		{
 			name:      "success: reorder symbols",
@@ -253,8 +248,26 @@ func TestWatchlistUsecase_ReorderSymbols(t *testing.T) {
 			wantErr:   true,
 		},
 		{
-			name:      "failure: repository error",
+			name:      "failure: length mismatch",
 			codeOrder: []string{"AAPL"},
+			wantErr:   true,
+			errIs:     usecase.ErrInvalidReorder,
+		},
+		{
+			name:      "failure: unknown symbol",
+			codeOrder: []string{"AAPL", "MSFT", "TSLA"},
+			wantErr:   true,
+			errIs:     usecase.ErrInvalidReorder,
+		},
+		{
+			name:      "failure: duplicate symbol",
+			codeOrder: []string{"AAPL", "AAPL", "GOOGL"},
+			wantErr:   true,
+			errIs:     usecase.ErrInvalidReorder,
+		},
+		{
+			name:      "failure: repository error",
+			codeOrder: []string{"AAPL", "MSFT", "GOOGL"},
 			repoErr:   errors.New("database error"),
 			wantErr:   true,
 		},
@@ -265,6 +278,9 @@ func TestWatchlistUsecase_ReorderSymbols(t *testing.T) {
 			t.Parallel()
 
 			repo := &mockUserSymbolRepository{
+				ListByUserFunc: func(ctx context.Context, userID uint) ([]entity.UserSymbol, error) {
+					return currentSymbols, nil
+				},
 				UpdateSortKeysFunc: func(ctx context.Context, userID uint, codeOrder []string) error {
 					return tt.repoErr
 				},
@@ -274,6 +290,9 @@ func TestWatchlistUsecase_ReorderSymbols(t *testing.T) {
 			err := uc.ReorderSymbols(context.Background(), 1, tt.codeOrder)
 			if tt.wantErr {
 				assert.Error(t, err)
+				if tt.errIs != nil {
+					assert.ErrorIs(t, err, tt.errIs)
+				}
 			} else {
 				assert.NoError(t, err)
 			}

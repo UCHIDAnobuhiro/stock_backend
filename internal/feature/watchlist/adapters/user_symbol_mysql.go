@@ -37,17 +37,36 @@ func (r *userSymbolMySQL) ListByUser(ctx context.Context, userID uint) ([]entity
 	return symbols, nil
 }
 
-// Add はユーザーのウォッチリストに銘柄を追加します。
-// 既に同じ銘柄が存在する場合、ErrSymbolAlreadyExistsを返します。
-func (r *userSymbolMySQL) Add(ctx context.Context, us *entity.UserSymbol) error {
-	if err := r.db.WithContext(ctx).Create(us).Error; err != nil {
-		var mysqlErr *mysql.MySQLError
-		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
-			return usecase.ErrSymbolAlreadyExists
+// AddWithAtomicSortKey はsort_keyをトランザクション内でアトミックに採番しながら銘柄を追加します。
+// SELECT MAX(sort_key) + INSERT を1トランザクションで実行するため、
+// 同時リクエストによるsort_key衝突を大幅に低減します。
+func (r *userSymbolMySQL) AddWithAtomicSortKey(ctx context.Context, userID uint, symbolCode string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var maxKey *int
+		if err := tx.Model(&entity.UserSymbol{}).
+			Where("user_id = ?", userID).
+			Select("MAX(sort_key)").
+			Scan(&maxKey).Error; err != nil {
+			return err
 		}
-		return err
-	}
-	return nil
+		nextKey := 10
+		if maxKey != nil {
+			nextKey = *maxKey + 10
+		}
+		us := entity.UserSymbol{
+			UserID:     userID,
+			SymbolCode: symbolCode,
+			SortKey:    nextKey,
+		}
+		if err := tx.Create(&us).Error; err != nil {
+			var mysqlErr *mysql.MySQLError
+			if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+				return usecase.ErrSymbolAlreadyExists
+			}
+			return err
+		}
+		return nil
+	})
 }
 
 // Remove はユーザーのウォッチリストから銘柄を削除します。
@@ -83,21 +102,23 @@ func (r *userSymbolMySQL) UpdateSortKeys(ctx context.Context, userID uint, codeO
 
 // AddBatch はユーザーのウォッチリストに複数の銘柄を一括追加します。
 // 既に存在する銘柄は無視されます（冪等性を保証）。
+// 全挿入はひとつのトランザクション内で実行され、重複以外のエラー発生時はロールバックされます。
 func (r *userSymbolMySQL) AddBatch(ctx context.Context, userSymbols []entity.UserSymbol) error {
 	if len(userSymbols) == 0 {
 		return nil
 	}
-	// Clauses(clause.Insert{Modifier: "IGNORE"}) の代わりに個別挿入で冪等性を保証
-	for i := range userSymbols {
-		if err := r.db.WithContext(ctx).Create(&userSymbols[i]).Error; err != nil {
-			var mysqlErr *mysql.MySQLError
-			if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
-				continue // 重複は無視
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for i := range userSymbols {
+			if err := tx.Create(&userSymbols[i]).Error; err != nil {
+				var mysqlErr *mysql.MySQLError
+				if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+					continue // 重複は無視
+				}
+				return err
 			}
-			return err
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // MaxSortKey はユーザーのウォッチリスト内の最大sort_keyを返します。

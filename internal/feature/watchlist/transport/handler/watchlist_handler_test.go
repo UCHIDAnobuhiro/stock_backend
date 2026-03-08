@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -57,7 +58,7 @@ func (m *mockWatchlistUsecase) ReorderSymbols(ctx context.Context, userID uint, 
 
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
-	m.Run()
+	os.Exit(m.Run())
 }
 
 // setupRouter はテスト用のGinルーターにJWTコンテキストをセットするミドルウェア付きでセットアップします。

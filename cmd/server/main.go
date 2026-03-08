@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"time"
@@ -48,13 +49,22 @@ func (s *signupWithDefaults) Signup(ctx context.Context, email, password string)
 		return 0, err
 	}
 	if initErr := s.watchlist.InitializeDefaults(ctx, userID); initErr != nil {
-		slog.Warn("failed to initialize default watchlist", "userID", userID, "error", initErr)
+		slog.Error("failed to initialize default watchlist, rolling back user creation",
+			"userID", userID, "error", initErr)
+		if delErr := s.auth.DeleteUser(ctx, userID); delErr != nil {
+			slog.Error("failed to delete user during signup rollback", "userID", userID, "error", delErr)
+		}
+		return 0, fmt.Errorf("failed to initialize watchlist: %w", initErr)
 	}
 	return userID, nil
 }
 
 func (s *signupWithDefaults) Login(ctx context.Context, email, password string) (string, error) {
 	return s.auth.Login(ctx, email, password)
+}
+
+func (s *signupWithDefaults) DeleteUser(ctx context.Context, id uint) error {
+	return s.auth.DeleteUser(ctx, id)
 }
 
 func main() {

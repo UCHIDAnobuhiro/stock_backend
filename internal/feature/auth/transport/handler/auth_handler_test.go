@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -20,8 +21,9 @@ import (
 
 // mockAuthUsecase はAuthUsecaseインターフェースのモック実装です。
 type mockAuthUsecase struct {
-	SignupFunc func(ctx context.Context, email, password string) (uint, error)
-	LoginFunc  func(ctx context.Context, email, password string) (string, error)
+	SignupFunc     func(ctx context.Context, email, password string) (uint, error)
+	LoginFunc      func(ctx context.Context, email, password string) (string, error)
+	DeleteUserFunc func(ctx context.Context, id uint) error
 }
 
 // Signup はSignupメソッドのモック実装です。
@@ -40,10 +42,18 @@ func (m *mockAuthUsecase) Login(ctx context.Context, email, password string) (st
 	return "", errors.New("login failed") // デフォルト: 失敗
 }
 
+// DeleteUser はDeleteUserメソッドのモック実装です。
+func (m *mockAuthUsecase) DeleteUser(ctx context.Context, id uint) error {
+	if m.DeleteUserFunc != nil {
+		return m.DeleteUserFunc(ctx, id)
+	}
+	return nil
+}
+
 // TestMain は全テスト共通のテスト環境を設定します。
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
-	m.Run()
+	os.Exit(m.Run())
 }
 
 // makeRequest はHTTPリクエストを作成・実行するヘルパー関数です。

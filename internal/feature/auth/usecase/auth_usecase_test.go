@@ -79,6 +79,11 @@ func (m *mockUserRepository) FindByID(ctx context.Context, id uint) (*entity.Use
 	return nil, errors.New("user not found")
 }
 
+// DeleteByID はDeleteByIDメソッドのモック実装です。
+func (m *mockUserRepository) DeleteByID(ctx context.Context, id uint) error {
+	return nil
+}
+
 // createTestUser はテスト用にハッシュ化パスワードを持つテストユーザーを作成します。
 // このヘルパーはコードの重複を削減し、テストの保守性を向上させます。
 func createTestUser(t *testing.T, id uint, email, password string) *entity.User {

@@ -15,16 +15,15 @@ var DefaultSymbolCodes = []string{"AAPL", "MSFT", "GOOGL"}
 type UserSymbolRepository interface {
 	// ListByUser はユーザーのウォッチリスト銘柄をsort_key順に返します。
 	ListByUser(ctx context.Context, userID uint) ([]entity.UserSymbol, error)
-	// Add はユーザーのウォッチリストに銘柄を追加します。
-	Add(ctx context.Context, userSymbol *entity.UserSymbol) error
+	// AddWithAtomicSortKey はsort_keyをトランザクション内でアトミックに採番しながら銘柄を追加します。
+	// SELECT MAX(sort_key) FOR UPDATE + INSERT を1トランザクションで実行するため競合が発生しません。
+	AddWithAtomicSortKey(ctx context.Context, userID uint, symbolCode string) error
 	// Remove はユーザーのウォッチリストから銘柄を削除します。
 	Remove(ctx context.Context, userID uint, symbolCode string) error
 	// UpdateSortKeys はユーザーの銘柄の並び順を一括更新します。
 	UpdateSortKeys(ctx context.Context, userID uint, codeOrder []string) error
 	// AddBatch はユーザーのウォッチリストに複数の銘柄を一括追加します（デフォルト銘柄用）。
 	AddBatch(ctx context.Context, userSymbols []entity.UserSymbol) error
-	// MaxSortKey はユーザーのウォッチリスト内の最大sort_keyを返します。
-	MaxSortKey(ctx context.Context, userID uint) (int, error)
 }
 
 // WatchlistUsecase はウォッチリスト操作のビジネスロジックを提供します。
@@ -43,23 +42,12 @@ func (u *WatchlistUsecase) ListUserSymbols(ctx context.Context, userID uint) ([]
 }
 
 // AddSymbol はユーザーのウォッチリストに銘柄を追加します。
-// sort_keyは既存の最大値+10に自動設定されます。
+// sort_keyはリポジトリ内でアトミックに採番されます。
 func (u *WatchlistUsecase) AddSymbol(ctx context.Context, userID uint, symbolCode string) error {
 	if symbolCode == "" {
 		return fmt.Errorf("symbol code must not be empty")
 	}
-
-	maxKey, err := u.repo.MaxSortKey(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("failed to get max sort key: %w", err)
-	}
-
-	us := &entity.UserSymbol{
-		UserID:     userID,
-		SymbolCode: symbolCode,
-		SortKey:    maxKey + 10,
-	}
-	return u.repo.Add(ctx, us)
+	return u.repo.AddWithAtomicSortKey(ctx, userID, symbolCode)
 }
 
 // RemoveSymbol はユーザーのウォッチリストから銘柄を削除します。
@@ -69,10 +57,35 @@ func (u *WatchlistUsecase) RemoveSymbol(ctx context.Context, userID uint, symbol
 
 // ReorderSymbols はユーザーのウォッチリスト銘柄の並び順を更新します。
 // codeOrderの順番に従い、sort_key = index * 10 で設定します。
+// codeOrderは現在のウォッチリストと同じ銘柄集合・同じ件数・重複なしであることを検証します。
 func (u *WatchlistUsecase) ReorderSymbols(ctx context.Context, userID uint, codeOrder []string) error {
 	if len(codeOrder) == 0 {
 		return fmt.Errorf("code order must not be empty")
 	}
+
+	current, err := u.repo.ListByUser(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to load current watchlist: %w", err)
+	}
+	if len(current) != len(codeOrder) {
+		return ErrInvalidReorder
+	}
+
+	allowed := make(map[string]struct{}, len(current))
+	for _, s := range current {
+		allowed[s.SymbolCode] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(codeOrder))
+	for _, code := range codeOrder {
+		if _, ok := allowed[code]; !ok {
+			return ErrInvalidReorder
+		}
+		if _, dup := seen[code]; dup {
+			return ErrInvalidReorder
+		}
+		seen[code] = struct{}{}
+	}
+
 	return u.repo.UpdateSortKeys(ctx, userID, codeOrder)
 }
 

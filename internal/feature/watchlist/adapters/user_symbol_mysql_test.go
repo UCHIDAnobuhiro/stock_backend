@@ -118,35 +118,40 @@ func TestUserSymbolMySQL_ListByUser(t *testing.T) {
 	}
 }
 
-func TestUserSymbolMySQL_Add(t *testing.T) {
+func TestUserSymbolMySQL_AddWithAtomicSortKey(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name      string
-		symbol    *entity.UserSymbol
-		wantErr   bool
-		setupFunc func(t *testing.T, db *gorm.DB)
+		name        string
+		userID      uint
+		symbolCode  string
+		setupFunc   func(t *testing.T, db *gorm.DB)
+		wantErr     bool
+		wantSortKey int
 	}{
 		{
-			name: "success: add symbol",
-			symbol: &entity.UserSymbol{
-				UserID:     1,
-				SymbolCode: "AAPL",
-				SortKey:    10,
-			},
-			wantErr: false,
+			name:        "success: first symbol gets sort_key 10",
+			userID:      1,
+			symbolCode:  "AAPL",
+			wantSortKey: 10,
 		},
 		{
-			name: "error: duplicate user-symbol pair",
-			symbol: &entity.UserSymbol{
-				UserID:     1,
-				SymbolCode: "AAPL",
-				SortKey:    20,
-			},
-			wantErr: true,
+			name:       "success: second symbol gets max+10",
+			userID:     1,
+			symbolCode: "MSFT",
 			setupFunc: func(t *testing.T, db *gorm.DB) {
 				seedUserSymbol(t, db, 1, "AAPL", 10)
 			},
+			wantSortKey: 20,
+		},
+		{
+			name:       "error: duplicate user-symbol pair",
+			userID:     1,
+			symbolCode: "AAPL",
+			setupFunc: func(t *testing.T, db *gorm.DB) {
+				seedUserSymbol(t, db, 1, "AAPL", 10)
+			},
+			wantErr: true,
 		},
 	}
 
@@ -161,13 +166,15 @@ func TestUserSymbolMySQL_Add(t *testing.T) {
 				tt.setupFunc(t, db)
 			}
 
-			err := repo.Add(context.Background(), tt.symbol)
+			err := repo.AddWithAtomicSortKey(context.Background(), tt.userID, tt.symbolCode)
 
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.NotZero(t, tt.symbol.ID, "ID is not set")
+				var inserted entity.UserSymbol
+				require.NoError(t, db.Where("user_id = ? AND symbol_code = ?", tt.userID, tt.symbolCode).First(&inserted).Error)
+				assert.Equal(t, tt.wantSortKey, inserted.SortKey)
 			}
 		})
 	}

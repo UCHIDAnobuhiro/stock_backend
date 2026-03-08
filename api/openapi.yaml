@@ -232,6 +232,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /v1/watchlist/{code}:
     delete:
@@ -248,6 +254,8 @@ paths:
           description: "銘柄コード（例: AAPL, 7203.T）"
           schema:
             type: string
+            minLength: 1
+            maxLength: 20
       responses:
         "204":
           description: 削除成功
@@ -281,6 +289,12 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         "400":
           description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバーエラー
           content:
             application/json:
               schema:
@@ -542,6 +556,8 @@ components:
       properties:
         symbol_code:
           type: string
+          minLength: 1
+          maxLength: 20
           description: "追加する銘柄コード（例: AAPL, 7203.T）"
           x-oapi-codegen-extra-tags:
             binding: "required,max=20"
@@ -553,9 +569,12 @@ components:
       properties:
         symbol_codes:
           type: array
+          minItems: 1
           description: 並び替え後の銘柄コード順序
           items:
             type: string
+            minLength: 1
+            maxLength: 20
           x-oapi-codegen-extra-tags:
             binding: "required,min=1,dive,required,max=20"
 

@@ -24,6 +24,9 @@ type AuthUsecase interface {
 	Signup(ctx context.Context, email, password string) (uint, error)
 	// Login はユーザーを認証し、成功時にJWTトークンを返します。
 	Login(ctx context.Context, email, password string) (string, error)
+	// DeleteUser は指定されたIDのユーザーを削除します。
+	// サインアップ失敗時の補償トランザクションとして使用します。
+	DeleteUser(ctx context.Context, id uint) error
 }
 
 // ログインのメールベースレートリミット設定
