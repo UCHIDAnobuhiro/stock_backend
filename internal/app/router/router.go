@@ -10,6 +10,7 @@ import (
 	candleshandler "stock_backend/internal/feature/candles/transport/handler"
 	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
+	watchlisthandler "stock_backend/internal/feature/watchlist/transport/handler"
 	handler "stock_backend/internal/platform/http/handler"
 	jwtmw "stock_backend/internal/platform/jwt"
 	"stock_backend/internal/platform/ratelimit"
@@ -19,7 +20,7 @@ import (
 // 公開ルート（signup, login）とJWT認証ミドルウェア付きの保護ルート（candles, symbols, logo）を設定します。
 func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.CandlesHandler,
 	symbol *symbollisthandler.SymbolHandler, logo *logohandler.LogoDetectionHandler,
-	limiter *ratelimit.Limiter,
+	watchlist *watchlisthandler.WatchlistHandler, limiter *ratelimit.Limiter,
 ) *gin.Engine {
 	r := gin.Default()
 
@@ -62,6 +63,12 @@ func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.Can
 			auth.GET("/symbols", symbol.List)
 			auth.POST("/logo/detect", logo.DetectLogos)
 			auth.POST("/logo/analyze", logo.AnalyzeCompany)
+
+			// ウォッチリスト
+			auth.GET("/watchlist", watchlist.List)
+			auth.POST("/watchlist", watchlist.Add)
+			auth.PUT("/watchlist/order", watchlist.Reorder)
+			auth.DELETE("/watchlist/:code", watchlist.Remove)
 		}
 	}
 

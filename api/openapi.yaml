@@ -177,6 +177,135 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /v1/watchlist:
+    get:
+      summary: ユーザーのウォッチリスト取得
+      operationId: getWatchlist
+      tags:
+        - watchlist
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: ウォッチリスト一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WatchlistItem"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      summary: ウォッチリストに銘柄追加
+      operationId: addWatchlistSymbol
+      tags:
+        - watchlist
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddWatchlistRequest"
+      responses:
+        "201":
+          description: 追加成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: 既に登録済み
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/watchlist/{code}:
+    delete:
+      summary: ウォッチリストから銘柄削除
+      operationId: removeWatchlistSymbol
+      tags:
+        - watchlist
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          description: "銘柄コード（例: AAPL, 7203.T）"
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 20
+      responses:
+        "204":
+          description: 削除成功
+        "404":
+          description: 銘柄が見つからない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/watchlist/order:
+    put:
+      summary: ウォッチリストの並び順更新
+      operationId: reorderWatchlist
+      tags:
+        - watchlist
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderWatchlistRequest"
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /v1/logo/detect:
     post:
       summary: 画像からロゴを検出
@@ -412,6 +541,48 @@ components:
         summary:
           type: string
           description: AI生成の企業分析サマリー
+
+    WatchlistItem:
+      type: object
+      required:
+        - symbol_code
+        - sort_key
+      properties:
+        symbol_code:
+          type: string
+          description: "銘柄コード（例: AAPL, 7203.T）"
+        sort_key:
+          type: integer
+          description: 表示順
+
+    AddWatchlistRequest:
+      type: object
+      required:
+        - symbol_code
+      properties:
+        symbol_code:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: "追加する銘柄コード（例: AAPL, 7203.T）"
+          x-oapi-codegen-extra-tags:
+            binding: "required,max=20"
+
+    ReorderWatchlistRequest:
+      type: object
+      required:
+        - symbol_codes
+      properties:
+        symbol_codes:
+          type: array
+          minItems: 1
+          description: 並び替え後の銘柄コード順序
+          items:
+            type: string
+            minLength: 1
+            maxLength: 20
+          x-oapi-codegen-extra-tags:
+            binding: "required,min=1,dive,required,max=20"
 
     HealthResponse:
       type: object

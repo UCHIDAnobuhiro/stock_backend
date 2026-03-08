@@ -20,9 +20,13 @@ import (
 // Goの慣例に従い、インターフェースはプロバイダー（usecase）ではなくコンシューマー（handler）が定義します。
 type AuthUsecase interface {
 	// Signup は指定されたメールアドレスとパスワードで新規ユーザーを登録します。
-	Signup(ctx context.Context, email, password string) error
+	// 作成されたユーザーのIDを返します。
+	Signup(ctx context.Context, email, password string) (uint, error)
 	// Login はユーザーを認証し、成功時にJWTトークンを返します。
 	Login(ctx context.Context, email, password string) (string, error)
+	// DeleteUser は指定されたIDのユーザーを削除します。
+	// サインアップ失敗時の補償トランザクションとして使用します。
+	DeleteUser(ctx context.Context, id uint) error
 }
 
 // ログインのメールベースレートリミット設定
@@ -56,7 +60,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "invalid request"})
 		return
 	}
-	if err := h.auth.Signup(c.Request.Context(), req.Email, req.Password); err != nil {
+	if _, err := h.auth.Signup(c.Request.Context(), req.Email, req.Password); err != nil {
 		// ユーザー列挙攻撃を防止するため、実際のエラーを公開しない
 		slog.Warn("signup failed", "error", err, "email", req.Email, "remote_addr", c.ClientIP())
 		c.JSON(http.StatusConflict, api.ErrorResponse{Error: "signup failed"})

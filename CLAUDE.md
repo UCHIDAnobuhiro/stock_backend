@@ -59,7 +59,8 @@ internal/
 ├── feature/          # フィーチャーモジュール（垂直スライス）
 │   ├── auth/
 │   ├── candles/
-│   └── symbollist/
+│   ├── symbollist/   # バッチ取り込み用銘柄マスタ
+│   └── watchlist/    # ユーザー別ウォッチリスト管理
 ├── platform/         # インフラストラクチャ層（旧 "infrastructure"）
 │   ├── cache/        # キャッシュユーティリティ（TimeUntilNext8AM等）
 │   ├── db/           # データベース初期化
@@ -77,7 +78,7 @@ internal/
 feature/<name>/
 ├── README.md         # フィーチャーのドキュメント
 ├── domain/
-│   └── entity/       # ドメインモデル（例: Candle, Symbol, User）
+│   └── entity/       # ドメインモデル（例: Candle, Symbol, User, UserSymbol）
 ├── usecase/          # アプリケーションロジック（リポジトリインターフェース定義、ビジネスロジック統合）
 ├── adapters/         # リポジトリ実装（MySQL、キャッシュデコレータ、外部APIクライアント等）
 └── transport/
@@ -109,7 +110,10 @@ feature/<name>/
 3. **依存性注入**: `cmd/server/main.go` で手動DI
    - Repositories → Usecases → Handlers のワイヤリングは主に main.go で直接実施
    - `internal/app/di/` には一部のファクトリ関数を配置（例: MarketRepositoryの生成）
-4. **2つのエントリーポイント**:
+4. **クロスフィーチャー統合ラッパー**: `cmd/server/main.go` の `signupWithDefaults` が auth と watchlist を統合
+   - フィーチャー間の直接依存を避けつつ、サインアップ時にデフォルトウォッチリストを初期化
+   - `authhandler.AuthUsecase` インターフェースを満たすラッパー構造体として実装
+5. **2つのエントリーポイント**:
    - `cmd/server/main.go`: REST APIサーバー（ポート8080）
    - `cmd/ingest/main.go`: TwelveData APIから株価データを取得するバッチジョブ
 
@@ -119,7 +123,7 @@ feature/<name>/
 
 ### 認証
 - JWT認証（`platform/jwt/AuthRequired()`）
-- 公開: `/healthz`, `/v1/signup`, `/v1/login` / 保護: その他すべて
+- 公開: `/healthz`, `/v1/signup`, `/v1/login` / 保護: その他すべて（`/v1/candles`, `/v1/symbols`, `/v1/watchlist`, `/v1/logo/*`）
 
 ### テストに関する注意事項
 

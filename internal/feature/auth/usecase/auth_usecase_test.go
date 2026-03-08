@@ -79,6 +79,11 @@ func (m *mockUserRepository) FindByID(ctx context.Context, id uint) (*entity.Use
 	return nil, errors.New("user not found")
 }
 
+// DeleteByID はDeleteByIDメソッドのモック実装です。
+func (m *mockUserRepository) DeleteByID(ctx context.Context, id uint) error {
+	return nil
+}
+
 // createTestUser はテスト用にハッシュ化パスワードを持つテストユーザーを作成します。
 // このヘルパーはコードの重複を削減し、テストの保守性を向上させます。
 func createTestUser(t *testing.T, id uint, email, password string) *entity.User {
@@ -195,18 +200,23 @@ func TestAuthUsecase_Signup(t *testing.T) {
 					if tt.repositoryErr != nil {
 						return tt.repositoryErr
 					}
+					// GORMのauto-incrementをシミュレート
+					user.ID = 42
 					return nil
 				},
 			}
 			mockJWT := &mockJWTGenerator{}
 
 			uc := usecase.NewAuthUsecase(mockRepo, mockJWT, testPepper)
-			err := uc.Signup(context.Background(), tt.email, tt.password)
+			userID, err := uc.Signup(context.Background(), tt.email, tt.password)
 
 			// Assert error expectations
 			assertError(t, err, tt.wantErr, tt.errMsg)
 			if tt.repositoryErr != nil && !errors.Is(err, tt.repositoryErr) {
 				t.Errorf("expected error '%v', got: %v", tt.repositoryErr, err)
+			}
+			if !tt.wantErr && userID != 42 {
+				t.Errorf("expected userID 42, got %d", userID)
 			}
 		})
 	}
@@ -344,7 +354,7 @@ func TestAuthUsecase_PepperApplied(t *testing.T) {
 		mockJWT := &mockJWTGenerator{}
 
 		uc := usecase.NewAuthUsecase(mockRepo, mockJWT, testPepper)
-		err := uc.Signup(context.Background(), "test@example.com", "password123")
+		_, err := uc.Signup(context.Background(), "test@example.com", "password123")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -366,7 +376,7 @@ func TestAuthUsecase_PepperApplied(t *testing.T) {
 		mockJWT := &mockJWTGenerator{}
 
 		uc := usecase.NewAuthUsecase(mockRepo, mockJWT, testPepper)
-		err := uc.Signup(context.Background(), "test@example.com", longPassword)
+		_, err := uc.Signup(context.Background(), "test@example.com", longPassword)
 		if err != nil {
 			t.Fatalf("unexpected signup error: %v", err)
 		}
