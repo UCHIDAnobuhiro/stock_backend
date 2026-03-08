@@ -200,18 +200,23 @@ func TestAuthUsecase_Signup(t *testing.T) {
 					if tt.repositoryErr != nil {
 						return tt.repositoryErr
 					}
+					// GORMのauto-incrementをシミュレート
+					user.ID = 42
 					return nil
 				},
 			}
 			mockJWT := &mockJWTGenerator{}
 
 			uc := usecase.NewAuthUsecase(mockRepo, mockJWT, testPepper)
-			_, err := uc.Signup(context.Background(), tt.email, tt.password)
+			userID, err := uc.Signup(context.Background(), tt.email, tt.password)
 
 			// Assert error expectations
 			assertError(t, err, tt.wantErr, tt.errMsg)
 			if tt.repositoryErr != nil && !errors.Is(err, tt.repositoryErr) {
 				t.Errorf("expected error '%v', got: %v", tt.repositoryErr, err)
+			}
+			if !tt.wantErr && userID != 42 {
+				t.Errorf("expected userID 42, got %d", userID)
 			}
 		})
 	}
