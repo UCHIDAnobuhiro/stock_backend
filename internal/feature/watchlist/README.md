@@ -345,7 +345,7 @@ graph TB
 
 ## ディレクトリ構成
 
-```
+```text
 watchlist/
 ├── README.md                          # このファイル
 ├── domain/
