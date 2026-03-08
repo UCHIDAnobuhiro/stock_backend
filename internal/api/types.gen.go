@@ -11,6 +11,12 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// AddWatchlistRequest defines model for AddWatchlistRequest.
+type AddWatchlistRequest struct {
+	// SymbolCode 追加する銘柄コード（例: AAPL, 7203.T）
+	SymbolCode string `binding:"required,max=20" json:"symbol_code"`
+}
+
 // CandleResponse defines model for CandleResponse.
 type CandleResponse struct {
 	// Close 終値
@@ -82,6 +88,12 @@ type MessageResponse struct {
 	Message string `json:"message"`
 }
 
+// ReorderWatchlistRequest defines model for ReorderWatchlistRequest.
+type ReorderWatchlistRequest struct {
+	// SymbolCodes 並び替え後の銘柄コード順序
+	SymbolCodes []string `binding:"required,min=1,dive,required,max=20" json:"symbol_codes"`
+}
+
 // SignupRequest defines model for SignupRequest.
 type SignupRequest struct {
 	// Email メールアドレス
@@ -104,6 +116,15 @@ type SymbolItem struct {
 type TokenResponse struct {
 	// Token JWTトークン
 	Token string `json:"token"`
+}
+
+// WatchlistItem defines model for WatchlistItem.
+type WatchlistItem struct {
+	// SortKey 表示順
+	SortKey int `json:"sort_key"`
+
+	// SymbolCode 銘柄コード（例: AAPL, 7203.T）
+	SymbolCode string `json:"symbol_code"`
 }
 
 // GetCandlesParams defines parameters for GetCandles.
@@ -132,3 +153,9 @@ type DetectLogoMultipartRequestBody DetectLogoMultipartBody
 
 // SignupJSONRequestBody defines body for Signup for application/json ContentType.
 type SignupJSONRequestBody = SignupRequest
+
+// AddWatchlistSymbolJSONRequestBody defines body for AddWatchlistSymbol for application/json ContentType.
+type AddWatchlistSymbolJSONRequestBody = AddWatchlistRequest
+
+// ReorderWatchlistJSONRequestBody defines body for ReorderWatchlist for application/json ContentType.
+type ReorderWatchlistJSONRequestBody = ReorderWatchlistRequest
