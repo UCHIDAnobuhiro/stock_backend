@@ -5,6 +5,7 @@
 ## 開発コマンド
 
 ### ローカル開発
+
 ```bash
 # APIサーバー起動（Airによるホットリロード付き）
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock up backend-dev
@@ -17,6 +18,7 @@ docker logs -f stock-backend-dev
 ```
 
 ### テスト・リント
+
 ```bash
 # 全テスト実行（レースコンディション検出・カバレッジ付き）
 go test ./... -v -race -cover
@@ -35,8 +37,9 @@ go build ./...
 ```
 
 ### 環境セットアップ
+
 - `example.env.docker` を `.env.docker` にコピーして設定：
-  - `TWELVE_DATA_API_KEY`: https://twelvedata.com/ から取得（無料枠: 8リクエスト/分）
+  - `TWELVE_DATA_API_KEY`: <https://twelvedata.com/> から取得（無料枠: 8リクエスト/分）
   - `JWT_SECRET`: 本番環境では強力なシークレットを設定
   - DB・Redisの設定はローカル開発用
 
@@ -46,7 +49,7 @@ go build ./...
 
 ### ディレクトリ構成
 
-```
+```text
 api/
 ├── openapi.yaml          # OpenAPI 3.0.3 仕様（APIコントラクトの単一ソース）
 └── oapi-codegen.cfg.yaml # oapi-codegen設定（型のみ生成）
@@ -74,7 +77,7 @@ internal/
 
 各フィーチャーは一貫したレイヤー構造に従います：
 
-```
+```text
 feature/<name>/
 ├── README.md         # フィーチャーのドキュメント
 ├── domain/
@@ -118,10 +121,12 @@ feature/<name>/
    - `cmd/ingest/main.go`: TwelveData APIから株価データを取得するバッチジョブ
 
 ### 外部依存
+
 - TwelveData API（株価データ、8リクエスト/分制限） / MySQL（GORM） / Redis（キャッシュ）
 - 詳細なデータフローは各フィーチャーの README.md を参照
 
 ### 認証
+
 - JWT認証（`platform/jwt/AuthRequired()`）
 - 公開: `/healthz`, `/v1/signup`, `/v1/login` / 保護: その他すべて（`/v1/candles`, `/v1/symbols`, `/v1/watchlist`, `/v1/logo/*`）
 
