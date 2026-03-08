@@ -39,20 +39,20 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 
 ## 技術スタック
 
-| カテゴリ        | 技術                                                                |
-| --------------- | ------------------------------------------------------------------- |
-| 言語            | Go (1.24.13)                                                         |
-| Webフレームワーク | Gin                                                                 |
-| ORM             | GORM                                                                |
-| DB              | MySQL / Cloud SQL                                                   |
-| キャッシュ      | Redis                                                               |
-| AI / ML         | Cloud Vision API / Gemini API（Vertex AI）                          |
-| 認証            | JWT / bcrypt                                                        |
-| API仕様         | OpenAPI 3.0.3 / oapi-codegen（型生成）                              |
-| 設定管理        | **.env.docker（ローカル）/ Secret Manager（本番）+ os.Getenv()**    |
-| コンテナ        | Docker / Docker Compose                                             |
-| クラウド        | Google Cloud Run / Cloud SQL / Secret Manager / Artifact Registry   |
-| CI/CD           | GitHub Actions                                                      |
+| カテゴリ           | 技術                                                                |
+| -------------------| ------------------------------------------------------------------- |
+| 言語               | Go (1.24.13)                                                        |
+| Webフレームワーク  | Gin                                                                 |
+| ORM                | GORM                                                                |
+| DB                 | MySQL / Cloud SQL                                                   |
+| キャッシュ         | Redis                                                               |
+| AI / ML            | Cloud Vision API / Gemini API（Vertex AI）                          |
+| 認証               | JWT / bcrypt                                                        |
+| API仕様            | OpenAPI 3.0.3 / oapi-codegen（型生成）                              |
+| 設定管理           | **.env.docker（ローカル）/ Secret Manager（本番）+ os.Getenv()**    |
+| コンテナ           | Docker / Docker Compose                                             |
+| クラウド           | Google Cloud Run / Cloud SQL / Secret Manager / Artifact Registry   |
+| CI/CD              | GitHub Actions                                                      |
 
 ## ディレクトリ構成
 
@@ -156,7 +156,7 @@ API仕様は `api/openapi.yaml`（OpenAPI 3.0.3）で管理しています。
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock up backend-dev swagger-ui
 ```
 
-ブラウザで http://localhost:8081 を開くとAPI仕様を確認できます。
+ブラウザで <http://localhost:8081> を開くとAPI仕様を確認できます。
 
 ### 型の再生成
 
@@ -199,7 +199,7 @@ go generate ./internal/api/...
 
 | メソッド | パス       | 認証   | 説明                                    |
 | -------- | ---------- | ------ | --------------------------------------- |
-| GET      | `/healthz` | 不要   | サービスのヘルスチェック（200 OKを返却） |
+| GET      | `/healthz` | 不要   | サービスのヘルスチェック（200 OKを返却）|
 
 ---
 
@@ -216,8 +216,8 @@ go generate ./internal/api/...
 
 | メソッド | パス                | 認証   | 説明                                              |
 | -------- | ------------------- | ------ | ------------------------------------------------- |
-| GET      | `/v1/symbols`       | 必要   | シンボルリストの取得（バッチ用マスタ一覧）         |
-| GET      | `/v1/candles/:code` | 必要   | 指定コードのローソク足データを取得（例: AAPL）     |
+| GET      | `/v1/symbols`       | 必要   | シンボルリストの取得（バッチ用マスタ一覧）        |
+| GET      | `/v1/candles/:code` | 必要   | 指定コードのローソク足データを取得（例: AAPL）    |
 
 ---
 
@@ -225,10 +225,10 @@ go generate ./internal/api/...
 
 | メソッド | パス                  | 認証   | 説明                                              |
 | -------- | --------------------- | ------ | ------------------------------------------------- |
-| GET      | `/v1/watchlist`       | 必要   | ユーザーのウォッチリスト取得（sort_key順）          |
-| POST     | `/v1/watchlist`       | 必要   | ウォッチリストに銘柄追加                           |
-| DELETE   | `/v1/watchlist/:code` | 必要   | ウォッチリストから銘柄削除                         |
-| PUT      | `/v1/watchlist/order` | 必要   | ウォッチリストの並び順更新                         |
+| GET      | `/v1/watchlist`       | 必要   | ユーザーのウォッチリスト取得（sort_key順）        |
+| POST     | `/v1/watchlist`       | 必要   | ウォッチリストに銘柄追加                          |
+| DELETE   | `/v1/watchlist/:code` | 必要   | ウォッチリストから銘柄削除                        |
+| PUT      | `/v1/watchlist/order` | 必要   | ウォッチリストの並び順更新                        |
 
 ---
 
@@ -236,10 +236,10 @@ go generate ./internal/api/...
 
 | メソッド | パス                | 認証   | 説明                                              |
 | -------- | ------------------- | ------ | ------------------------------------------------- |
-| POST     | `/v1/logo/detect`   | 必要   | 画像からロゴを検出（multipart/form-data）          |
-| POST     | `/v1/logo/analyze`  | 必要   | 企業分析サマリーを生成（JSON）                     |
+| POST     | `/v1/logo/detect`   | 必要   | 画像からロゴを検出（multipart/form-data）         |
+| POST     | `/v1/logo/analyze`  | 必要   | 企業分析サマリーを生成（JSON）                    |
 
-### 補足
+### 補足事項
 
 - `/v1/candles`、`/v1/symbols`、`/v1/watchlist` は **JWT認証（`Authorization: Bearer <token>`）** が必要です。
 - 新規ユーザー登録時、デフォルトのウォッチリスト銘柄（AAPL, MSFT, GOOGL）が自動追加されます。
@@ -313,7 +313,7 @@ cp docker/example.env docker/.env
 gcloud auth application-default login
 ```
 
-3. `docker/.env` に以下を設定
+1. `docker/.env` に以下を設定
 
 ```env
 # コンテナ内のパス（root実行時: /root/... 、非root実行時は適宜変更）
@@ -321,7 +321,7 @@ GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credenti
 HOST_GOOGLE_ADC_PATH=$HOME/.config/gcloud/application_default_credentials.json
 ```
 
-4. `.env.docker` に以下を追加
+1. `.env.docker` に以下を追加
 
 ```env
 GOOGLE_GENAI_USE_VERTEXAI=true

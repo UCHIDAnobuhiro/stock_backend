@@ -124,6 +124,7 @@ sequenceDiagram
 新規ユーザーを登録します。
 
 **リクエスト**
+
 ```json
 {
   "email": "user@example.com",
@@ -132,12 +133,14 @@ sequenceDiagram
 ```
 
 **バリデーションルール**
+
 - `email`: 必須、有効なメールアドレス形式
 - `password`: 必須、最低8文字
 
 **レスポンス**
 
 - **201 Created** - 登録成功
+
   ```json
   {
     "message": "ok"
@@ -145,6 +148,7 @@ sequenceDiagram
   ```
 
 - **400 Bad Request** - バリデーションエラー
+
   ```json
   {
     "error": "invalid request"
@@ -152,6 +156,7 @@ sequenceDiagram
   ```
 
 - **409 Conflict** - ユーザー作成失敗（メールアドレスが既に使用されている等）
+
   ```json
   {
     "error": "signup failed"
@@ -159,11 +164,13 @@ sequenceDiagram
   ```
 
 - **429 Too Many Requests** - レートリミット超過（IPベース: 5回/時間）
+
   ```json
   {
     "error": "too many requests"
   }
   ```
+
   ヘッダー: `Retry-After: <秒数>`
 
 ### POST /login
@@ -171,6 +178,7 @@ sequenceDiagram
 ユーザーを認証し、JWTトークンを発行します。
 
 **リクエスト**
+
 ```json
 {
   "email": "user@example.com",
@@ -179,12 +187,14 @@ sequenceDiagram
 ```
 
 **バリデーションルール**
+
 - `email`: 必須、有効なメールアドレス形式
 - `password`: 必須
 
 **レスポンス**
 
 - **200 OK** - 認証成功
+
   ```json
   {
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -198,6 +208,7 @@ sequenceDiagram
   - `exp`: 有効期限（発行日時 + 1時間）
 
 - **400 Bad Request** - バリデーションエラー
+
   ```json
   {
     "error": "invalid request"
@@ -205,6 +216,7 @@ sequenceDiagram
   ```
 
 - **401 Unauthorized** - 認証失敗（メールアドレスまたはパスワードが無効）
+
   ```json
   {
     "error": "invalid email or password"
@@ -212,11 +224,13 @@ sequenceDiagram
   ```
 
 - **429 Too Many Requests** - レートリミット超過（IPベース: 10回/分、メールベース: 5回/15分）
+
   ```json
   {
     "error": "too many requests"
   }
   ```
+
   ヘッダー: `Retry-After: <秒数>`
 
 ## レートリミット
@@ -313,12 +327,14 @@ graph TB
 ### 依存関係の説明
 
 #### Transport層（[transport/handler/auth_handler.go](transport/handler/auth_handler.go)）
+
 - **AuthHandler**: HTTPリクエストを処理し、AuthUsecaseを呼び出す
 - **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成されたリクエスト/レスポンス型を使用
   - `api.SignupRequest`: ユーザー登録リクエスト
   - `api.LoginRequest`: ログインリクエスト
 
 #### Usecase層
+
 - **AuthUsecase**（[usecase/auth_usecase.go](usecase/auth_usecase.go)）: 認証ビジネスロジックを実装
   - パスワードバリデーション（最低8文字）
   - パスワードハッシュ化（bcrypt）
@@ -331,9 +347,11 @@ graph TB
   - `ErrInvalidCredentials`: メールアドレスまたはパスワードが正しくない場合に返却
 
 #### Domain層
+
 - **User Entity**（[domain/entity/user.go](domain/entity/user.go)）: ユーザードメインモデル
 
 #### Usecase層（続き）
+
 - **UserRepositoryインターフェース**（[usecase/auth_usecase.go](usecase/auth_usecase.go)）: usecase層で定義されたリポジトリインターフェース（Goの慣例:「インターフェースは利用者が定義する」に従う）
   - `Create(user)`: ユーザーを作成
   - `FindByEmail(email)`: メールアドレスでユーザーを検索
@@ -346,6 +364,7 @@ graph TB
   - `ErrInvalidCredentials`: 認証情報不正エラー
 
 #### Adapters層（[adapters/user_mysql.go](adapters/user_mysql.go)）
+
 - **UserMySQL**: UserRepositoryのMySQL実装（GORMを使用）
 
 ### アーキテクチャ上の特徴
@@ -395,6 +414,7 @@ auth フィーチャーのすべてのテストは、一貫性と保守性のた
    - テストタイプ固有の追加フィールド（後述）
 
 2. **並列実行**: すべてのテストは `t.Parallel()` を使用して並行実行を有効化:
+
    ```go
    func TestSomething(t *testing.T) {
        t.Parallel()  // 並列実行を有効化
@@ -420,6 +440,7 @@ auth フィーチャーのすべてのテストは、一貫性と保守性のた
 **モックリポジトリ**を使用してビジネスロジックを単独でテストします。
 
 **テストケース構造:**
+
 ```go
 tests := []struct {
     name              string
@@ -433,11 +454,13 @@ tests := []struct {
 ```
 
 **主な特徴:**
+
 - 関数フィールドによるカスタマイズ可能な動作を持つモック実装
 - bcryptパスワード検証
 - JWTトークン生成の検証
 
 **実行コマンド:**
+
 ```bash
 go test ./internal/feature/auth/usecase/... -v
 ```
@@ -447,6 +470,7 @@ go test ./internal/feature/auth/usecase/... -v
 **モックusecase**を使用してHTTPリクエスト/レスポンスの処理をテストします。
 
 **テストケース構造:**
+
 ```go
 tests := []struct {
     name           string
@@ -458,12 +482,14 @@ tests := []struct {
 ```
 
 **主な特徴:**
+
 - HTTPリクエスト/レスポンスの検証
 - DTOバリデーションのテスト
 - ステータスコードの検証
 - JSONレスポンスボディのマッチング
 
 **実行コマンド:**
+
 ```bash
 go test ./internal/feature/auth/transport/handler/... -v
 ```
@@ -473,6 +499,7 @@ go test ./internal/feature/auth/transport/handler/... -v
 統合テストに**インメモリSQLiteデータベース**を使用します。
 
 **テストケース構造:**
+
 ```go
 tests := []struct {
     name         string
@@ -485,12 +512,14 @@ tests := []struct {
 ```
 
 **主な特徴:**
+
 - 各テストが新しいインメモリSQLiteデータベースを使用
 - `setupFunc`: 実行前にテストデータを準備
 - `validateFunc`: 成功ケースのカスタム検証ロジック
 - データベース制約のテスト（ユニークメール、タイムスタンプなど）
 
 **実行コマンド:**
+
 ```bash
 go test ./internal/feature/auth/adapters/... -v
 ```
@@ -503,7 +532,7 @@ go test ./internal/feature/auth/... -v -race -cover
 
 ### テスト出力例
 
-```
+```text
 === RUN   TestAuthUsecase_Signup
 === PAUSE TestAuthUsecase_Signup
 === CONT  TestAuthUsecase_Signup
@@ -525,7 +554,8 @@ go test ./internal/feature/auth/... -v -race -cover
 | `PASSWORD_PEPPER` | パスワードハッシュ用ペッパー（HMAC-SHA256のキー） | ✅ |
 
 **設定例**（`.env.docker`）:
-```
+
+```text
 JWT_SECRET=your-super-secret-key-change-this-in-production
 PASSWORD_PEPPER=your-password-pepper-change-this-in-production
 ```
