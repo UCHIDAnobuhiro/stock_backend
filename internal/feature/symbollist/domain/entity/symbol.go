@@ -4,7 +4,7 @@ package entity
 import "time"
 
 // Symbol はシステム内の株式銘柄コードを表します。
-// 銘柄コード、企業名、市場、表示順序などの取引証券に関する情報を保持します。
+// 銘柄コード、企業名、市場などの取引証券に関する情報を保持します。
 type Symbol struct {
 	ID        uint      `gorm:"primaryKey"`                   // 主キー
 	Code      string    `gorm:"size:20;not null;uniqueIndex"` // 銘柄コード（例: "AAPL", "7203.T"）
