@@ -64,8 +64,14 @@ func (r *userSymbolMySQL) AddWithAtomicSortKey(ctx context.Context, userID uint,
 		}
 		if err := tx.Create(&us).Error; err != nil {
 			var mysqlErr *mysql.MySQLError
-			if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
-				return usecase.ErrSymbolAlreadyExists
+			if errors.As(err, &mysqlErr) {
+				switch mysqlErr.Number {
+				case 1062:
+					return usecase.ErrSymbolAlreadyExists
+				case 1452:
+					// FK制約違反: symbollistに存在しない銘柄（usecase層でチェック済みの二重安全）
+					return usecase.ErrSymbolNotInMaster
+				}
 			}
 			return err
 		}

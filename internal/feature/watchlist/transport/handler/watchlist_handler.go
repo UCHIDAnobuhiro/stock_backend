@@ -89,6 +89,10 @@ func (h *WatchlistHandler) Add(c *gin.Context) {
 			c.JSON(http.StatusConflict, api.ErrorResponse{Error: "symbol already exists in watchlist"})
 			return
 		}
+		if errors.Is(err, usecase.ErrSymbolNotInMaster) {
+			c.JSON(http.StatusNotFound, api.ErrorResponse{Error: "symbol not found in master symbol list"})
+			return
+		}
 		slog.Error("failed to add watchlist symbol", "error", err, "userID", userID)
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "failed to add symbol"})
 		return

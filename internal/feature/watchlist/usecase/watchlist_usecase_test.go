@@ -56,6 +56,19 @@ func (m *mockUserSymbolRepository) AddBatch(ctx context.Context, userSymbols []e
 	return nil
 }
 
+// mockSymbolChecker はSymbolCheckerインターフェースのモック実装です。
+type mockSymbolChecker struct {
+	ExistsCodeFunc func(ctx context.Context, code string) (bool, error)
+}
+
+func (m *mockSymbolChecker) ExistsCode(ctx context.Context, code string) (bool, error) {
+	if m.ExistsCodeFunc != nil {
+		return m.ExistsCodeFunc(ctx, code)
+	}
+	// デフォルトは存在する（テストケースで明示的に上書きされない限り）
+	return true, nil
+}
+
 func TestWatchlistUsecase_ListUserSymbols(t *testing.T) {
 	t.Parallel()
 
@@ -103,7 +116,8 @@ func TestWatchlistUsecase_ListUserSymbols(t *testing.T) {
 			t.Parallel()
 
 			repo := &mockUserSymbolRepository{ListByUserFunc: tt.mockList}
-			uc := usecase.NewWatchlistUsecase(repo)
+			checker := &mockSymbolChecker{}
+			uc := usecase.NewWatchlistUsecase(repo, checker)
 
 			got, err := uc.ListUserSymbols(context.Background(), tt.userID)
 			if tt.wantErr {
@@ -120,17 +134,20 @@ func TestWatchlistUsecase_AddSymbol(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		userID     uint
-		symbolCode string
-		repoErr    error
-		wantErr    bool
-		errIs      error
+		name          string
+		userID        uint
+		symbolCode    string
+		checkerExists bool
+		checkerErr    error
+		repoErr       error
+		wantErr       bool
+		errIs         error
 	}{
 		{
-			name:       "success: add symbol",
-			userID:     1,
-			symbolCode: "TSLA",
+			name:          "success: add symbol",
+			userID:        1,
+			symbolCode:    "TSLA",
+			checkerExists: true,
 		},
 		{
 			name:       "failure: empty symbol code",
@@ -139,12 +156,28 @@ func TestWatchlistUsecase_AddSymbol(t *testing.T) {
 			wantErr:    true,
 		},
 		{
-			name:       "failure: duplicate symbol",
+			name:          "failure: symbol not in master",
+			userID:        1,
+			symbolCode:    "UNKNOWN",
+			checkerExists: false,
+			wantErr:       true,
+			errIs:         usecase.ErrSymbolNotInMaster,
+		},
+		{
+			name:       "failure: checker error",
 			userID:     1,
-			symbolCode: "AAPL",
-			repoErr:    usecase.ErrSymbolAlreadyExists,
+			symbolCode: "TSLA",
+			checkerErr: errors.New("db error"),
 			wantErr:    true,
-			errIs:      usecase.ErrSymbolAlreadyExists,
+		},
+		{
+			name:          "failure: duplicate symbol",
+			userID:        1,
+			symbolCode:    "AAPL",
+			checkerExists: true,
+			repoErr:       usecase.ErrSymbolAlreadyExists,
+			wantErr:       true,
+			errIs:         usecase.ErrSymbolAlreadyExists,
 		},
 	}
 
@@ -161,7 +194,12 @@ func TestWatchlistUsecase_AddSymbol(t *testing.T) {
 					return tt.repoErr
 				},
 			}
-			uc := usecase.NewWatchlistUsecase(repo)
+			checker := &mockSymbolChecker{
+				ExistsCodeFunc: func(ctx context.Context, code string) (bool, error) {
+					return tt.checkerExists, tt.checkerErr
+				},
+			}
+			uc := usecase.NewWatchlistUsecase(repo, checker)
 
 			err := uc.AddSymbol(context.Background(), tt.userID, tt.symbolCode)
 			if tt.wantErr {
@@ -207,7 +245,8 @@ func TestWatchlistUsecase_RemoveSymbol(t *testing.T) {
 					return tt.removeErr
 				},
 			}
-			uc := usecase.NewWatchlistUsecase(repo)
+			checker := &mockSymbolChecker{}
+			uc := usecase.NewWatchlistUsecase(repo, checker)
 
 			err := uc.RemoveSymbol(context.Background(), 1, "AAPL")
 			if tt.wantErr {
@@ -285,7 +324,8 @@ func TestWatchlistUsecase_ReorderSymbols(t *testing.T) {
 					return tt.repoErr
 				},
 			}
-			uc := usecase.NewWatchlistUsecase(repo)
+			checker := &mockSymbolChecker{}
+			uc := usecase.NewWatchlistUsecase(repo, checker)
 
 			err := uc.ReorderSymbols(context.Background(), 1, tt.codeOrder)
 			if tt.wantErr {
@@ -313,7 +353,8 @@ func TestWatchlistUsecase_InitializeDefaults(t *testing.T) {
 				return nil
 			},
 		}
-		uc := usecase.NewWatchlistUsecase(repo)
+		checker := &mockSymbolChecker{} // デフォルトで全銘柄が存在する
+		uc := usecase.NewWatchlistUsecase(repo, checker)
 
 		err := uc.InitializeDefaults(context.Background(), 42)
 		require.NoError(t, err)
@@ -326,6 +367,33 @@ func TestWatchlistUsecase_InitializeDefaults(t *testing.T) {
 		}
 	})
 
+	t.Run("success: skips symbols not in master", func(t *testing.T) {
+		t.Parallel()
+
+		var addedSymbols []entity.UserSymbol
+		repo := &mockUserSymbolRepository{
+			AddBatchFunc: func(ctx context.Context, userSymbols []entity.UserSymbol) error {
+				addedSymbols = userSymbols
+				return nil
+			},
+		}
+		// AAPL と GOOGL は存在するが MSFT はマスタに存在しない
+		checker := &mockSymbolChecker{
+			ExistsCodeFunc: func(ctx context.Context, code string) (bool, error) {
+				return code != "MSFT", nil
+			},
+		}
+		uc := usecase.NewWatchlistUsecase(repo, checker)
+
+		err := uc.InitializeDefaults(context.Background(), 42)
+		require.NoError(t, err)
+
+		// MSFT がスキップされるため2件
+		require.Len(t, addedSymbols, 2)
+		assert.Equal(t, "AAPL", addedSymbols[0].SymbolCode)
+		assert.Equal(t, "GOOGL", addedSymbols[1].SymbolCode)
+	})
+
 	t.Run("failure: repository error", func(t *testing.T) {
 		t.Parallel()
 
@@ -334,7 +402,8 @@ func TestWatchlistUsecase_InitializeDefaults(t *testing.T) {
 				return errors.New("database error")
 			},
 		}
-		uc := usecase.NewWatchlistUsecase(repo)
+		checker := &mockSymbolChecker{}
+		uc := usecase.NewWatchlistUsecase(repo, checker)
 
 		err := uc.InitializeDefaults(context.Background(), 1)
 		assert.Error(t, err)

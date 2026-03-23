@@ -156,6 +156,14 @@ func TestWatchlistHandler_Add(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
+			name: "failure: symbol not in master",
+			body: gin.H{"symbol_code": "UNKNOWN"},
+			mockAdd: func(ctx context.Context, userID uint, symbolCode string) error {
+				return usecase.ErrSymbolNotInMaster
+			},
+			expectedStatus: http.StatusNotFound,
+		},
+		{
 			name: "failure: duplicate symbol",
 			body: gin.H{"symbol_code": "AAPL"},
 			mockAdd: func(ctx context.Context, userID uint, symbolCode string) error {

@@ -51,8 +51,8 @@ func TestSymbolHandler_List(t *testing.T) {
 			name: "success: returns list of symbols",
 			mockListActiveFunc: func(ctx context.Context) ([]entity.Symbol, error) {
 				return []entity.Symbol{
-					{ID: 1, Code: "7203.T", Name: "Toyota Motor", Market: "TSE", IsActive: true, SortKey: 1},
-					{ID: 2, Code: "6758.T", Name: "Sony Group", Market: "TSE", IsActive: true, SortKey: 2},
+					{ID: 1, Code: "7203.T", Name: "Toyota Motor", Market: "TSE", IsActive: true},
+					{ID: 2, Code: "6758.T", Name: "Sony Group", Market: "TSE", IsActive: true},
 				}, nil
 			},
 			expectedStatus: http.StatusOK,
@@ -70,7 +70,7 @@ func TestSymbolHandler_List(t *testing.T) {
 			name: "success: returns single symbol",
 			mockListActiveFunc: func(ctx context.Context) ([]entity.Symbol, error) {
 				return []entity.Symbol{
-					{ID: 1, Code: "9984.T", Name: "SoftBank Group", Market: "TSE", IsActive: true, SortKey: 1},
+					{ID: 1, Code: "9984.T", Name: "SoftBank Group", Market: "TSE", IsActive: true},
 				}, nil
 			},
 			expectedStatus: http.StatusOK,
@@ -122,7 +122,7 @@ func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
-	// レスポンスにcodeとnameのみが含まれることを検証（ID、Market、IsActive、SortKeyは含まれない）
+	// レスポンスにcodeとnameのみが含まれることを検証（ID、Market、IsActiveは含まれない）
 	mockUC := &mockSymbolUsecase{
 		ListActiveSymbolsFunc: func(ctx context.Context) ([]entity.Symbol, error) {
 			return []entity.Symbol{
@@ -132,7 +132,6 @@ func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 					Name:     "Test Company",
 					Market:   "NYSE",
 					IsActive: true,
-					SortKey:  100,
 				},
 			}, nil
 		},

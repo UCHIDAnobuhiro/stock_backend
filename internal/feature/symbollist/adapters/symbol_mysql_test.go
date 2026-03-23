@@ -27,7 +27,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 }
 
 // seedSymbol はテスト用の銘柄データをデータベースに作成します。
-func seedSymbol(t *testing.T, db *gorm.DB, code, name, market string, isActive bool, sortKey int) *entity.Symbol {
+func seedSymbol(t *testing.T, db *gorm.DB, code, name, market string, isActive bool) *entity.Symbol {
 	t.Helper()
 
 	symbol := &entity.Symbol{
@@ -35,7 +35,6 @@ func seedSymbol(t *testing.T, db *gorm.DB, code, name, market string, isActive b
 		Name:     name,
 		Market:   market,
 		IsActive: isActive,
-		SortKey:  sortKey,
 	}
 	err := db.Create(symbol).Error
 	require.NoError(t, err, "failed to seed symbol")
@@ -74,23 +73,23 @@ func TestSymbolMySQL_ListActive(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name: "success: returns active symbols sorted by sort_key",
+			name: "success: returns active symbols sorted by code",
 			setupFunc: func(t *testing.T, db *gorm.DB) {
-				seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true, 2)
-				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true, 1)
-				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true, 3)
+				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true)
+				seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
+				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 			},
 			expectedCount: 3,
-			expectedCodes: []string{"7203.T", "6758.T", "9984.T"}, // Sorted by sort_key
+			expectedCodes: []string{"6758.T", "7203.T", "9984.T"}, // アルファベット順
 			wantErr:       false,
 		},
 		{
 			name: "success: excludes inactive symbols",
 			setupFunc: func(t *testing.T, db *gorm.DB) {
-				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true, 1)
-				inactiveSymbol := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true, 2)
+				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
+				inactiveSymbol := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
 				updateSymbolActive(t, db, inactiveSymbol, false) // Set to inactive
-				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true, 3)
+				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true)
 			},
 			expectedCount: 2,
 			expectedCodes: []string{"7203.T", "9984.T"},
@@ -108,9 +107,9 @@ func TestSymbolMySQL_ListActive(t *testing.T) {
 		{
 			name: "success: returns empty list when all symbols are inactive",
 			setupFunc: func(t *testing.T, db *gorm.DB) {
-				s1 := seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true, 1)
+				s1 := seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 				updateSymbolActive(t, db, s1, false)
-				s2 := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true, 2)
+				s2 := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
 				updateSymbolActive(t, db, s2, false)
 			},
 			expectedCount: 0,
@@ -120,7 +119,7 @@ func TestSymbolMySQL_ListActive(t *testing.T) {
 		{
 			name: "success: returns single active symbol",
 			setupFunc: func(t *testing.T, db *gorm.DB) {
-				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true, 1)
+				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 			},
 			expectedCount: 1,
 			expectedCodes: []string{"7203.T"},
@@ -167,22 +166,22 @@ func TestSymbolMySQL_ListActiveCodes(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name: "success: returns active symbol codes sorted by sort_key",
+			name: "success: returns active symbol codes sorted by code",
 			setupFunc: func(t *testing.T, db *gorm.DB) {
-				seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true, 2)
-				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true, 1)
-				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true, 3)
+				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true)
+				seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
+				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 			},
-			expectedCodes: []string{"7203.T", "6758.T", "9984.T"}, // Sorted by sort_key
+			expectedCodes: []string{"6758.T", "7203.T", "9984.T"}, // アルファベット順
 			wantErr:       false,
 		},
 		{
 			name: "success: excludes inactive symbol codes",
 			setupFunc: func(t *testing.T, db *gorm.DB) {
-				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true, 1)
-				inactiveSymbol := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true, 2)
+				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
+				inactiveSymbol := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
 				updateSymbolActive(t, db, inactiveSymbol, false) // Set to inactive
-				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true, 3)
+				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true)
 			},
 			expectedCodes: []string{"7203.T", "9984.T"},
 			wantErr:       false,
@@ -198,9 +197,9 @@ func TestSymbolMySQL_ListActiveCodes(t *testing.T) {
 		{
 			name: "success: returns empty list when all symbols are inactive",
 			setupFunc: func(t *testing.T, db *gorm.DB) {
-				s1 := seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true, 1)
+				s1 := seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 				updateSymbolActive(t, db, s1, false)
-				s2 := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true, 2)
+				s2 := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
 				updateSymbolActive(t, db, s2, false)
 			},
 			expectedCodes: []string{},
@@ -243,7 +242,7 @@ func TestSymbolMySQL_ListActive_FieldValues(t *testing.T) {
 	repo := NewSymbolRepository(db)
 
 	// 全フィールドを持つ銘柄をシード
-	expected := seedSymbol(t, db, "7203.T", "Toyota Motor Corporation", "Tokyo Stock Exchange", true, 42)
+	expected := seedSymbol(t, db, "7203.T", "Toyota Motor Corporation", "Tokyo Stock Exchange", true)
 
 	symbols, err := repo.ListActive(context.Background())
 
@@ -256,8 +255,66 @@ func TestSymbolMySQL_ListActive_FieldValues(t *testing.T) {
 	assert.Equal(t, "Toyota Motor Corporation", symbol.Name)
 	assert.Equal(t, "Tokyo Stock Exchange", symbol.Market)
 	assert.True(t, symbol.IsActive)
-	assert.Equal(t, 42, symbol.SortKey)
 	assert.False(t, symbol.UpdatedAt.IsZero(), "UpdatedAt should be set")
+}
+
+// TestSymbolMySQL_ExistsCode はExistsCodeメソッドの各種シナリオをテーブル駆動テストで検証します。
+func TestSymbolMySQL_ExistsCode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		setupFunc func(t *testing.T, db *gorm.DB)
+		code      string
+		want      bool
+		wantErr   bool
+	}{
+		{
+			name: "success: active symbol exists",
+			setupFunc: func(t *testing.T, db *gorm.DB) {
+				seedSymbol(t, db, "AAPL", "Apple Inc.", "NASDAQ", true)
+			},
+			code: "AAPL",
+			want: true,
+		},
+		{
+			name: "success: inactive symbol returns false",
+			setupFunc: func(t *testing.T, db *gorm.DB) {
+				s := seedSymbol(t, db, "AAPL", "Apple Inc.", "NASDAQ", true)
+				updateSymbolActive(t, db, s, false)
+			},
+			code: "AAPL",
+			want: false,
+		},
+		{
+			name:      "success: non-existent symbol returns false",
+			setupFunc: func(t *testing.T, db *gorm.DB) {},
+			code:      "UNKNOWN",
+			want:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			db := setupTestDB(t)
+			repo := NewSymbolRepository(db)
+
+			if tt.setupFunc != nil {
+				tt.setupFunc(t, db)
+			}
+
+			got, err := repo.ExistsCode(context.Background(), tt.code)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
 }
 
 // TestSymbolMySQL_ContextCancellation はコンテキストがキャンセルされた場合の動作を検証します。
@@ -267,7 +324,7 @@ func TestSymbolMySQL_ContextCancellation(t *testing.T) {
 	db := setupTestDB(t)
 	repo := NewSymbolRepository(db)
 
-	seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true, 1)
+	seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel context immediately

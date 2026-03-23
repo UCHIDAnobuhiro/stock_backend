@@ -11,6 +11,5 @@ type Symbol struct {
 	Name      string    `gorm:"size:255;not null"`            // 企業名
 	Market    string    `gorm:"size:100;not null"`            // 市場識別子（例: "NASDAQ", "TSE"）
 	IsActive  bool      `gorm:"not null;default:true"`        // トラッキング対象かどうか
-	SortKey   int       `gorm:"not null;default:0"`           // 表示順序の優先度
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`               // 最終更新日時
 }

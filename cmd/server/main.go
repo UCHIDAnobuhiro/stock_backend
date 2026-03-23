@@ -8,6 +8,7 @@ import (
 	"time"
 
 	redisv9 "github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 
 	"stock_backend/internal/app/router"
 	authadapters "stock_backend/internal/feature/auth/adapters"
@@ -93,6 +94,10 @@ func main() {
 			slog.Error("failed to migrate", "error", err)
 			os.Exit(1)
 		}
+		if err := addForeignKeyConstraints(db); err != nil {
+			slog.Error("failed to add foreign key constraints", "error", err)
+			os.Exit(1)
+		}
 	}
 
 	// Redis接続
@@ -160,7 +165,7 @@ func main() {
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
 	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
 	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
-	watchlistUC := watchlistusecase.NewWatchlistUsecase(userSymbolRepo)
+	watchlistUC := watchlistusecase.NewWatchlistUsecase(userSymbolRepo, symbolRepo)
 
 	// サインアップ時にデフォルトウォッチリストを初期化するラッパー
 	authWithDefaults := &signupWithDefaults{auth: authUC, watchlist: watchlistUC}
@@ -183,4 +188,33 @@ func main() {
 		slog.Error("Server failed to start", "error", err)
 		os.Exit(1)
 	}
+}
+
+// addForeignKeyConstraints はDBのFK制約を冪等に追加します。
+// INFORMATION_SCHEMAで制約の存在を確認してから実行するため、
+// 既に制約が存在する場合は何もしません。
+func addForeignKeyConstraints(db *gorm.DB) error {
+	var count int64
+	checkSQL := `
+		SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+		WHERE CONSTRAINT_SCHEMA = DATABASE()
+		  AND TABLE_NAME = 'user_symbols'
+		  AND CONSTRAINT_NAME = 'fk_user_symbols_symbol_code'`
+	if err := db.Raw(checkSQL).Scan(&count).Error; err != nil {
+		return fmt.Errorf("failed to check FK constraint: %w", err)
+	}
+	if count > 0 {
+		slog.Info("FK constraint already exists, skipping")
+		return nil
+	}
+	addSQL := `
+		ALTER TABLE user_symbols
+		ADD CONSTRAINT fk_user_symbols_symbol_code
+		FOREIGN KEY (symbol_code) REFERENCES symbols(code)
+		ON DELETE CASCADE`
+	if err := db.Exec(addSQL).Error; err != nil {
+		return fmt.Errorf("failed to add FK constraint: %w", err)
+	}
+	slog.Info("FK constraint added successfully")
+	return nil
 }

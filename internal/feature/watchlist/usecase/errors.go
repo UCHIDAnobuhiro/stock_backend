@@ -10,4 +10,6 @@ var (
 	ErrSymbolNotFound = errors.New("symbol not found in watchlist")
 	// ErrInvalidReorder は並び替えリクエストの銘柄集合が現在のウォッチリストと一致しない場合のエラーです。
 	ErrInvalidReorder = errors.New("invalid reorder: symbol set does not match current watchlist")
+	// ErrSymbolNotInMaster は指定された銘柄がマスタ銘柄リストに存在しない場合のエラーです。
+	ErrSymbolNotInMaster = errors.New("symbol not found in master symbol list")
 )

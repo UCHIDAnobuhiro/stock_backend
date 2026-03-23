@@ -226,6 +226,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 指定された銘柄がマスタ銘柄リストに存在しない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: 既に登録済み
           content:
