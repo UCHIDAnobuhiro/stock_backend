@@ -113,20 +113,17 @@ sequenceDiagram
 指定された銘柄のローソク足データを取得します。JWT認証が必要です。
 
 **パスパラメータ**
-
 | パラメータ | 説明 | 例 |
 |-----------|------|-----|
 | `code` | 銘柄コード | `7203.T`, `AAPL` |
 
 **クエリパラメータ**
-
 | パラメータ | デフォルト | 説明 |
 |-----------|-----------|------|
 | `interval` | `1day` | 時間間隔（`1day`, `1week`, `1month`） |
 | `outputsize` | `200` | 返却するデータポイント数（最大: 5000） |
 
 **リクエスト例**
-
 ```
 GET /candles/7203.T?interval=1day&outputsize=100
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -135,7 +132,6 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 **レスポンス**
 
 - **200 OK** - 成功
-
   ```json
   [
     {
@@ -156,11 +152,9 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     }
   ]
   ```
-
   注: 結果は時間の降順（新しい順）でソートされます。
 
 - **401 Unauthorized** - JWTトークンが未指定または無効
-
   ```json
   {
     "error": "authorization header required"
@@ -168,7 +162,6 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
   ```
 
 - **502 Bad Gateway** - データベースまたは上流サービスのエラー
-
   ```json
   {
     "error": "database connection failed"
@@ -252,12 +245,10 @@ graph TB
 ### 依存関係の説明
 
 #### トランスポート層（[transport/handler/candle_handler.go](transport/handler/candle_handler.go)）
-
 - **CandlesHandler**: HTTPリクエストを処理し、CandlesUsecaseを呼び出す
 - **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成された `api.CandleResponse` を使用
 
 #### ユースケース層
-
 - **CandlesUsecase**（[usecase/candles_usecase.go](usecase/candles_usecase.go)）: パラメータバリデーション付きのローソク足データ取得
   - インターバルとoutputsizeのデフォルト値を適用
   - 最大outputsize制限（5000）を適用
@@ -270,7 +261,6 @@ graph TB
   - `SymbolRepository`インターフェース（銘柄コード取得）を定義
 
 #### ドメイン層
-
 - **Candle Entity**（[domain/entity/candle.go](domain/entity/candle.go)）: OHLCVローソク足データモデル
   - `Symbol`: 銘柄コード（例: "AAPL", "7203.T"）
   - `Interval`: 時間間隔（例: "1day", "1week", "1month"）
@@ -279,14 +269,12 @@ graph TB
   - `Volume`: 出来高
 
 #### アダプター層（[adapters/candle_mysql.go](adapters/candle_mysql.go)）
-
 - **CandleMySQL**: CandleRepositoryのMySQL実装（GORMを使用）
   - `Find`: 時間の降順でローソク足を取得
   - `UpsertBatch`: `ON DUPLICATE KEY UPDATE`によるバッチ挿入/更新
   - （symbol, interval, time）の複合ユニークインデックス
 
 #### アダプター層（キャッシュ）
-
 - **CachingCandleRepository**（[adapters/caching_candle_repository.go](adapters/caching_candle_repository.go)）: Redisキャッシュデコレータ
   - CandleMySQLをラップするデコレータパターンを実装
   - `CandleRepository`（読み取り）と`CandleWriteRepository`（書き込み）の両インターフェースを実装
@@ -308,7 +296,7 @@ graph TB
 
 ## ディレクトリ構成
 
-```text
+```
 candles/
 ├── README.md                          # 本ファイル
 ├── domain/
@@ -350,7 +338,6 @@ Candlesフィーチャーの全テストは、一貫性と保守性のために*
    - テストタイプ固有の追加フィールド
 
 2. **並列実行**: リポジトリテストとハンドラーテストは`t.Parallel()`を使用:
-
    ```go
    func TestCandleMySQL_Find(t *testing.T) {
        t.Parallel()
@@ -373,7 +360,6 @@ Candlesフィーチャーの全テストは、一貫性と保守性のために*
 ビジネスロジックを分離してテストするために**モックリポジトリ**を使用します。
 
 **テストケース構造:**
-
 ```go
 tests := []struct {
     name               string
@@ -389,13 +375,11 @@ tests := []struct {
 ```
 
 **主な特徴:**
-
 - カスタマイズ可能な動作を持つモック実装
 - パラメータバリデーションテスト（デフォルト値、最大値制限）
 - 呼び出し回数の検証
 
 **実行コマンド:**
-
 ```bash
 go test ./internal/feature/candles/usecase/... -v
 ```
@@ -405,7 +389,6 @@ go test ./internal/feature/candles/usecase/... -v
 HTTPリクエスト/レスポンス処理をテストするために**モックユースケース**を使用します。
 
 **テストケース構造:**
-
 ```go
 tests := []struct {
     name           string
@@ -417,14 +400,12 @@ tests := []struct {
 ```
 
 **主な特徴:**
-
 - HTTPステータスコードの検証
 - `assert.JSONEq`によるJSONレスポンスボディの照合
 - クエリパラメータのパース検証
 - デフォルト値の処理
 
 **実行コマンド:**
-
 ```bash
 go test ./internal/feature/candles/transport/handler/... -v
 ```
@@ -434,7 +415,6 @@ go test ./internal/feature/candles/transport/handler/... -v
 統合テストに**インメモリSQLiteデータベース**を使用します。
 
 **テストケース構造:**
-
 ```go
 tests := []struct {
     name         string
@@ -448,7 +428,6 @@ tests := []struct {
 ```
 
 **主な特徴:**
-
 - 各テストは新しいインメモリSQLiteデータベースを使用
 - `setupFunc`: テスト実行前にテストデータを準備
 - `validateFunc`: 成功ケースのカスタムバリデーションロジック
@@ -456,7 +435,6 @@ tests := []struct {
 - ソート順とLIMIT機能のテスト
 
 **実行コマンド:**
-
 ```bash
 go test ./internal/feature/candles/adapters/... -v
 ```
@@ -509,7 +487,6 @@ go test ./internal/feature/candles/... -v -race -cover
 ### グレースフルデグレード
 
 キャッシュ層はグレースフルに障害を処理するよう設計されています:
-
 - Redis利用不可時、リクエストはMySQLから直接提供
 - キャッシュ書き込みの失敗はログに記録されるがリクエストは失敗しない
 - 破損したキャッシュエントリは自動的に削除
