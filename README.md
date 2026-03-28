@@ -100,18 +100,10 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │   │   └── transport/
 │   │   │       └── handler/    # HTTPハンドラー
 │   │   │
-│   │   ├── symbollist/         # シンボルリスト機能（バッチ用マスタ）
-│   │   │   ├── domain/
-│   │   │   │   └── entity/     # エンティティ（Symbol）
-│   │   │   ├── usecase/        # ユースケース（リポジトリインターフェース定義）
-│   │   │   ├── adapters/       # リポジトリ実装
-│   │   │   └── transport/
-│   │   │       └── handler/    # HTTPハンドラー
-│   │   │
-│   │   └── watchlist/          # ウォッチリスト機能（ユーザー別銘柄管理）
+│   │   └── symbollist/         # シンボルリスト機能
 │   │       ├── domain/
-│   │       │   └── entity/     # エンティティ（UserSymbol）
-│   │       ├── usecase/        # ユースケース（リポジトリインターフェース定義、デフォルト銘柄）
+│   │       │   └── entity/     # エンティティ（Symbol）
+│   │       ├── usecase/        # ユースケース（リポジトリインターフェース定義）
 │   │       ├── adapters/       # リポジトリ実装
 │   │       └── transport/
 │   │           └── handler/    # HTTPハンドラー
@@ -216,19 +208,8 @@ go generate ./internal/api/...
 
 | メソッド | パス                | 認証   | 説明                                              |
 | -------- | ------------------- | ------ | ------------------------------------------------- |
-| GET      | `/v1/symbols`       | 必要   | シンボルリストの取得（バッチ用マスタ一覧）         |
+| GET      | `/v1/symbols`       | 必要   | シンボルリストの取得                               |
 | GET      | `/v1/candles/:code` | 必要   | 指定コードのローソク足データを取得（例: AAPL）     |
-
----
-
-### ウォッチリスト（ユーザー別銘柄管理）
-
-| メソッド | パス                  | 認証   | 説明                                              |
-| -------- | --------------------- | ------ | ------------------------------------------------- |
-| GET      | `/v1/watchlist`       | 必要   | ユーザーのウォッチリスト取得（sort_key順）          |
-| POST     | `/v1/watchlist`       | 必要   | ウォッチリストに銘柄追加                           |
-| DELETE   | `/v1/watchlist/:code` | 必要   | ウォッチリストから銘柄削除                         |
-| PUT      | `/v1/watchlist/order` | 必要   | ウォッチリストの並び順更新                         |
 
 ---
 
@@ -241,8 +222,7 @@ go generate ./internal/api/...
 
 ### 補足
 
-- `/v1/candles`、`/v1/symbols`、`/v1/watchlist` は **JWT認証（`Authorization: Bearer <token>`）** が必要です。
-- 新規ユーザー登録時、デフォルトのウォッチリスト銘柄（AAPL, MSFT, GOOGL）が自動追加されます。
+- `/v1/candles` と `/v1/symbols` は **JWT認証（`Authorization: Bearer <token>`）** が必要です。
 - 今後、リフレッシュトークン対応として `/auth/refresh` と `/auth/logout` を追加予定です。
 
 ## クラウドアーキテクチャ（Google Cloud）

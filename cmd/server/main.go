@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"time"
@@ -25,47 +24,12 @@ import (
 	symbolentity "stock_backend/internal/feature/symbollist/domain/entity"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
-	watchlistadapters "stock_backend/internal/feature/watchlist/adapters"
-	watchlistentity "stock_backend/internal/feature/watchlist/domain/entity"
-	watchlisthandler "stock_backend/internal/feature/watchlist/transport/handler"
-	watchlistusecase "stock_backend/internal/feature/watchlist/usecase"
 	"stock_backend/internal/platform/cache"
 	infradb "stock_backend/internal/platform/db"
 	jwtmw "stock_backend/internal/platform/jwt"
 	"stock_backend/internal/platform/ratelimit"
 	infraredis "stock_backend/internal/platform/redis"
 )
-
-// signupWithDefaults はサインアップ時にデフォルトウォッチリストを初期化するラッパーです。
-// authhandler.AuthUsecaseインターフェースを満たします。
-type signupWithDefaults struct {
-	auth      authhandler.AuthUsecase
-	watchlist *watchlistusecase.WatchlistUsecase
-}
-
-func (s *signupWithDefaults) Signup(ctx context.Context, email, password string) (uint, error) {
-	userID, err := s.auth.Signup(ctx, email, password)
-	if err != nil {
-		return 0, err
-	}
-	if initErr := s.watchlist.InitializeDefaults(ctx, userID); initErr != nil {
-		slog.Error("failed to initialize default watchlist, rolling back user creation",
-			"userID", userID, "error", initErr)
-		if delErr := s.auth.DeleteUser(ctx, userID); delErr != nil {
-			slog.Error("failed to delete user during signup rollback", "userID", userID, "error", delErr)
-		}
-		return 0, fmt.Errorf("failed to initialize watchlist: %w", initErr)
-	}
-	return userID, nil
-}
-
-func (s *signupWithDefaults) Login(ctx context.Context, email, password string) (string, error) {
-	return s.auth.Login(ctx, email, password)
-}
-
-func (s *signupWithDefaults) DeleteUser(ctx context.Context, id uint) error {
-	return s.auth.DeleteUser(ctx, id)
-}
 
 func main() {
 	// 構造化ロガーを初期化
@@ -88,7 +52,6 @@ func main() {
 			&authentity.User{},
 			&candlesadapters.CandleModel{},
 			&symbolentity.Symbol{},
-			&watchlistentity.UserSymbol{},
 		); err != nil {
 			slog.Error("failed to migrate", "error", err)
 			os.Exit(1)
@@ -113,7 +76,6 @@ func main() {
 	userRepo := authadapters.NewUserMySQL(db)
 	symbolRepo := symbollistadapters.NewSymbolRepository(db)
 	candleRepo := candlesadapters.NewCandleRepository(db)
-	userSymbolRepo := watchlistadapters.NewUserSymbolRepository(db)
 
 	// Redisキャッシュでラップ
 	ttl := cache.TimeUntilNext8AM()
@@ -160,20 +122,15 @@ func main() {
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
 	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
 	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
-	watchlistUC := watchlistusecase.NewWatchlistUsecase(userSymbolRepo)
-
-	// サインアップ時にデフォルトウォッチリストを初期化するラッパー
-	authWithDefaults := &signupWithDefaults{auth: authUC, watchlist: watchlistUC}
 
 	// ハンドラー
-	authH := authhandler.NewAuthHandler(authWithDefaults, rateLimiter)
+	authH := authhandler.NewAuthHandler(authUC, rateLimiter)
 	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
 	candlesH := candleshandler.NewCandlesHandler(candlesUC)
 	logoH := logohandler.NewLogoDetectionHandler(logoUC)
-	watchlistH := watchlisthandler.NewWatchlistHandler(watchlistUC)
 
 	// ルーター作成
-	router := router.NewRouter(authH, candlesH, symbolH, logoH, watchlistH, rateLimiter)
+	router := router.NewRouter(authH, candlesH, symbolH, logoH, rateLimiter)
 
 	// モバイルアプリ向けのためCORSミドルウェアはコメントアウト
 	// router.Use(cors.Default())
