@@ -7,7 +7,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -21,17 +20,16 @@ import (
 
 // mockAuthUsecase はAuthUsecaseインターフェースのモック実装です。
 type mockAuthUsecase struct {
-	SignupFunc     func(ctx context.Context, email, password string) (uint, error)
-	LoginFunc      func(ctx context.Context, email, password string) (string, error)
-	DeleteUserFunc func(ctx context.Context, id uint) error
+	SignupFunc func(ctx context.Context, email, password string) error
+	LoginFunc  func(ctx context.Context, email, password string) (string, error)
 }
 
 // Signup はSignupメソッドのモック実装です。
-func (m *mockAuthUsecase) Signup(ctx context.Context, email, password string) (uint, error) {
+func (m *mockAuthUsecase) Signup(ctx context.Context, email, password string) error {
 	if m.SignupFunc != nil {
 		return m.SignupFunc(ctx, email, password)
 	}
-	return 1, nil // デフォルト: 成功
+	return nil // デフォルト: 成功
 }
 
 // Login はLoginメソッドのモック実装です。
@@ -42,18 +40,10 @@ func (m *mockAuthUsecase) Login(ctx context.Context, email, password string) (st
 	return "", errors.New("login failed") // デフォルト: 失敗
 }
 
-// DeleteUser はDeleteUserメソッドのモック実装です。
-func (m *mockAuthUsecase) DeleteUser(ctx context.Context, id uint) error {
-	if m.DeleteUserFunc != nil {
-		return m.DeleteUserFunc(ctx, id)
-	}
-	return nil
-}
-
 // TestMain は全テスト共通のテスト環境を設定します。
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
-	os.Exit(m.Run())
+	m.Run()
 }
 
 // makeRequest はHTTPリクエストを作成・実行するヘルパー関数です。
@@ -93,14 +83,14 @@ func TestAuthHandler_Signup(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    gin.H
-		mockSignupFunc func(ctx context.Context, email, password string) (uint, error)
+		mockSignupFunc func(ctx context.Context, email, password string) error
 		expectedStatus int
 		expectedBody   gin.H
 	}{
 		{
 			name:           "success: user registration",
 			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
-			mockSignupFunc: func(ctx context.Context, email, password string) (uint, error) { return 1, nil },
+			mockSignupFunc: func(ctx context.Context, email, password string) error { return nil },
 			expectedStatus: http.StatusCreated,
 			expectedBody:   gin.H{"message": "ok"},
 		},
@@ -119,11 +109,9 @@ func TestAuthHandler_Signup(t *testing.T) {
 			expectedBody:   gin.H{"error": "invalid request"},
 		},
 		{
-			name:        "failure: duplicate email (usecase error)",
-			requestBody: gin.H{"email": "existing@example.com", "password": "password123"},
-			mockSignupFunc: func(ctx context.Context, email, password string) (uint, error) {
-				return 0, errors.New("email already exists")
-			},
+			name:           "failure: duplicate email (usecase error)",
+			requestBody:    gin.H{"email": "existing@example.com", "password": "password123"},
+			mockSignupFunc: func(ctx context.Context, email, password string) error { return errors.New("email already exists") },
 			expectedStatus: http.StatusConflict,
 			expectedBody:   gin.H{"error": "signup failed"},
 		},

@@ -35,9 +35,6 @@ type UserRepository interface {
 	// FindByID は指定されたIDに一致するユーザーを取得します。
 	// ユーザーが存在しない場合、エラーを返します。
 	FindByID(ctx context.Context, id uint) (*entity.User, error)
-
-	// DeleteByID は指定されたIDのユーザーを削除します。
-	DeleteByID(ctx context.Context, id uint) error
 }
 
 // JWTGenerator はJWTトークン生成のインターフェースを定義します。
@@ -89,29 +86,19 @@ func validatePassword(password string) error {
 }
 
 // Signup はハッシュ化されたパスワードで新規ユーザーを登録します。
-// 作成されたユーザーのIDを返します。
-func (u *authUsecase) Signup(ctx context.Context, email, password string) (uint, error) {
+func (u *authUsecase) Signup(ctx context.Context, email, password string) error {
 	// パスワード強度を検証
 	if err := validatePassword(password); err != nil {
-		return 0, err
+		return err
 	}
 
 	pepperedPassword := u.pepperPassword(password)
 	hashed, err := bcrypt.GenerateFromPassword([]byte(pepperedPassword), bcrypt.DefaultCost)
 	if err != nil {
-		return 0, fmt.Errorf("failed to hash password: %w", err)
+		return fmt.Errorf("failed to hash password: %w", err)
 	}
 	user := &entity.User{Email: email, Password: string(hashed)}
-	if err := u.users.Create(ctx, user); err != nil {
-		return 0, err
-	}
-	return user.ID, nil
-}
-
-// DeleteUser は指定されたIDのユーザーを削除します。
-// サインアップ失敗時の補償トランザクション（ロールバック）として使用します。
-func (u *authUsecase) DeleteUser(ctx context.Context, id uint) error {
-	return u.users.DeleteByID(ctx, id)
+	return u.users.Create(ctx, user)
 }
 
 // Login はユーザーを認証し、成功時にJWTトークンを返します。
