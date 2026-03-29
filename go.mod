@@ -1,6 +1,6 @@
 module stock_backend
 
-go 1.25.0
+go 1.25.8
 
 require (
 	cloud.google.com/go/vision/v2 v2.9.6
