@@ -32,7 +32,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
   - 検出した企業の分析サマリーを生成（Gemini API / Vertex AI）
 
 - **データベース永続化**
-  - MySQL / Cloud SQLによるデータ永続化
+  - PostgreSQL / Cloud SQLによるデータ永続化
   - GORM ORMによるデータ管理
 
 ---
@@ -44,7 +44,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 | 言語            | Go (1.24.13)                                                         |
 | Webフレームワーク | Gin                                                                 |
 | ORM             | GORM                                                                |
-| DB              | MySQL / Cloud SQL                                                   |
+| DB              | PostgreSQL / Cloud SQL                                              |
 | キャッシュ      | Redis                                                               |
 | AI / ML         | Cloud Vision API / Gemini API（Vertex AI）                          |
 | 認証            | JWT / bcrypt                                                        |
@@ -88,7 +88,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │   │   ├── domain/
 │   │   │   │   └── entity/     # エンティティ（Candle）
 │   │   │   ├── usecase/        # ユースケース（リポジトリインターフェース定義、取得/保存ロジック）
-│   │   │   ├── adapters/       # MySQL実装 / Redisキャッシュデコレータ / TwelveData APIクライアント
+│   │   │   ├── adapters/       # リポジトリ実装 / Redisキャッシュデコレータ / TwelveData APIクライアント
 │   │   │   └── transport/
 │   │   │       └── handler/    # HTTPハンドラー
 │   │   │
@@ -126,7 +126,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   ├── docker-compose.yml      # Docker共通設定（サービス定義・ネットワーク設定）
 │   ├── docker-compose.dev.yml  # ローカル開発用オーバーライド設定
 │   ├── example.env             # docker-compose変数展開用テンプレート
-│   └── mysql/                  # MySQL初期化スクリプト
+│   └── postgres/               # PostgreSQL初期化スクリプト
 │
 ├── .env.docker                 # ローカル環境変数（.gitignoreに追加推奨）
 ├── go.mod
@@ -177,12 +177,12 @@ go generate ./internal/api/...
 ## データフロー（例: 株価取得）
 
 1. バッチプロセス（`cmd/ingest`）が外部API（Twelve Data）から株式データを取得
-2. 取得したローソク足データをMySQL（またはCloud SQL）に保存
+2. 取得したローソク足データをPostgreSQL（またはCloud SQL）に保存
 3. フロントエンドが `GET /v1/candles/AAPL?interval=1day&outputsize=200` をリクエスト（JWT Bearer トークン付き）
 4. ハンドラーが `CandlesUsecase` を呼び出し
 5. ユースケースがリポジトリ経由で **Redisキャッシュ** を確認
    - **キャッシュヒット**: Redisから即座に返却
-   - **キャッシュミス**: MySQLから取得 → Redisにキャッシュ → レスポンスを返却
+   - **キャッシュミス**: PostgreSQLから取得 → Redisにキャッシュ → レスポンスを返却
 6. フロントエンドにJSON形式で結果を返却
 
 ## APIエンドポイント
@@ -228,7 +228,7 @@ go generate ./internal/api/...
 ## クラウドアーキテクチャ（Google Cloud）
 
 - **Cloud Run**: Dockerイメージをデプロイ
-- **Cloud SQL（MySQL）**: アプリケーションデータの永続化
+- **Cloud SQL（PostgreSQL）**: アプリケーションデータの永続化
 - **Redis（Cloud Memorystore）**: キャッシュ管理
 - **Secret Manager**: APIキー・DBパスワード・JWTシークレットキーを安全に管理
 - 起動時に `os.Getenv()` + Secret Manager APIで読み込み
@@ -324,7 +324,7 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p 
 ### 補足
 
 - **APIサーバー**: <http://localhost:8080>
-- **MySQL**: `localhost:3306`
+- **PostgreSQL**: `localhost:5432`
 - **Redis**: `localhost:6379`
 - **ログ確認**: `docker logs -f stock-backend-dev`
-- **バッチプロセス**: ingestコンテナが外部APIから株価を取得し、MySQLに保存
+- **バッチプロセス**: ingestコンテナが外部APIから株価を取得し、PostgreSQLに保存

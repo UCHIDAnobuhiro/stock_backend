@@ -20,7 +20,7 @@ sequenceDiagram
     participant Handler as SymbolHandler
     participant Usecase as SymbolUsecase
     participant Repository as SymbolRepository
-    participant DB as MySQL
+    participant DB as PostgreSQL
 
     Client->>Handler: GET /symbols<br/>(Authorization: Bearer token)
     Handler->>Usecase: ListActiveSymbols(ctx)
@@ -100,11 +100,11 @@ graph TB
     end
 
     subgraph "Adapters Layer"
-        RepoImpl[symbolMySQL<br/>adapters]
+        RepoImpl[symbolRepository<br/>adapters]
     end
 
     subgraph "External Dependencies"
-        DB[(MySQL)]
+        DB[(PostgreSQL)]
     end
 
     Handler -->|depends on| Usecase
@@ -145,8 +145,8 @@ graph TB
   - `SortKey`: 表示順序の優先度
   - `UpdatedAt`: 最終更新日時
 
-#### Adapters層 ([adapters/symbol_mysql.go](adapters/symbol_mysql.go))
-- **symbolMySQL**: SymbolRepositoryのMySQL実装（GORMを使用）
+#### Adapters層 ([adapters/symbol_repository.go](adapters/symbol_repository.go))
+- **symbolRepository**: SymbolRepositoryのリポジトリ実装（GORMを使用）
   - `ListActive(ctx)`: usecaseのSymbolRepositoryインターフェースを実装
   - `ListActiveCodes(ctx)`: アクティブな銘柄のコードのみを返す（candlesフィーチャーのIngestUsecaseで定義されたSymbolRepositoryインターフェースを満たす）
 
@@ -169,8 +169,8 @@ symbollist/
 │   ├── symbol_usecase.go             # ビジネスロジック + SymbolRepositoryインターフェース
 │   └── symbol_usecase_test.go        # Usecaseテスト
 ├── adapters/
-│   ├── symbol_mysql.go               # MySQLリポジトリ実装
-│   └── symbol_mysql_test.go          # リポジトリテスト
+│   ├── symbol_repository.go          # リポジトリ実装
+│   └── symbol_repository_test.go     # リポジトリテスト
 └── transport/
     └── handler/
         ├── symbol_handler.go         # HTTPハンドラー
@@ -212,7 +212,7 @@ go test ./internal/feature/symbollist/usecase/... -v
 go test ./internal/feature/symbollist/transport/handler/... -v
 ```
 
-#### リポジトリテスト ([adapters/symbol_mysql_test.go](adapters/symbol_mysql_test.go))
+#### リポジトリテスト ([adapters/symbol_repository_test.go](adapters/symbol_repository_test.go))
 
 **インメモリSQLiteデータベース**を使用して結合テストを実施します。
 
@@ -231,7 +231,7 @@ go test ./internal/feature/symbollist/... -v -race -cover
 
 `ListActiveCodes` メソッドはバッチ取り込みプロセスで使用され、どの銘柄の市場データを取得するかを決定します。
 
-このメソッドは `symbolMySQL` の具象実装として定義されていますが、candlesフィーチャーの `IngestUsecase` が定義する `SymbolRepository` インターフェース（`ListActiveCodes` メソッドのみ）を満たします。Goの暗黙的インターフェース実装により、symbollistフィーチャーがcandlesフィーチャーに依存することなく連携が実現されています。
+このメソッドは `symbolRepository` の具象実装として定義されていますが、candlesフィーチャーの `IngestUsecase` が定義する `SymbolRepository` インターフェース（`ListActiveCodes` メソッドのみ）を満たします。Goの暗黙的インターフェース実装により、symbollistフィーチャーがcandlesフィーチャーに依存することなく連携が実現されています。
 
 ```go
 // candles/usecase/ingest_usecase.go で定義
