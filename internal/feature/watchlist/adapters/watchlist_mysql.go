@@ -70,8 +70,19 @@ func (r *watchlistMySQL) Remove(ctx context.Context, userID uint, symbolCode str
 }
 
 // UpdateSortKeys はウォッチリストのsort_keyをトランザクション内で一括更新します。
+// (user_id, sort_key) のユニーク制約が一時的に違反しないよう、
+// まず全レコードを負値（-(i+1)）にシフトしてから最終値に更新します。
 func (r *watchlistMySQL) UpdateSortKeys(ctx context.Context, userID uint, entries []entity.UserSymbol) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Phase 1: 負値にシフトして既存の正値との衝突を回避
+		for i, e := range entries {
+			if err := tx.Model(&entity.UserSymbol{}).
+				Where("user_id = ? AND symbol_code = ?", userID, e.SymbolCode).
+				Update("sort_key", -(i + 1)).Error; err != nil {
+				return err
+			}
+		}
+		// Phase 2: 最終的な sort_key に更新
 		for _, e := range entries {
 			if err := tx.Model(&entity.UserSymbol{}).
 				Where("user_id = ? AND symbol_code = ?", userID, e.SymbolCode).
