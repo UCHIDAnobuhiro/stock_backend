@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"stock_backend/internal/feature/candles/domain/entity"
 	"stock_backend/internal/shared/ratelimiter"
@@ -58,13 +59,17 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol string, outputsiz
 		daily[i].Interval = "1day"
 	}
 
-	weekly := aggregateWeekly(daily)
+	weekly := trimIncompleteFirstBucket(aggregateWeekly(daily), daily, func(t time.Time) bool {
+		return int(t.Weekday()) == 1 // 月曜日が ISO 週の開始
+	})
 	for i := range weekly {
 		weekly[i].Symbol = symbol
 		weekly[i].Interval = "1week"
 	}
 
-	monthly := aggregateMonthly(daily)
+	monthly := trimIncompleteFirstBucket(aggregateMonthly(daily), daily, func(t time.Time) bool {
+		return t.Day() == 1 // 1日が月の開始
+	})
 	for i := range monthly {
 		monthly[i].Symbol = symbol
 		monthly[i].Interval = "1month"
@@ -88,6 +93,9 @@ func (iu *IngestUsecase) IngestAll(ctx context.Context) error {
 	}
 
 	for _, s := range symbols {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		iu.rateLimiter.WaitIfNeeded()
 		if err := iu.ingestOne(ctx, s, ingestOutputSize); err != nil {
 			// 1銘柄のエラーで処理を停止せず、エラーをログに記録して続行

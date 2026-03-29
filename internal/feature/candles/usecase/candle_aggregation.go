@@ -20,6 +20,25 @@ func aggregateMonthly(daily []entity.Candle) []entity.Candle {
 	return aggregate(daily, monthKey, monthStart)
 }
 
+// trimIncompleteFirstBucket は最古の日足がバケット開始日でない場合、最初の集計バケットを除外します。
+// 取得データの先頭が週・月の途中から始まる場合に、不完全なバケットで既存の完全なレコードを
+// 上書きすることを防ぎます。isBucketStart は与えられた時刻がバケット（週・月）の開始日かどうかを返します。
+func trimIncompleteFirstBucket(result []entity.Candle, daily []entity.Candle, isBucketStart func(time.Time) bool) []entity.Candle {
+	if len(result) == 0 || len(daily) == 0 {
+		return result
+	}
+	oldest := daily[0].Time
+	for _, c := range daily[1:] {
+		if c.Time.Before(oldest) {
+			oldest = c.Time
+		}
+	}
+	if !isBucketStart(oldest) {
+		return result[1:]
+	}
+	return result
+}
+
 // aggregate は日足スライスを keyFn で定義したバケットに集計します。
 // startFn はバケットの代表タイムスタンプ（週月の開始日）を返します。
 func aggregate(

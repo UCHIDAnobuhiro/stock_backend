@@ -102,7 +102,10 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 				return nil
 			},
 			expectedErr: nil,
-			// 2日足 + 1週足（2日とも同一ISO週）+ 2月足（12月と1月に分かれる）= 5件
+			// 2日足
+			// + 0週足（2022-12-31 は土曜 = 不完全な先頭バケットを除外）
+			// + 1月足（2022-12 は 31日開始 = 不完全で除外、2023-01 は 1日開始で保持）
+			// = 3件
 			verifyCandles: func(t *testing.T, candles []entity.Candle) {
 				counts := map[string]int{}
 				for _, c := range candles {
@@ -114,11 +117,11 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 				if counts["1day"] != 2 {
 					t.Errorf("1day candle count: got %d, want 2", counts["1day"])
 				}
-				if counts["1week"] != 1 {
-					t.Errorf("1week candle count: got %d, want 1", counts["1week"])
+				if counts["1week"] != 0 {
+					t.Errorf("1week candle count: got %d, want 0 (incomplete first bucket dropped)", counts["1week"])
 				}
-				if counts["1month"] != 2 {
-					t.Errorf("1month candle count: got %d, want 2", counts["1month"])
+				if counts["1month"] != 1 {
+					t.Errorf("1month candle count: got %d, want 1 (incomplete December bucket dropped)", counts["1month"])
 				}
 			},
 		},
@@ -201,6 +204,7 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 		mockUpsertBatchFunc        func(ctx context.Context, candles []entity.Candle) error
 		expectedErr                error
 		expectedGetTimeSeriesCalls int
+		verifyCalledIntervals      func(t *testing.T, intervals []string)
 	}{
 		{
 			name:         "success: fetch all symbols",
@@ -274,12 +278,35 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			// 2銘柄 × 1回 = 2回呼び出し
 			expectedGetTimeSeriesCalls: 2,
 		},
+		{
+			name:         "success: only fetches 1day interval from API",
+			inputSymbols: []string{"AAPL", "GOOG"},
+			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+				return mockCandles, nil
+			},
+			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
+				return nil
+			},
+			expectedErr:                nil,
+			expectedGetTimeSeriesCalls: 2,
+			verifyCalledIntervals: func(t *testing.T, intervals []string) {
+				for i, interval := range intervals {
+					if interval != "1day" {
+						t.Errorf("call[%d]: interval=%s, want 1day", i, interval)
+					}
+				}
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			var calledIntervals []string
 			mockMarket := &mockMarketRepository{
-				GetTimeSeriesFunc: tc.mockGetTimeSeriesFunc,
+				GetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+					calledIntervals = append(calledIntervals, interval)
+					return tc.mockGetTimeSeriesFunc(ctx, symbol, interval, outputsize)
+				},
 			}
 			mockCandle := &mockCandleWriteRepository{
 				UpsertBatchFunc: tc.mockUpsertBatchFunc,
@@ -305,50 +332,10 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			if mockMarket.GetTimeSeriesCalls != tc.expectedGetTimeSeriesCalls {
 				t.Errorf("GetTimeSeries was called %d times, expected %d", mockMarket.GetTimeSeriesCalls, tc.expectedGetTimeSeriesCalls)
 			}
+
+			if tc.verifyCalledIntervals != nil {
+				tc.verifyCalledIntervals(t, calledIntervals)
+			}
 		})
-	}
-}
-
-// TestIngestUsecase_IngestAll_OnlyFetchesDaily は IngestAll が常に日足のみを API から取得することをテストします。
-func TestIngestUsecase_IngestAll_OnlyFetchesDaily(t *testing.T) {
-	ctx := context.Background()
-	testTime := time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)
-	mockCandles := []entity.Candle{
-		{Time: testTime, Open: 100, High: 110, Low: 90, Close: 105},
-	}
-
-	calledIntervals := []string{}
-
-	mockMarket := &mockMarketRepository{
-		GetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
-			calledIntervals = append(calledIntervals, interval)
-			return mockCandles, nil
-		},
-	}
-	mockCandle := &mockCandleWriteRepository{
-		UpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
-			return nil
-		},
-	}
-	mockSymbol := &mockSymbolRepository{
-		ListActiveCodesFunc: func(ctx context.Context) ([]string, error) {
-			return []string{"AAPL", "GOOG"}, nil
-		},
-	}
-	mockRL := &mockRateLimiter{}
-
-	uc := NewIngestUsecase(mockMarket, mockCandle, mockSymbol, mockRL)
-	if err := uc.IngestAll(ctx); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// 2銘柄それぞれ1回ずつ、常に "1day" のみ呼ばれること
-	if len(calledIntervals) != 2 {
-		t.Fatalf("GetTimeSeries call count: got %d, want 2", len(calledIntervals))
-	}
-	for i, interval := range calledIntervals {
-		if interval != "1day" {
-			t.Errorf("call[%d]: interval=%s, want 1day", i, interval)
-		}
 	}
 }

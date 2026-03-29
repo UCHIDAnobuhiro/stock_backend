@@ -52,8 +52,23 @@ type Opener func(dsn string) (*gorm.DB, error)
 // DefaultOpener はGORMを使用してMySQLデータベースを開きます。
 func DefaultOpener(dsn string) (*gorm.DB, error) {
 	return gorm.Open(gmysql.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
+		Logger: logger.Default.LogMode(gormLogLevel()),
 	})
+}
+
+// gormLogLevel は環境変数 DB_LOG_LEVEL からGORMのログレベルを返します。
+// 未設定または不明な値の場合は Silent を返します。
+func gormLogLevel() logger.LogLevel {
+	switch os.Getenv("DB_LOG_LEVEL") {
+	case "info":
+		return logger.Info
+	case "warn":
+		return logger.Warn
+	case "error":
+		return logger.Error
+	default:
+		return logger.Silent
+	}
 }
 
 // ConnectWithRetry はリトライロジック付きでデータベース接続を試みます。
