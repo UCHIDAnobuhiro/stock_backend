@@ -9,6 +9,7 @@ import (
 
 	gmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // Config はデータベース接続設定を保持します。
@@ -50,7 +51,9 @@ type Opener func(dsn string) (*gorm.DB, error)
 
 // DefaultOpener はGORMを使用してMySQLデータベースを開きます。
 func DefaultOpener(dsn string) (*gorm.DB, error) {
-	return gorm.Open(gmysql.Open(dsn), &gorm.Config{})
+	return gorm.Open(gmysql.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 }
 
 // ConnectWithRetry はリトライロジック付きでデータベース接続を試みます。
