@@ -13,3 +13,8 @@ type UserSymbol struct {
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
+
+// TableName は GORM が使用するテーブル名を返します。
+func (UserSymbol) TableName() string {
+	return "watchlists"
+}

@@ -83,19 +83,40 @@ func (r *watchlistMySQL) UpdateSortKeys(ctx context.Context, userID uint, entrie
 	})
 }
 
-// MaxSortKey はユーザーのウォッチリストにおける最大のsort_keyを返します。
-// ウォッチリストが空の場合は -1 を返します。
-func (r *watchlistMySQL) MaxSortKey(ctx context.Context, userID uint) (int, error) {
-	var maxKey *int
-	if err := r.db.WithContext(ctx).
-		Model(&entity.UserSymbol{}).
-		Where("user_id = ?", userID).
-		Select("MAX(sort_key)").
-		Scan(&maxKey).Error; err != nil {
-		return 0, err
-	}
-	if maxKey == nil {
-		return -1, nil
-	}
-	return *maxKey, nil
+// AddWithNextSortKey はsort_keyをトランザクション内でMAX+1採番して銘柄を追加します。
+// SELECT MAX(sort_key) FOR UPDATE と INSERT を同一トランザクションで実行することで、
+// 並行追加時の重複順位を防ぎます。
+func (r *watchlistMySQL) AddWithNextSortKey(ctx context.Context, userID uint, symbolCode string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var maxKey *int
+		if err := tx.Model(&entity.UserSymbol{}).
+			Where("user_id = ?", userID).
+			Select("MAX(sort_key)").
+			Set("gorm:query_option", "FOR UPDATE").
+			Scan(&maxKey).Error; err != nil {
+			return err
+		}
+		nextKey := 0
+		if maxKey != nil {
+			nextKey = *maxKey + 1
+		}
+		entry := entity.UserSymbol{
+			UserID:     userID,
+			SymbolCode: symbolCode,
+			SortKey:    nextKey,
+		}
+		if err := tx.Create(&entry).Error; err != nil {
+			var mysqlErr *mysql.MySQLError
+			if errors.As(err, &mysqlErr) {
+				switch mysqlErr.Number {
+				case 1062:
+					return usecase.ErrAlreadyInWatchlist
+				case 1452:
+					return usecase.ErrSymbolNotFound
+				}
+			}
+			return err
+		}
+		return nil
+	})
 }

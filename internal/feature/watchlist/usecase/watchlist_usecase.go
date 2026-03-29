@@ -12,10 +12,13 @@ import (
 // WatchlistRepository はウォッチリスト操作の永続化層を抽象化します。
 type WatchlistRepository interface {
 	ListByUser(ctx context.Context, userID uint) ([]entity.UserSymbol, error)
+	// Add はsort_keyを指定してウォッチリストに銘柄を追加します。
 	Add(ctx context.Context, entry entity.UserSymbol) error
+	// AddWithNextSortKey はsort_keyをトランザクション内でMAX+1採番して銘柄を追加します。
+	// MaxSortKey取得とInsertをアトミックに実行するため、並行追加時の重複順位を防ぎます。
+	AddWithNextSortKey(ctx context.Context, userID uint, symbolCode string) error
 	Remove(ctx context.Context, userID uint, symbolCode string) error
 	UpdateSortKeys(ctx context.Context, userID uint, entries []entity.UserSymbol) error
-	MaxSortKey(ctx context.Context, userID uint) (int, error)
 }
 
 // SymbolExistsChecker は銘柄の存在確認を行うインターフェースです。
@@ -53,16 +56,7 @@ func (u *WatchlistUsecase) AddSymbol(ctx context.Context, userID uint, symbolCod
 		return ErrSymbolNotFound
 	}
 
-	maxKey, err := u.repo.MaxSortKey(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("getting max sort key: %w", err)
-	}
-
-	return u.repo.Add(ctx, entity.UserSymbol{
-		UserID:     userID,
-		SymbolCode: symbolCode,
-		SortKey:    maxKey + 1,
-	})
+	return u.repo.AddWithNextSortKey(ctx, userID, symbolCode)
 }
 
 // RemoveSymbol はウォッチリストから銘柄を削除します。

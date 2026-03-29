@@ -72,7 +72,9 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 	}
 	for _, hook := range h.postHooks {
 		if err := hook.OnUserCreated(c.Request.Context(), userID); err != nil {
-			slog.Warn("post-signup hook failed", "error", err, "userID", userID)
+			slog.Error("post-signup hook failed", "error", err, "userID", userID)
+			c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "signup failed"})
+			return
 		}
 	}
 	slog.Info("user signup successful", "email", req.Email, "remote_addr", c.ClientIP())
