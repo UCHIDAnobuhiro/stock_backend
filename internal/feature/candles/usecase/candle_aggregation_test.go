@@ -53,11 +53,11 @@ func TestAggregateWeekly(t *testing.T) {
 			expected: []entity.Candle{
 				{
 					Time:   mustDate(2023, 6, 12),
-					Open:   100,   // 最初の日
-					High:   115,   // 最大
-					Low:    88,    // 最小
-					Close:  100,   // 最後の日
-					Volume: 3100,  // 合計
+					Open:   100,  // 最初の日
+					High:   115,  // 最大
+					Low:    88,   // 最小
+					Close:  100,  // 最後の日
+					Volume: 3100, // 合計
 				},
 			},
 		},
@@ -69,7 +69,7 @@ func TestAggregateWeekly(t *testing.T) {
 				{Time: mustDate(2023, 6, 9), Open: 100, High: 115, Low: 95, Close: 110, Volume: 1000},
 			},
 			expected: []entity.Candle{
-				{Time: mustDate(2023, 6, 5), Open: 100, High: 115, Low: 95, Close: 110, Volume: 1000},  // W23 開始
+				{Time: mustDate(2023, 6, 5), Open: 100, High: 115, Low: 95, Close: 110, Volume: 1000},   // W23 開始
 				{Time: mustDate(2023, 6, 12), Open: 200, High: 210, Low: 195, Close: 205, Volume: 2000}, // W24 開始
 			},
 		},
@@ -84,10 +84,10 @@ func TestAggregateWeekly(t *testing.T) {
 			expected: []entity.Candle{
 				{
 					Time:   mustDate(2023, 6, 12),
-					Open:   100,  // 昇順で最初の日（2023-06-12）の Open
+					Open:   100, // 昇順で最初の日（2023-06-12）の Open
 					High:   115,
 					Low:    88,
-					Close:  100,  // 昇順で最後の日（2023-06-14）の Close
+					Close:  100, // 昇順で最後の日（2023-06-14）の Close
 					Volume: 3100,
 				},
 			},
