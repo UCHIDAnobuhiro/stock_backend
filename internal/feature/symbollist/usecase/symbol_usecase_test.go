@@ -49,13 +49,13 @@ func TestSymbolUsecase_ListActiveSymbols(t *testing.T) {
 			name: "success: returns list of active symbols",
 			mockListActive: func(ctx context.Context) ([]entity.Symbol, error) {
 				return []entity.Symbol{
-					{ID: 1, Code: "7203.T", Name: "Toyota Motor", Market: "TSE", IsActive: true, SortKey: 1},
-					{ID: 2, Code: "6758.T", Name: "Sony Group", Market: "TSE", IsActive: true, SortKey: 2},
+					{ID: 1, Code: "7203.T", Name: "Toyota Motor", Market: "TSE", IsActive: true},
+					{ID: 2, Code: "6758.T", Name: "Sony Group", Market: "TSE", IsActive: true},
 				}, nil
 			},
 			expectedSymbols: []entity.Symbol{
-				{ID: 1, Code: "7203.T", Name: "Toyota Motor", Market: "TSE", IsActive: true, SortKey: 1},
-				{ID: 2, Code: "6758.T", Name: "Sony Group", Market: "TSE", IsActive: true, SortKey: 2},
+				{ID: 1, Code: "7203.T", Name: "Toyota Motor", Market: "TSE", IsActive: true},
+				{ID: 2, Code: "6758.T", Name: "Sony Group", Market: "TSE", IsActive: true},
 			},
 			wantErr: false,
 		},
@@ -88,11 +88,11 @@ func TestSymbolUsecase_ListActiveSymbols(t *testing.T) {
 			name: "success: returns single symbol",
 			mockListActive: func(ctx context.Context) ([]entity.Symbol, error) {
 				return []entity.Symbol{
-					{ID: 1, Code: "9984.T", Name: "SoftBank Group", Market: "TSE", IsActive: true, SortKey: 1},
+					{ID: 1, Code: "9984.T", Name: "SoftBank Group", Market: "TSE", IsActive: true},
 				}, nil
 			},
 			expectedSymbols: []entity.Symbol{
-				{ID: 1, Code: "9984.T", Name: "SoftBank Group", Market: "TSE", IsActive: true, SortKey: 1},
+				{ID: 1, Code: "9984.T", Name: "SoftBank Group", Market: "TSE", IsActive: true},
 			},
 			wantErr: false,
 		},

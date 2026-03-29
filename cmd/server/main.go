@@ -7,6 +7,7 @@ import (
 	"time"
 
 	redisv9 "github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 
 	"stock_backend/internal/app/router"
 	authadapters "stock_backend/internal/feature/auth/adapters"
@@ -24,6 +25,10 @@ import (
 	symbolentity "stock_backend/internal/feature/symbollist/domain/entity"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
+	watchlistadapters "stock_backend/internal/feature/watchlist/adapters"
+	watchlistentity "stock_backend/internal/feature/watchlist/domain/entity"
+	watchlisthandler "stock_backend/internal/feature/watchlist/transport/handler"
+	watchlistusecase "stock_backend/internal/feature/watchlist/usecase"
 	"stock_backend/internal/platform/cache"
 	infradb "stock_backend/internal/platform/db"
 	jwtmw "stock_backend/internal/platform/jwt"
@@ -52,8 +57,13 @@ func main() {
 			&authentity.User{},
 			&candlesadapters.CandleModel{},
 			&symbolentity.Symbol{},
+			&watchlistentity.UserSymbol{},
 		); err != nil {
 			slog.Error("failed to migrate", "error", err)
+			os.Exit(1)
+		}
+		if err := addWatchlistFKConstraints(db); err != nil {
+			slog.Error("failed to add watchlist FK constraints", "error", err)
 			os.Exit(1)
 		}
 	}
@@ -76,6 +86,7 @@ func main() {
 	userRepo := authadapters.NewUserMySQL(db)
 	symbolRepo := symbollistadapters.NewSymbolRepository(db)
 	candleRepo := candlesadapters.NewCandleRepository(db)
+	watchlistRepo := watchlistadapters.NewWatchlistRepository(db)
 
 	// Redisキャッシュでラップ
 	ttl := cache.TimeUntilNext8AM()
@@ -122,22 +133,41 @@ func main() {
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
 	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
 	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
+	watchlistUC := watchlistusecase.NewWatchlistUsecase(watchlistRepo, symbolRepo)
 
 	// ハンドラー
-	authH := authhandler.NewAuthHandler(authUC, rateLimiter)
+	authH := authhandler.NewAuthHandler(authUC, rateLimiter, watchlistUC)
 	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
 	candlesH := candleshandler.NewCandlesHandler(candlesUC)
 	logoH := logohandler.NewLogoDetectionHandler(logoUC)
+	watchlistH := watchlisthandler.NewWatchlistHandler(watchlistUC)
 
 	// ルーター作成
-	router := router.NewRouter(authH, candlesH, symbolH, logoH, rateLimiter)
-
-	// モバイルアプリ向けのためCORSミドルウェアはコメントアウト
-	// router.Use(cors.Default())
+	r := router.NewRouter(authH, candlesH, symbolH, logoH, watchlistH, rateLimiter)
 
 	slog.Info("Starting server", "port", 8080)
-	if err := router.Run(":8080"); err != nil {
+	if err := r.Run(":8080"); err != nil {
 		slog.Error("Server failed to start", "error", err)
 		os.Exit(1)
 	}
+}
+
+// addWatchlistFKConstraints はwatchlistsテーブルのFK制約を冪等に追加します。
+// GORMのAutoMigrateはFK制約を自動生成しないため、マイグレーション後に明示的に実行します。
+func addWatchlistFKConstraints(db *gorm.DB) error {
+	if !db.Migrator().HasConstraint(&watchlistentity.UserSymbol{}, "fk_watchlists_user") {
+		if err := db.Exec(`ALTER TABLE watchlists ADD CONSTRAINT fk_watchlists_user
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`).Error; err != nil {
+			return err
+		}
+		slog.Info("added FK constraint: fk_watchlists_user")
+	}
+	if !db.Migrator().HasConstraint(&watchlistentity.UserSymbol{}, "fk_watchlists_symbol") {
+		if err := db.Exec(`ALTER TABLE watchlists ADD CONSTRAINT fk_watchlists_symbol
+			FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT`).Error; err != nil {
+			return err
+		}
+		slog.Info("added FK constraint: fk_watchlists_symbol")
+	}
+	return nil
 }
