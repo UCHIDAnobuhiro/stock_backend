@@ -46,7 +46,7 @@ func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner cand
 
 // UpsertBatch はローソク足データを挿入または更新し、関連するキャッシュエントリを無効化します。
 func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
-	// まず基盤リポジトリ（MySQL）にUpsert
+	// まず基盤リポジトリにUpsert
 	if err := c.inner.UpsertBatch(ctx, candles); err != nil {
 		return err
 	}

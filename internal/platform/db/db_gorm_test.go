@@ -17,12 +17,12 @@ func TestBuildDSN_TCP(t *testing.T) {
 		Password: "testpass",
 		Name:     "testdb",
 		Host:     "localhost",
-		Port:     "3306",
+		Port:     "5432",
 	}
 
 	dsn := BuildDSN(cfg)
 
-	expected := "testuser:testpass@tcp(localhost:3306)/testdb?charset=utf8mb4&parseTime=true&loc=Local"
+	expected := "host=localhost port=5432 user=testuser password=testpass dbname=testdb sslmode=disable"
 	if dsn != expected {
 		t.Errorf("expected DSN %q, got %q", expected, dsn)
 	}
@@ -41,7 +41,7 @@ func TestBuildDSN_CloudSQL(t *testing.T) {
 
 	dsn := BuildDSN(cfg)
 
-	expected := "testuser:testpass@unix(/cloudsql/project:region:instance)/testdb?charset=utf8mb4&parseTime=true&loc=Local"
+	expected := "host=/cloudsql/project:region:instance user=testuser password=testpass dbname=testdb"
 	if dsn != expected {
 		t.Errorf("expected DSN %q, got %q", expected, dsn)
 	}
@@ -57,17 +57,17 @@ func TestBuildDSN_CloudSQLTakesPrecedence(t *testing.T) {
 		Password:     "testpass",
 		Name:         "testdb",
 		Host:         "localhost",
-		Port:         "3306",
+		Port:         "5432",
 		InstanceName: "project:region:instance",
 	}
 
 	dsn := BuildDSN(cfg)
 
 	// Should use Cloud SQL format, not TCP
-	if dsn == "testuser:testpass@tcp(localhost:3306)/testdb?charset=utf8mb4&parseTime=true&loc=Local" {
+	if dsn == "host=localhost port=5432 user=testuser password=testpass dbname=testdb sslmode=disable" {
 		t.Error("expected Cloud SQL DSN format, but got TCP format")
 	}
-	expected := "testuser:testpass@unix(/cloudsql/project:region:instance)/testdb?charset=utf8mb4&parseTime=true&loc=Local"
+	expected := "host=/cloudsql/project:region:instance user=testuser password=testpass dbname=testdb"
 	if dsn != expected {
 		t.Errorf("expected DSN %q, got %q", expected, dsn)
 	}
@@ -148,7 +148,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	t.Setenv("DB_PASSWORD", "envpass")
 	t.Setenv("DB_NAME", "envdb")
 	t.Setenv("DB_HOST", "envhost")
-	t.Setenv("DB_PORT", "3307")
+	t.Setenv("DB_PORT", "5432")
 	t.Setenv("INSTANCE_CONNECTION_NAME", "")
 
 	cfg := LoadConfigFromEnv()
@@ -165,7 +165,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	if cfg.Host != "envhost" {
 		t.Errorf("expected Host 'envhost', got %q", cfg.Host)
 	}
-	if cfg.Port != "3307" {
-		t.Errorf("expected Port '3307', got %q", cfg.Port)
+	if cfg.Port != "5432" {
+		t.Errorf("expected Port '5432', got %q", cfg.Port)
 	}
 }

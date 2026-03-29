@@ -22,9 +22,9 @@ sequenceDiagram
     participant Handler as CandlesHandler
     participant Usecase as CandlesUsecase
     participant Cache as CachingCandleRepository
-    participant Repository as CandleMySQL
+    participant Repository as CandleRepository
     participant Redis
-    participant DB as MySQL
+    participant DB as PostgreSQL
 
     Client->>Handler: GET /candles/:code?interval=1day&outputsize=200
     Handler->>Handler: Parse params (defaults: interval=1day, outputsize=200)
@@ -69,9 +69,9 @@ sequenceDiagram
     participant RateLimiter
     participant Market as MarketRepository<br/>(TwelveData API)
     participant Cache as CachingCandleRepository
-    participant Repository as CandleMySQL
+    participant Repository as CandleRepository
     participant Redis
-    participant DB as MySQL
+    participant DB as PostgreSQL
 
     Main->>Usecase: IngestAll(symbols)
 
@@ -86,7 +86,7 @@ sequenceDiagram
             Usecase->>Usecase: Set symbol & interval on candles
             Usecase->>Cache: UpsertBatch(candles)
             Cache->>Repository: UpsertBatch(candles)
-            Repository->>DB: INSERT ... ON DUPLICATE KEY UPDATE
+            Repository->>DB: INSERT ... ON CONFLICT DO UPDATE
             DB-->>Repository: Success
             Repository-->>Cache: nil
 
@@ -194,7 +194,7 @@ graph TB
     end
 
     subgraph "Adapters Layer"
-        RepoImpl[CandleMySQL<br/>adapters]
+        RepoImpl[CandleRepository<br/>adapters]
         Cache[CachingCandleRepository<br/>adapters]
         TwelveData[TwelveDataMarket<br/>adapters/twelvedata]
     end
@@ -204,7 +204,7 @@ graph TB
     end
 
     subgraph "External Dependencies"
-        DB[(MySQL)]
+        DB[(PostgreSQL)]
         Redis[(Redis)]
         API[TwelveData API]
     end
@@ -268,15 +268,15 @@ graph TB
   - `Open`, `High`, `Low`, `Close`: 価格データ
   - `Volume`: 出来高
 
-#### アダプター層（[adapters/candle_mysql.go](adapters/candle_mysql.go)）
-- **CandleMySQL**: CandleRepositoryのMySQL実装（GORMを使用）
+#### アダプター層（[adapters/candle_repository.go](adapters/candle_repository.go)）
+- **candleDBRepository**: CandleRepositoryのリポジトリ実装（GORMを使用）
   - `Find`: 時間の降順でローソク足を取得
-  - `UpsertBatch`: `ON DUPLICATE KEY UPDATE`によるバッチ挿入/更新
+  - `UpsertBatch`: `ON CONFLICT DO UPDATE`によるバッチ挿入/更新
   - （symbol, interval, time）の複合ユニークインデックス
 
 #### アダプター層（キャッシュ）
 - **CachingCandleRepository**（[adapters/caching_candle_repository.go](adapters/caching_candle_repository.go)）: Redisキャッシュデコレータ
-  - CandleMySQLをラップするデコレータパターンを実装
+  - CandleRepositoryをラップするデコレータパターンを実装
   - `CandleRepository`（読み取り）と`CandleWriteRepository`（書き込み）の両インターフェースを実装
   - キャッシュキー形式: `candles:{symbol}:{interval}:{outputsize}`
   - UpsertBatch時の自動キャッシュ無効化
@@ -310,8 +310,8 @@ candles/
 ├── adapters/
 │   ├── caching_candle_repository.go   # Redisキャッシュデコレータ
 │   ├── caching_candle_repository_test.go
-│   ├── candle_mysql.go                # MySQLリポジトリ実装
-│   ├── candle_mysql_test.go           # リポジトリテスト
+│   ├── candle_repository.go           # リポジトリ実装
+│   ├── candle_repository_test.go      # リポジトリテスト
 │   └── twelvedata/                    # TwelveData APIクライアント
 │       ├── config.go                  # API設定
 │       ├── dto/
@@ -339,7 +339,7 @@ Candlesフィーチャーの全テストは、一貫性と保守性のために*
 
 2. **並列実行**: リポジトリテストとハンドラーテストは`t.Parallel()`を使用:
    ```go
-   func TestCandleMySQL_Find(t *testing.T) {
+   func TestCandleRepository_Find(t *testing.T) {
        t.Parallel()
        // ...
        for _, tt := range tests {
@@ -410,7 +410,7 @@ tests := []struct {
 go test ./internal/feature/candles/transport/handler/... -v
 ```
 
-#### リポジトリテスト（[adapters/candle_mysql_test.go](adapters/candle_mysql_test.go)）
+#### リポジトリテスト（[adapters/candle_repository_test.go](adapters/candle_repository_test.go)）
 
 統合テストに**インメモリSQLiteデータベース**を使用します。
 
@@ -476,18 +476,18 @@ go test ./internal/feature/candles/... -v -race -cover
 1. **読み取りパス（Find）**
    - Redisのキャッシュデータを確認
    - ヒット時: デシリアライズしたデータを返却
-   - ミス時: MySQLにクエリ、結果をキャッシュして返却
-   - Redisエラー時: キャッシュをバイパスし、MySQLに直接クエリ
+   - ミス時: PostgreSQLにクエリ、結果をキャッシュして返却
+   - Redisエラー時: キャッシュをバイパスし、PostgreSQLに直接クエリ
 
 2. **書き込みパス（UpsertBatch）**
-   - まずMySQLに書き込み
+   - まずPostgreSQLに書き込み
    - パターンマッチングで関連するキャッシュエントリを無効化
    - パターン: `candles:{symbol}:{interval}:*`
 
 ### グレースフルデグレード
 
 キャッシュ層はグレースフルに障害を処理するよう設計されています:
-- Redis利用不可時、リクエストはMySQLから直接提供
+- Redis利用不可時、リクエストはPostgreSQLから直接提供
 - キャッシュ書き込みの失敗はログに記録されるがリクエストは失敗しない
 - 破損したキャッシュエントリは自動的に削除
 
@@ -497,7 +497,7 @@ go test ./internal/feature/candles/... -v -race -cover
 |------|------|------|
 | `TWELVE_DATA_API_KEY` | TwelveDataマーケットデータのAPIキー | はい（取り込み用） |
 
-**注:** RedisとMySQLの接続設定は、このフィーチャー固有ではなくアプリケーションレベルで設定されます。
+**注:** RedisとPostgreSQLの接続設定は、このフィーチャー固有ではなくアプリケーションレベルで設定されます。
 
 ## 今後の拡張
 

@@ -56,8 +56,8 @@ func TestNewCandleRepository(t *testing.T) {
 	assert.NotNil(t, repo.db, "database connection is nil")
 }
 
-// TestCandleMySQL_UpsertBatch はローソク足データのバッチUpsert処理（挿入、更新、空スライス）をテストします。
-func TestCandleMySQL_UpsertBatch(t *testing.T) {
+// TestCandleRepository_UpsertBatch はローソク足データのバッチUpsert処理（挿入、更新、空スライス）をテストします。
+func TestCandleRepository_UpsertBatch(t *testing.T) {
 	t.Parallel()
 
 	baseTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -224,8 +224,8 @@ func TestCandleMySQL_UpsertBatch(t *testing.T) {
 	}
 }
 
-// TestCandleMySQL_Find は銘柄・インターバルによるローソク足データの検索をテストします。
-func TestCandleMySQL_Find(t *testing.T) {
+// TestCandleRepository_Find は銘柄・インターバルによるローソク足データの検索をテストします。
+func TestCandleRepository_Find(t *testing.T) {
 	t.Parallel()
 
 	baseTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -367,8 +367,8 @@ func TestCandleMySQL_Find(t *testing.T) {
 	}
 }
 
-// TestCandleMySQL_Find_EntityMapping はデータベースモデルからドメインエンティティへの変換が正しいことをテストします。
-func TestCandleMySQL_Find_EntityMapping(t *testing.T) {
+// TestCandleRepository_Find_EntityMapping はデータベースモデルからドメインエンティティへの変換が正しいことをテストします。
+func TestCandleRepository_Find_EntityMapping(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)

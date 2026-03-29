@@ -5,27 +5,27 @@ import (
 	"context"
 	"errors"
 
-	"github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 
 	"stock_backend/internal/feature/watchlist/domain/entity"
 	"stock_backend/internal/feature/watchlist/usecase"
 )
 
-// watchlistMySQL はWatchlistRepositoryインターフェースのMySQL実装です。
-type watchlistMySQL struct {
+// watchlistRepository はWatchlistRepositoryインターフェースのリポジトリ実装です。
+type watchlistRepository struct {
 	db *gorm.DB
 }
 
-var _ usecase.WatchlistRepository = (*watchlistMySQL)(nil)
+var _ usecase.WatchlistRepository = (*watchlistRepository)(nil)
 
-// NewWatchlistRepository は指定されたDB接続でwatchlistMySQLリポジトリの新しいインスタンスを生成します。
-func NewWatchlistRepository(db *gorm.DB) *watchlistMySQL {
-	return &watchlistMySQL{db: db}
+// NewWatchlistRepository は指定されたDB接続でwatchlistRepositoryの新しいインスタンスを生成します。
+func NewWatchlistRepository(db *gorm.DB) *watchlistRepository {
+	return &watchlistRepository{db: db}
 }
 
 // ListByUser はユーザーのウォッチリストをsort_key昇順で返します。
-func (r *watchlistMySQL) ListByUser(ctx context.Context, userID uint) ([]entity.UserSymbol, error) {
+func (r *watchlistRepository) ListByUser(ctx context.Context, userID uint) ([]entity.UserSymbol, error) {
 	var entries []entity.UserSymbol
 	if err := r.db.WithContext(ctx).
 		Where("user_id = ?", userID).
@@ -38,14 +38,14 @@ func (r *watchlistMySQL) ListByUser(ctx context.Context, userID uint) ([]entity.
 
 // Add はウォッチリストに銘柄を追加します。
 // 重複エントリは ErrAlreadyInWatchlist、FK 違反は ErrSymbolNotFound を返します。
-func (r *watchlistMySQL) Add(ctx context.Context, entry entity.UserSymbol) error {
+func (r *watchlistRepository) Add(ctx context.Context, entry entity.UserSymbol) error {
 	if err := r.db.WithContext(ctx).Create(&entry).Error; err != nil {
-		var mysqlErr *mysql.MySQLError
-		if errors.As(err, &mysqlErr) {
-			switch mysqlErr.Number {
-			case 1062: // Duplicate entry
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			switch pgErr.Code {
+			case "23505": // unique_violation: 重複エントリ
 				return usecase.ErrAlreadyInWatchlist
-			case 1452: // FK constraint violation (symbol not found)
+			case "23503": // foreign_key_violation: 銘柄が存在しない
 				return usecase.ErrSymbolNotFound
 			}
 		}
@@ -56,7 +56,7 @@ func (r *watchlistMySQL) Add(ctx context.Context, entry entity.UserSymbol) error
 
 // Remove はウォッチリストから銘柄を削除します。
 // 対象が存在しない場合は ErrNotInWatchlist を返します。
-func (r *watchlistMySQL) Remove(ctx context.Context, userID uint, symbolCode string) error {
+func (r *watchlistRepository) Remove(ctx context.Context, userID uint, symbolCode string) error {
 	result := r.db.WithContext(ctx).
 		Where("user_id = ? AND symbol_code = ?", userID, symbolCode).
 		Delete(&entity.UserSymbol{})
@@ -72,7 +72,7 @@ func (r *watchlistMySQL) Remove(ctx context.Context, userID uint, symbolCode str
 // UpdateSortKeys はウォッチリストのsort_keyをトランザクション内で一括更新します。
 // (user_id, sort_key) のユニーク制約が一時的に違反しないよう、
 // まず全レコードを負値（-(i+1)）にシフトしてから最終値に更新します。
-func (r *watchlistMySQL) UpdateSortKeys(ctx context.Context, userID uint, entries []entity.UserSymbol) error {
+func (r *watchlistRepository) UpdateSortKeys(ctx context.Context, userID uint, entries []entity.UserSymbol) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Phase 1: 負値にシフトして既存の正値との衝突を回避
 		for i, e := range entries {
@@ -97,7 +97,7 @@ func (r *watchlistMySQL) UpdateSortKeys(ctx context.Context, userID uint, entrie
 // AddWithNextSortKey はsort_keyをトランザクション内でMAX+1採番して銘柄を追加します。
 // SELECT MAX(sort_key) FOR UPDATE と INSERT を同一トランザクションで実行することで、
 // 並行追加時の重複順位を防ぎます。
-func (r *watchlistMySQL) AddWithNextSortKey(ctx context.Context, userID uint, symbolCode string) error {
+func (r *watchlistRepository) AddWithNextSortKey(ctx context.Context, userID uint, symbolCode string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var maxKey *int
 		if err := tx.Model(&entity.UserSymbol{}).
@@ -117,12 +117,12 @@ func (r *watchlistMySQL) AddWithNextSortKey(ctx context.Context, userID uint, sy
 			SortKey:    nextKey,
 		}
 		if err := tx.Create(&entry).Error; err != nil {
-			var mysqlErr *mysql.MySQLError
-			if errors.As(err, &mysqlErr) {
-				switch mysqlErr.Number {
-				case 1062:
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) {
+				switch pgErr.Code {
+				case "23505": // unique_violation: 重複エントリ
 					return usecase.ErrAlreadyInWatchlist
-				case 1452:
+				case "23503": // foreign_key_violation: 銘柄が存在しない
 					return usecase.ErrSymbolNotFound
 				}
 			}

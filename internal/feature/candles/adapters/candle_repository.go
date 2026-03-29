@@ -12,17 +12,17 @@ import (
 	"stock_backend/internal/feature/candles/usecase"
 )
 
-// candleMySQL はCandleRepositoryインターフェースのMySQL実装です。
-type candleMySQL struct {
+// candleDBRepository はCandleRepositoryインターフェースのリポジトリ実装です。
+type candleDBRepository struct {
 	db *gorm.DB
 }
 
-// candleMySQLがCandleRepositoryを実装していることをコンパイル時に検証します。
-var _ usecase.CandleRepository = (*candleMySQL)(nil)
+// candleDBRepositoryがCandleRepositoryを実装していることをコンパイル時に検証します。
+var _ usecase.CandleRepository = (*candleDBRepository)(nil)
 
-// NewCandleRepository は指定されたデータベース接続でcandleMySQLリポジトリの新しいインスタンスを生成します。
-func NewCandleRepository(db *gorm.DB) *candleMySQL {
-	return &candleMySQL{db: db}
+// NewCandleRepository は指定されたデータベース接続でcandleDBRepositoryの新しいインスタンスを生成します。
+func NewCandleRepository(db *gorm.DB) *candleDBRepository {
+	return &candleDBRepository{db: db}
 }
 
 // CandleModel はローソク足データのデータベースモデルです。
@@ -60,8 +60,8 @@ func toModel(e entity.Candle) CandleModel {
 }
 
 // UpsertBatch はローソク足データをバッチで挿入または更新します。
-// MySQLのON DUPLICATE KEY UPDATEを使用して効率的なUpsertを行います。
-func (r *candleMySQL) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
+// ON CONFLICT DO UPDATE を使用して効率的なUpsertを行います。
+func (r *candleDBRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
 	if len(candles) == 0 {
 		return nil
 	}
@@ -78,11 +78,11 @@ func (r *candleMySQL) UpsertBatch(ctx context.Context, candles []entity.Candle) 
 
 // Find は指定された銘柄とインターバルのローソク足データを取得します。
 // 結果は時間の降順でソートされ、outputsizeで件数が制限されます。
-func (r *candleMySQL) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+func (r *candleDBRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	var rows []CandleModel
 	q := r.db.WithContext(ctx).
-		Where("symbol = ? AND `interval` = ?", symbol, interval).
-		Order("`time` DESC")
+		Where("symbol = ? AND \"interval\" = ?", symbol, interval).
+		Order("\"time\" DESC")
 	if outputsize > 0 {
 		q = q.Limit(outputsize)
 	}

@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	gmysql "gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -34,24 +34,24 @@ func LoadConfigFromEnv() Config {
 	}
 }
 
-// BuildDSN は設定からMySQL DSN文字列を構築します。
+// BuildDSN は設定からPostgreSQL DSN文字列を構築します。
 // InstanceNameが設定されている場合はCloud SQL Unixソケット接続を作成します。
 // それ以外の場合はHostとPortを使用してTCP接続を作成します。
 func BuildDSN(cfg Config) string {
 	if cfg.InstanceName != "" {
-		return fmt.Sprintf("%s:%s@unix(/cloudsql/%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
-			cfg.User, cfg.Password, cfg.InstanceName, cfg.Name)
+		return fmt.Sprintf("host=/cloudsql/%s user=%s password=%s dbname=%s",
+			cfg.InstanceName, cfg.User, cfg.Password, cfg.Name)
 	}
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
-		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name)
+	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.Name)
 }
 
 // Opener はデータベース接続を開くための関数型です。
 type Opener func(dsn string) (*gorm.DB, error)
 
-// DefaultOpener はGORMを使用してMySQLデータベースを開きます。
+// DefaultOpener はGORMを使用してPostgreSQLデータベースを開きます。
 func DefaultOpener(dsn string) (*gorm.DB, error) {
-	return gorm.Open(gmysql.Open(dsn), &gorm.Config{
+	return gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(gormLogLevel()),
 	})
 }

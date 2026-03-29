@@ -79,7 +79,7 @@ feature/<name>/
 ├── domain/
 │   └── entity/       # ドメインモデル（例: Candle, Symbol, User）
 ├── usecase/          # アプリケーションロジック（リポジトリインターフェース定義、ビジネスロジック統合）
-├── adapters/         # リポジトリ実装（MySQL、キャッシュデコレータ、外部APIクライアント等）
+├── adapters/         # リポジトリ実装（PostgreSQL、キャッシュデコレータ、外部APIクライアント等）
 └── transport/
     └── handler/      # HTTPハンドラー（Gin）
 ```
@@ -114,7 +114,7 @@ feature/<name>/
    - `cmd/ingest/main.go`: TwelveData APIから株価データを取得するバッチジョブ
 
 ### 外部依存
-- TwelveData API（株価データ、8リクエスト/分制限） / MySQL（GORM） / Redis（キャッシュ）
+- TwelveData API（株価データ、8リクエスト/分制限） / PostgreSQL（GORM） / Redis（キャッシュ）
 - 詳細なデータフローは各フィーチャーの README.md を参照
 
 ### 認証
@@ -135,7 +135,7 @@ feature/<name>/
 3. **usecase層を実装**: `usecase/`
    - ここでリポジトリインターフェースを定義（Goの慣例:「インターフェースは利用者が定義する」）
    - リポジトリを統合するビジネスロジックを実装
-4. **adaptersを実装**: `adapters/` - usecaseで定義されたインターフェースを実装するリポジトリ実装（MySQL等）
+4. **adaptersを実装**: `adapters/` - usecaseで定義されたインターフェースを実装するリポジトリ実装（PostgreSQL等）
 5. **transport層を追加**:
    - `transport/handler/` - HTTPハンドラー（必要に応じてusecaseインターフェースもここで定義可）
    - リクエスト/レスポンス型は `api/openapi.yaml` に定義し、`go generate ./internal/api/...` で生成
