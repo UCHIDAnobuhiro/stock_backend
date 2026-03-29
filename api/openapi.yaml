@@ -177,6 +177,117 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /v1/watchlist:
+    get:
+      summary: ウォッチリスト一覧取得
+      operationId: getWatchlist
+      tags:
+        - watchlist
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: ウォッチリスト一覧
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WatchlistItem"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      summary: ウォッチリストに銘柄を追加
+      operationId: addToWatchlist
+      tags:
+        - watchlist
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddWatchlistRequest"
+      responses:
+        "201":
+          description: 追加成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: 銘柄が存在しない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: 既にウォッチリストに存在する
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/watchlist/{code}:
+    delete:
+      summary: ウォッチリストから銘柄を削除
+      operationId: removeFromWatchlist
+      tags:
+        - watchlist
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          description: "銘柄コード（例: AAPL, 7203.T）"
+          schema:
+            type: string
+      responses:
+        "204":
+          description: 削除成功
+        "404":
+          description: ウォッチリストに存在しない
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/watchlist/order:
+    put:
+      summary: ウォッチリストの並び順を更新
+      operationId: reorderWatchlist
+      tags:
+        - watchlist
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderWatchlistRequest"
+      responses:
+        "204":
+          description: 並び替え成功
+        "400":
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /v1/logo/detect:
     post:
       summary: 画像からロゴを検出
@@ -412,6 +523,47 @@ components:
         summary:
           type: string
           description: AI生成の企業分析サマリー
+
+    WatchlistItem:
+      type: object
+      required:
+        - id
+        - symbol_code
+        - sort_key
+      properties:
+        id:
+          type: integer
+          description: ウォッチリストエントリのID
+        symbol_code:
+          type: string
+          description: "銘柄コード（例: AAPL, 7203.T）"
+        sort_key:
+          type: integer
+          description: 表示順序
+
+    AddWatchlistRequest:
+      type: object
+      required:
+        - symbol_code
+      properties:
+        symbol_code:
+          type: string
+          description: "追加する銘柄コード（例: AAPL, 7203.T）"
+          x-oapi-codegen-extra-tags:
+            binding: "required,min=1,max=20"
+
+    ReorderWatchlistRequest:
+      type: object
+      required:
+        - codes
+      properties:
+        codes:
+          type: array
+          description: 新しい順序での銘柄コード一覧
+          items:
+            type: string
+          x-oapi-codegen-extra-tags:
+            binding: "required,min=1"
 
     HealthResponse:
       type: object
