@@ -42,18 +42,18 @@ func seedUser(t *testing.T, db *gorm.DB, email, password string) *entity.User {
 	return user
 }
 
-// TestNewUserMySQL はNewUserMySQLコンストラクタが正しくインスタンスを生成することをテストします。
-func TestNewUserMySQL(t *testing.T) {
+// TestNewUserRepository はNewUserRepositoryコンストラクタが正しくインスタンスを生成することをテストします。
+func TestNewUserRepository(t *testing.T) {
 	db := setupTestDB(t)
 
-	repo := NewUserMySQL(db)
+	repo := NewUserRepository(db)
 
 	assert.NotNil(t, repo, "repository is nil")
 	assert.NotNil(t, repo.db, "database connection is nil")
 }
 
-// TestUserMySQL_Create はユーザー作成処理（成功、メール重複、nilユーザー）をテストします。
-func TestUserMySQL_Create(t *testing.T) {
+// TestUserRepository_Create はユーザー作成処理（成功、メール重複、nilユーザー）をテストします。
+func TestUserRepository_Create(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -99,7 +99,7 @@ func TestUserMySQL_Create(t *testing.T) {
 			t.Parallel()
 
 			db := setupTestDB(t)
-			repo := NewUserMySQL(db)
+			repo := NewUserRepository(db)
 
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, db)
@@ -119,8 +119,8 @@ func TestUserMySQL_Create(t *testing.T) {
 	}
 }
 
-// TestUserMySQL_FindByEmail はメールアドレスによるユーザー検索をテストします。
-func TestUserMySQL_FindByEmail(t *testing.T) {
+// TestUserRepository_FindByEmail はメールアドレスによるユーザー検索をテストします。
+func TestUserRepository_FindByEmail(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -180,7 +180,7 @@ func TestUserMySQL_FindByEmail(t *testing.T) {
 			t.Parallel()
 
 			db := setupTestDB(t)
-			repo := NewUserMySQL(db)
+			repo := NewUserRepository(db)
 
 			var expected *entity.User
 			if tt.setupFunc != nil {
@@ -205,8 +205,8 @@ func TestUserMySQL_FindByEmail(t *testing.T) {
 	}
 }
 
-// TestUserMySQL_FindByID はIDによるユーザー検索をテストします。
-func TestUserMySQL_FindByID(t *testing.T) {
+// TestUserRepository_FindByID はIDによるユーザー検索をテストします。
+func TestUserRepository_FindByID(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -264,7 +264,7 @@ func TestUserMySQL_FindByID(t *testing.T) {
 			t.Parallel()
 
 			db := setupTestDB(t)
-			repo := NewUserMySQL(db)
+			repo := NewUserRepository(db)
 
 			var expected *entity.User
 			var targetID uint
@@ -293,8 +293,8 @@ func TestUserMySQL_FindByID(t *testing.T) {
 	}
 }
 
-// TestUserMySQL_Timestamps はCreatedAtとUpdatedAtが自動設定され、取得後も保持されることをテストします。
-func TestUserMySQL_Timestamps(t *testing.T) {
+// TestUserRepository_Timestamps はCreatedAtとUpdatedAtが自動設定され、取得後も保持されることをテストします。
+func TestUserRepository_Timestamps(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -310,7 +310,7 @@ func TestUserMySQL_Timestamps(t *testing.T) {
 			t.Parallel()
 
 			db := setupTestDB(t)
-			repo := NewUserMySQL(db)
+			repo := NewUserRepository(db)
 
 			user := &entity.User{
 				Email:    "timestamp@example.com",

@@ -23,9 +23,9 @@ sequenceDiagram
     participant Handler as AuthHandler
     participant Usecase as AuthUsecase
     participant Repository as UserRepository
-    participant DB as MySQL
+    participant DB as PostgreSQL
 
-    Client->>RateLimit: POST /signup<br/>{email, password}
+    Client->>RateLimit: POST /v1/signup<br/>{email, password}
     RateLimit->>RateLimit: Check IP rate limit<br/>(5 req/hour)
 
     alt Rate Limit Exceeded
@@ -69,9 +69,9 @@ sequenceDiagram
     participant Usecase as AuthUsecase
     participant JWTGenerator as JWTGenerator
     participant Repository as UserRepository
-    participant DB as MySQL
+    participant DB as PostgreSQL
 
-    Client->>RateLimit: POST /login<br/>{email, password}
+    Client->>RateLimit: POST /v1/login<br/>{email, password}
     RateLimit->>RateLimit: Check IP rate limit<br/>(10 req/min)
 
     alt IP Rate Limit Exceeded
@@ -119,7 +119,7 @@ sequenceDiagram
 
 ## API仕様
 
-### POST /signup
+### POST /v1/signup
 
 新規ユーザーを登録します。
 
@@ -166,7 +166,7 @@ sequenceDiagram
   ```
   ヘッダー: `Retry-After: <秒数>`
 
-### POST /login
+### POST /v1/login
 
 ユーザーを認証し、JWTトークンを発行します。
 
@@ -269,7 +269,7 @@ graph TB
     end
 
     subgraph "Adapters Layer"
-        RepoImpl[UserMySQL<br/>adapters]
+        RepoImpl[UserRepository<br/>adapters]
     end
 
     subgraph "Platform Layer"
@@ -278,7 +278,7 @@ graph TB
     end
 
     subgraph "External Dependencies"
-        DB[(MySQL)]
+        DB[(PostgreSQL)]
         BCrypt[HMAC-SHA256 + bcrypt<br/>Password Hashing]
         Redis[(Redis)]
     end
@@ -345,8 +345,8 @@ graph TB
   - `ErrEmailAlreadyExists`: メールアドレス重複エラー
   - `ErrInvalidCredentials`: 認証情報不正エラー
 
-#### Adapters層（[adapters/user_mysql.go](adapters/user_mysql.go)）
-- **UserMySQL**: UserRepositoryのMySQL実装（GORMを使用）
+#### Adapters層（[adapters/user_repository.go](adapters/user_repository.go)）
+- **userRepository**: UserRepositoryのリポジトリ実装（GORMを使用）
 
 ### アーキテクチャ上の特徴
 
@@ -373,8 +373,8 @@ auth/
 │   ├── auth_usecase_test.go          # Usecaseテスト
 │   └── errors.go                     # ドメインエラー定義
 ├── adapters/
-│   ├── user_mysql.go                 # MySQLリポジトリ実装
-│   └── user_mysql_test.go            # リポジトリテスト
+│   ├── user_repository.go            # リポジトリ実装
+│   └── user_repository_test.go       # リポジトリテスト
 └── transport/
     └── handler/
         ├── auth_handler.go           # HTTPハンドラー
@@ -468,7 +468,7 @@ tests := []struct {
 go test ./internal/feature/auth/transport/handler/... -v
 ```
 
-#### リポジトリテスト（[adapters/user_mysql_test.go](adapters/user_mysql_test.go)）
+#### リポジトリテスト（[adapters/user_repository_test.go](adapters/user_repository_test.go)）
 
 統合テストに**インメモリSQLiteデータベース**を使用します。
 

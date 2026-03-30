@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25.8-alpine AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
@@ -13,6 +13,7 @@ RUN apk add --no-cache tzdata
 ENV TZ=Asia/Tokyo
 
 COPY --from=builder /app/ingest .
-# EXPOSE不要（ポート開けない）
-# 引数で日付/銘柄など切り替えるなら、ここはENTRYPOINTにしておくと便利
+RUN addgroup -S app && adduser -S app -G app && chown app:app /app/ingest
+USER app
+
 ENTRYPOINT ["./ingest"]

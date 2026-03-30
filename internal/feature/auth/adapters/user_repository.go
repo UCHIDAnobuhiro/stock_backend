@@ -5,35 +5,35 @@ import (
 	"context"
 	"errors"
 
-	"github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 
 	"stock_backend/internal/feature/auth/domain/entity"
 	"stock_backend/internal/feature/auth/usecase"
 )
 
-// userMySQL はUserRepositoryインターフェースのMySQL実装です。
+// userRepository はUserRepositoryインターフェースのリポジトリ実装です。
 // GORMを使用してデータベース操作を行います。
-type userMySQL struct {
+type userRepository struct {
 	db *gorm.DB
 }
 
-// userMySQLがUserRepositoryを実装していることをコンパイル時に検証します。
-var _ usecase.UserRepository = (*userMySQL)(nil)
+// userRepositoryがUserRepositoryを実装していることをコンパイル時に検証します。
+var _ usecase.UserRepository = (*userRepository)(nil)
 
-// NewUserMySQL は指定されたgorm.DB接続でuserMySQLの新しいインスタンスを生成します。
+// NewUserRepository は指定されたgorm.DB接続でuserRepositoryの新しいインスタンスを生成します。
 // 依存性注入用のコンストラクタです。
-func NewUserMySQL(db *gorm.DB) *userMySQL {
-	return &userMySQL{db: db}
+func NewUserRepository(db *gorm.DB) *userRepository {
+	return &userRepository{db: db}
 }
 
 // Create はユーザーをデータベースに追加します。
 // 同じメールアドレスのユーザーが既に存在する場合、usecase.ErrEmailAlreadyExistsを返します。
-func (r *userMySQL) Create(ctx context.Context, u *entity.User) error {
+func (r *userRepository) Create(ctx context.Context, u *entity.User) error {
 	if err := r.db.WithContext(ctx).Create(u).Error; err != nil {
-		// MySQLエラー1062: ユニークキーの重複エントリ
-		var mysqlErr *mysql.MySQLError
-		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+		// PostgreSQLエラー23505: ユニーク制約違反
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return usecase.ErrEmailAlreadyExists
 		}
 		return err
@@ -43,7 +43,7 @@ func (r *userMySQL) Create(ctx context.Context, u *entity.User) error {
 
 // FindByEmail はメールアドレスでユーザーを取得します。
 // ユーザーが存在しない場合、usecase.ErrUserNotFoundを返します。
-func (r *userMySQL) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
+func (r *userRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
 	var u entity.User
 	if err := r.db.WithContext(ctx).Where("email = ?", email).First(&u).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -56,7 +56,7 @@ func (r *userMySQL) FindByEmail(ctx context.Context, email string) (*entity.User
 
 // FindByID はIDでユーザーを取得します。
 // ユーザーが存在しない場合、usecase.ErrUserNotFoundを返します。
-func (r *userMySQL) FindByID(ctx context.Context, id uint) (*entity.User, error) {
+func (r *userRepository) FindByID(ctx context.Context, id uint) (*entity.User, error) {
 	var u entity.User
 	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&u).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

@@ -83,7 +83,7 @@ func main() {
 	}
 
 	// リポジトリ
-	userRepo := authadapters.NewUserMySQL(db)
+	userRepo := authadapters.NewUserRepository(db)
 	symbolRepo := symbollistadapters.NewSymbolRepository(db)
 	candleRepo := candlesadapters.NewCandleRepository(db)
 	watchlistRepo := watchlistadapters.NewWatchlistRepository(db)

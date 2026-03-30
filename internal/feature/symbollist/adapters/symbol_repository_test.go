@@ -43,7 +43,6 @@ func seedSymbol(t *testing.T, db *gorm.DB, code, name, market string, isActive b
 }
 
 // updateSymbolActive は銘柄のis_activeフィールドを更新します。
-// SQLiteはINSERT時にbooleanの扱いが異なるため、この関数が必要です。
 func updateSymbolActive(t *testing.T, db *gorm.DB, symbol *entity.Symbol, isActive bool) {
 	t.Helper()
 	err := db.Model(symbol).Update("is_active", isActive).Error
@@ -61,8 +60,8 @@ func TestNewSymbolRepository(t *testing.T) {
 	assert.NotNil(t, repo.db, "database connection should not be nil")
 }
 
-// TestSymbolMySQL_ListActive はListActiveメソッドの各種シナリオをテーブル駆動テストで検証します。
-func TestSymbolMySQL_ListActive(t *testing.T) {
+// TestSymbolRepository_ListActive はListActiveメソッドの各種シナリオをテーブル駆動テストで検証します。
+func TestSymbolRepository_ListActive(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -155,8 +154,8 @@ func TestSymbolMySQL_ListActive(t *testing.T) {
 	}
 }
 
-// TestSymbolMySQL_ListActiveCodes はListActiveCodesメソッドの各種シナリオをテーブル駆動テストで検証します。
-func TestSymbolMySQL_ListActiveCodes(t *testing.T) {
+// TestSymbolRepository_ListActiveCodes はListActiveCodesメソッドの各種シナリオをテーブル駆動テストで検証します。
+func TestSymbolRepository_ListActiveCodes(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -234,8 +233,8 @@ func TestSymbolMySQL_ListActiveCodes(t *testing.T) {
 	}
 }
 
-// TestSymbolMySQL_ListActive_FieldValues はListActiveが返す銘柄の全フィールド値が正しいことを検証します。
-func TestSymbolMySQL_ListActive_FieldValues(t *testing.T) {
+// TestSymbolRepository_ListActive_FieldValues はListActiveが返す銘柄の全フィールド値が正しいことを検証します。
+func TestSymbolRepository_ListActive_FieldValues(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
@@ -258,8 +257,8 @@ func TestSymbolMySQL_ListActive_FieldValues(t *testing.T) {
 	assert.False(t, symbol.UpdatedAt.IsZero(), "UpdatedAt should be set")
 }
 
-// TestSymbolMySQL_Exists はExistsメソッドの各種シナリオをテーブル駆動テストで検証します。
-func TestSymbolMySQL_Exists(t *testing.T) {
+// TestSymbolRepository_Exists はExistsメソッドの各種シナリオをテーブル駆動テストで検証します。
+func TestSymbolRepository_Exists(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -321,8 +320,8 @@ func TestSymbolMySQL_Exists(t *testing.T) {
 	}
 }
 
-// TestSymbolMySQL_ContextCancellation はコンテキストがキャンセルされた場合の動作を検証します。
-func TestSymbolMySQL_ContextCancellation(t *testing.T) {
+// TestSymbolRepository_ContextCancellation はコンテキストがキャンセルされた場合の動作を検証します。
+func TestSymbolRepository_ContextCancellation(t *testing.T) {
 	t.Parallel()
 
 	db := setupTestDB(t)
@@ -333,11 +332,9 @@ func TestSymbolMySQL_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel context immediately
 
-	// 注意: SQLiteはコンテキストキャンセルを尊重しない場合がありますが、
-	// このテストはコンテキストが正しく伝播されることを確認します
+	// 注意: インメモリSQLiteはキャンセルされたコンテキストで常にエラーを返すとは限りません
+	// このテストは主にコンテキストが正しく伝播されることを検証します
 	_, err := repo.ListActive(ctx)
-	// インメモリSQLiteはキャンセルされたコンテキストで常にエラーを返すとは限りません
-	// このテストは主にコンテキストが正しく渡されることを検証します
 	if err != nil {
 		assert.ErrorIs(t, err, context.Canceled)
 	}

@@ -1,28 +1,20 @@
 # docker/docker-compose.dev.yml
 services:
   db:
-    image: mysql:8.4
-    container_name: stock-mysql
-    command: >
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_0900_ai_ci
+    image: postgres:16
+    container_name: stock-postgres
     environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: app
-      MYSQL_USER: appuser
-      MYSQL_PASSWORD: apppass
+      POSTGRES_DB: app
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: apppass
       TZ: Asia/Tokyo
     volumes:
-      - db_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
     ports:
-      - "3306:3306"
+      - "5432:5432"
     restart: unless-stopped
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1",
-        ]
+      test: ["CMD-SHELL", "pg_isready -U appuser -d app"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -97,7 +89,7 @@ services:
     restart: unless-stopped
 
 volumes:
-  db_data:
+  postgres_data:
   redis_data:
   go-mod-cache:
   go-build-cache:
