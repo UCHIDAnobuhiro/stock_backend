@@ -16,6 +16,8 @@ RUN apk add --no-cache tzdata
 ENV TZ=Asia/Tokyo
 
 COPY --from=builder /app/server .
+RUN addgroup -S app && adduser -S app -G app && chown app:app /app/server
+USER app
 
 EXPOSE 8080
 CMD ["./server"]

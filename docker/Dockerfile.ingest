@@ -13,6 +13,7 @@ RUN apk add --no-cache tzdata
 ENV TZ=Asia/Tokyo
 
 COPY --from=builder /app/ingest .
-# EXPOSE不要（ポート開けない）
-# 引数で日付/銘柄など切り替えるなら、ここはENTRYPOINTにしておくと便利
+RUN addgroup -S app && adduser -S app -G app && chown app:app /app/ingest
+USER app
+
 ENTRYPOINT ["./ingest"]

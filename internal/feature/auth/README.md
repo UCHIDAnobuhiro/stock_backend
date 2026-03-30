@@ -25,7 +25,7 @@ sequenceDiagram
     participant Repository as UserRepository
     participant DB as PostgreSQL
 
-    Client->>RateLimit: POST /signup<br/>{email, password}
+    Client->>RateLimit: POST /v1/signup<br/>{email, password}
     RateLimit->>RateLimit: Check IP rate limit<br/>(5 req/hour)
 
     alt Rate Limit Exceeded
@@ -71,7 +71,7 @@ sequenceDiagram
     participant Repository as UserRepository
     participant DB as PostgreSQL
 
-    Client->>RateLimit: POST /login<br/>{email, password}
+    Client->>RateLimit: POST /v1/login<br/>{email, password}
     RateLimit->>RateLimit: Check IP rate limit<br/>(10 req/min)
 
     alt IP Rate Limit Exceeded
@@ -119,7 +119,7 @@ sequenceDiagram
 
 ## API仕様
 
-### POST /signup
+### POST /v1/signup
 
 新規ユーザーを登録します。
 
@@ -166,7 +166,7 @@ sequenceDiagram
   ```
   ヘッダー: `Retry-After: <秒数>`
 
-### POST /login
+### POST /v1/login
 
 ユーザーを認証し、JWTトークンを発行します。
 

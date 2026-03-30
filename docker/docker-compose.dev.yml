@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: apppass
       TZ: Asia/Tokyo
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     restart: unless-stopped
@@ -89,7 +89,7 @@ services:
     restart: unless-stopped
 
 volumes:
-  db_data:
+  postgres_data:
   redis_data:
   go-mod-cache:
   go-build-cache:
