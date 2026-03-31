@@ -149,6 +149,14 @@ feature/<name>/
 
 **重要**: 依存関係ルールを遵守すること - domain/usecaseレイヤーはadaptersやtransportレイヤーをインポートできません。これはgolangci-lint depguardで強制されています。depguardはワイルドカード非対応のため、新フィーチャー追加時に `.golangci.yml` へ明示的にパッケージパスを追加する必要があります。
 
+## アーキテクチャ決定記録（ADR）
+
+重要なアーキテクチャ上の決定は `docs/adr/` にADRとして記録します。
+
+- ADRの作成: `/adr <決定トピック>` スキル（`.claude/skills/adr/SKILL.md`）を使用
+- テンプレート: `docs/adr/template.md`
+- 一覧・運用ルール: `docs/adr/README.md`
+
 ## コミット・PR作成の言語ルール
 
 コミットメッセージおよびプルリクエストのタイトル・説明はすべて**日本語**で記述してください。
