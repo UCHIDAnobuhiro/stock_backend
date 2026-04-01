@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	redisv9 "github.com/redis/go-redis/v9"
@@ -142,8 +143,14 @@ func main() {
 	logoH := logohandler.NewLogoDetectionHandler(logoUC)
 	watchlistH := watchlisthandler.NewWatchlistHandler(watchlistUC)
 
+	// CORS許可オリジンを環境変数から読み込む（デフォルト: http://localhost:3000）
+	corsOrigins := []string{"http://localhost:3000"}
+	if raw := os.Getenv("CORS_ALLOWED_ORIGINS"); raw != "" {
+		corsOrigins = strings.Split(raw, ",")
+	}
+
 	// ルーター作成
-	r := router.NewRouter(authH, candlesH, symbolH, logoH, watchlistH, rateLimiter)
+	r := router.NewRouter(authH, candlesH, symbolH, logoH, watchlistH, rateLimiter, corsOrigins)
 
 	slog.Info("Starting server", "port", 8080)
 	if err := r.Run(":8080"); err != nil {
