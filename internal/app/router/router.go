@@ -4,6 +4,7 @@ package router
 import (
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
 	authhandler "stock_backend/internal/feature/auth/transport/handler"
@@ -22,12 +23,21 @@ func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.Can
 	symbol *symbollisthandler.SymbolHandler, logo *logohandler.LogoDetectionHandler,
 	watchlist *watchlisthandler.WatchlistHandler,
 	limiter *ratelimit.Limiter,
+	allowedOrigins []string,
 ) *gin.Engine {
 	r := gin.Default()
 
 	// リバースプロキシを使用しない構成のため、X-Forwarded-For等のヘッダーを信頼しない
 	// c.ClientIP()がRemoteAddr（実際のTCP接続元）を返すようにする
 	_ = r.SetTrustedProxies(nil)
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     allowedOrigins,
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// 画像アップロードのサイズ制限を設定（10MB）
 	r.MaxMultipartMemory = 10 << 20
