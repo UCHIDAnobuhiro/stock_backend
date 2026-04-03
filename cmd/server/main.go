@@ -146,7 +146,13 @@ func main() {
 	// CORS許可オリジンを環境変数から読み込む（デフォルト: http://localhost:3000）
 	corsOrigins := []string{"http://localhost:3000"}
 	if raw := os.Getenv("CORS_ALLOWED_ORIGINS"); raw != "" {
-		corsOrigins = strings.Split(raw, ",")
+		parts := strings.Split(raw, ",")
+		corsOrigins = make([]string, 0, len(parts))
+		for _, p := range parts {
+			if trimmed := strings.TrimSpace(p); trimmed != "" {
+				corsOrigins = append(corsOrigins, trimmed)
+			}
+		}
 	}
 
 	// ルーター作成
