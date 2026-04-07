@@ -12,6 +12,10 @@ import (
 	"stock_backend/internal/feature/candles/domain/entity"
 )
 
+// maxCacheOutputSize はキャッシュに保存する最大ローソク足件数です。
+// usecaseのMaxOutputSizeと合わせています（依存ルール上usecaseをimport不可のためここで定義）。
+const maxCacheOutputSize = 5000
+
 // candleRepository はCachingCandleRepositoryが内部で必要とする読み書きインターフェースです。
 type candleRepository interface {
 	Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
@@ -44,7 +48,7 @@ func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner cand
 	}
 }
 
-// UpsertBatch はローソク足データを挿入または更新し、関連するキャッシュエントリを無効化します。
+// UpsertBatch はローソク足データを挿入または更新し、キャッシュを最新データで更新します。
 func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
 	// まず基盤リポジトリにUpsert
 	if err := c.inner.UpsertBatch(ctx, candles); err != nil {
@@ -55,95 +59,85 @@ func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []ent
 		return nil
 	}
 
-	// 影響を受けるキャッシュエントリを無効化（symbol+intervalごとのキー）
-	seen := map[string]struct{}{}
+	// 影響を受ける symbol+interval を収集
+	type symbolInterval struct {
+		symbol   string
+		interval string
+	}
+	seen := map[symbolInterval]struct{}{}
 	for _, cd := range candles {
-		prefix := c.cacheKeyPrefix(cd.Symbol, cd.Interval)
-		if _, ok := seen[prefix]; ok {
-			continue
+		seen[symbolInterval{cd.Symbol, cd.Interval}] = struct{}{}
+	}
+
+	// 各 symbol+interval のキャッシュを削除し、最新データで再生成（ウォームアップ）
+	for si := range seen {
+		key := c.cacheKey(si.symbol, si.interval)
+		_ = c.rdb.Del(ctx, key).Err() // ベストエフォート
+
+		data, err := c.inner.Find(ctx, si.symbol, si.interval, maxCacheOutputSize)
+		if err != nil {
+			continue // ベストエフォート: エラー時はウォームアップをスキップ
 		}
-		seen[prefix] = struct{}{}
-		_ = c.deleteByPattern(ctx, prefix+"*") // ベストエフォート: キャッシュ削除失敗時もエラーにしない
+		if b, err := json.Marshal(data); err == nil {
+			_ = c.rdb.Set(ctx, key, b, c.ttl).Err() // ベストエフォート
+		}
 	}
 	return nil
 }
 
 // Find はローソク足データを取得します。まずキャッシュを確認し、なければデータベースにフォールバックします。
+// キャッシュには全データ（最大maxCacheOutputSize件）を保存し、outputsize件にスライスして返します。
 func (c *CachingCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	// Redisが未設定の場合はキャッシュをバイパス
 	if c.rdb == nil {
 		return c.inner.Find(ctx, symbol, interval, outputsize)
 	}
 
-	key := c.cacheKey(symbol, interval, outputsize)
+	key := c.cacheKey(symbol, interval)
 
 	// 1) キャッシュを確認
 	if b, err := c.rdb.Get(ctx, key).Bytes(); err == nil && len(b) > 0 {
-		var out []entity.Candle
-		if err := json.Unmarshal(b, &out); err == nil {
-			return out, nil
+		var all []entity.Candle
+		if err := json.Unmarshal(b, &all); err == nil {
+			return sliceCandles(all, outputsize), nil
 		}
 		// 破損したキャッシュエントリを削除
 		_ = c.rdb.Del(ctx, key).Err()
 	}
 
-	// 2) データベースにフォールバック
-	out, err := c.inner.Find(ctx, symbol, interval, outputsize)
+	// 2) データベースにフォールバック（全データ取得してキャッシュに保存）
+	all, err := c.inner.Find(ctx, symbol, interval, maxCacheOutputSize)
 	if err != nil {
 		return nil, err
 	}
 
 	// 3) キャッシュに保存（ベストエフォート）
-	if b, err := json.Marshal(out); err == nil {
+	if b, err := json.Marshal(all); err == nil {
 		_ = c.rdb.Set(ctx, key, b, c.ttl).Err()
 	}
 
-	return out, nil
+	return sliceCandles(all, outputsize), nil
 }
 
-// cacheKey は特定のクエリ用のキャッシュキーを生成します。
-func (c *CachingCandleRepository) cacheKey(symbol, interval string, outputsize int) string {
-	return fmt.Sprintf("%s:%s:%s:%d",
-		c.namespace,
-		safeCacheKey(symbol),
-		safeCacheKey(interval),
-		outputsize,
-	)
-}
-
-// cacheKeyPrefix は関連するキャッシュエントリの無効化用プレフィックスを生成します。
-func (c *CachingCandleRepository) cacheKeyPrefix(symbol, interval string) string {
-	return fmt.Sprintf("%s:%s:%s:",
-		c.namespace,
-		safeCacheKey(symbol),
-		safeCacheKey(interval),
-	)
-}
-
-// deleteByPattern はSCANを使用して指定パターンに一致するすべてのキャッシュキーを削除します。
-func (c *CachingCandleRepository) deleteByPattern(ctx context.Context, pattern string) error {
-	var cursor uint64
-	for {
-		keys, cur, err := c.rdb.Scan(ctx, cursor, pattern, 200).Result()
-		if err != nil {
-			return err
-		}
-		if len(keys) > 0 {
-			if err := c.rdb.Del(ctx, keys...).Err(); err != nil {
-				return err
-			}
-		}
-		cursor = cur
-		if cursor == 0 {
-			break
-		}
+// sliceCandles は全ローソク足データから先頭 outputsize 件を返します。
+func sliceCandles(all []entity.Candle, outputsize int) []entity.Candle {
+	if outputsize <= 0 || outputsize >= len(all) {
+		return all
 	}
-	return nil
+	return all[:outputsize]
+}
+
+// cacheKey はキャッシュキーを生成します。
+func (c *CachingCandleRepository) cacheKey(symbol, interval string) string {
+	return fmt.Sprintf("%s:%s:%s",
+		c.namespace,
+		safeCacheKey(symbol),
+		safeCacheKey(interval),
+	)
 }
 
 // safeCacheKey はRedisキーで問題となる文字をエスケープします。
 func safeCacheKey(s string) string {
-	// Redisキーで問題となる文字の簡易エスケープ
 	s = strings.ReplaceAll(s, " ", "_")
 	s = strings.ReplaceAll(s, ":", "_")
 	return s
