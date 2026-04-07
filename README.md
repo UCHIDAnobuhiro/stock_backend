@@ -100,11 +100,19 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │   │   └── transport/
 │   │   │       └── handler/    # HTTPハンドラー
 │   │   │
-│   │   └── symbollist/         # シンボルリスト機能
+│   │   ├── symbollist/         # シンボルリスト機能
+│   │   │   ├── domain/
+│   │   │   │   └── entity/     # エンティティ（Symbol）
+│   │   │   ├── usecase/        # ユースケース（リポジトリインターフェース定義）
+│   │   │   ├── adapters/       # リポジトリ実装
+│   │   │   └── transport/
+│   │   │       └── handler/    # HTTPハンドラー
+│   │   │
+│   │   └── watchlist/          # ウォッチリスト機能
 │   │       ├── domain/
-│   │       │   └── entity/     # エンティティ（Symbol）
-│   │       ├── usecase/        # ユースケース（リポジトリインターフェース定義）
-│   │       ├── adapters/       # リポジトリ実装
+│   │       │   └── entity/     # エンティティ（UserSymbol）
+│   │       ├── usecase/        # ユースケース（リポジトリインターフェース定義、ビジネスロジック）
+│   │       ├── adapters/       # リポジトリ実装（PostgreSQL）
 │   │       └── transport/
 │   │           └── handler/    # HTTPハンドラー
 │   │
@@ -220,9 +228,20 @@ go generate ./internal/api/...
 | POST     | `/v1/logo/detect`   | 必要   | 画像からロゴを検出（multipart/form-data）          |
 | POST     | `/v1/logo/analyze`  | 必要   | 企業分析サマリーを生成（JSON）                     |
 
+---
+
+### ウォッチリスト
+
+| メソッド | パス                      | 認証 | 説明                          |
+| -------- | ------------------------- | ---- | ----------------------------- |
+| GET      | `/v1/watchlist`           | 必要 | ウォッチリスト一覧取得         |
+| POST     | `/v1/watchlist`           | 必要 | ウォッチリストに銘柄を追加     |
+| DELETE   | `/v1/watchlist/:code`     | 必要 | ウォッチリストから銘柄を削除   |
+| PUT      | `/v1/watchlist/order`     | 必要 | ウォッチリストの並び順を更新   |
+
 ### 補足
 
-- `/v1/candles` と `/v1/symbols` は **JWT認証（`Authorization: Bearer <token>`）** が必要です。
+- `/v1/candles`、`/v1/symbols`、`/v1/watchlist` は **JWT認証（`Authorization: Bearer <token>`）** が必要です。
 - 今後、リフレッシュトークン対応として `/auth/refresh` と `/auth/logout` を追加予定です。
 
 ## クラウドアーキテクチャ（Google Cloud）
