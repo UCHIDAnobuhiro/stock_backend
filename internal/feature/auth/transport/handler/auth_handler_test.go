@@ -124,7 +124,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 			t.Parallel()
 
 			mockUC := &mockAuthUsecase{SignupFunc: tt.mockSignupFunc}
-			h := handler.NewAuthHandler(mockUC, nil)
+			h := handler.NewAuthHandler(mockUC, nil, false)
 
 			router := gin.New()
 			router.POST("/signup", h.Signup)
@@ -159,7 +159,7 @@ func TestAuthHandler_Login_RateLimited(t *testing.T) {
 			return "", errors.New("should not be called")
 		},
 	}
-	h := handler.NewAuthHandler(mockUC, limiter)
+	h := handler.NewAuthHandler(mockUC, limiter, false)
 
 	router := gin.New()
 	router.POST("/login", h.Login)
@@ -197,7 +197,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
 			mockLoginFunc:  func(ctx context.Context, email, password string) (string, error) { return "dummy-jwt-token", nil },
 			expectedStatus: http.StatusOK,
-			expectedBody:   gin.H{"token": "dummy-jwt-token"},
+			expectedBody:   gin.H{"message": "ok"},
 		},
 		{
 			name:           "failure: invalid email address",
@@ -238,7 +238,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			t.Parallel()
 
 			mockUC := &mockAuthUsecase{LoginFunc: tt.mockLoginFunc}
-			h := handler.NewAuthHandler(mockUC, nil)
+			h := handler.NewAuthHandler(mockUC, nil, false)
 
 			router := gin.New()
 			router.POST("/login", h.Login)

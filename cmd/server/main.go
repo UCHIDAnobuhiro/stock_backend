@@ -136,8 +136,11 @@ func main() {
 	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
 	watchlistUC := watchlistusecase.NewWatchlistUsecase(watchlistRepo, symbolRepo)
 
+	// APP_ENV=production の場合のみ Secure Cookie を有効化
+	secureCookie := os.Getenv("APP_ENV") == "production"
+
 	// ハンドラー
-	authH := authhandler.NewAuthHandler(authUC, rateLimiter, watchlistUC)
+	authH := authhandler.NewAuthHandler(authUC, rateLimiter, secureCookie, watchlistUC)
 	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
 	candlesH := candleshandler.NewCandlesHandler(candlesUC)
 	logoH := logohandler.NewLogoDetectionHandler(logoUC)

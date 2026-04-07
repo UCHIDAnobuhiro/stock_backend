@@ -12,7 +12,9 @@ import (
 	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	watchlisthandler "stock_backend/internal/feature/watchlist/transport/handler"
+	csrfmw "stock_backend/internal/platform/csrf"
 	handler "stock_backend/internal/platform/http/handler"
+	httpmw "stock_backend/internal/platform/http/middleware"
 	jwtmw "stock_backend/internal/platform/jwt"
 	"stock_backend/internal/platform/ratelimit"
 )
@@ -34,10 +36,11 @@ func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.Can
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-CSRF-Token"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
+	r.Use(httpmw.SecurityHeaders())
 
 	// 画像アップロードのサイズ制限を設定（10MB）
 	r.MaxMultipartMemory = 10 << 20
@@ -65,10 +68,13 @@ func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.Can
 			}),
 			authHandler.Login,
 		)
+		// 期限切れトークンでもログアウトできるよう認証不要
+		v1.DELETE("/logout", authHandler.Logout)
 
-		// 保護ルート（認証必須）
+		// 保護ルート（認証必須・CSRF保護）
 		auth := v1.Group("/")
 		auth.Use(jwtmw.AuthRequired())
+		auth.Use(csrfmw.Protect())
 		{
 			auth.GET("/candles/:code", candles.GetCandlesHandler)
 			auth.GET("/symbols", symbol.List)

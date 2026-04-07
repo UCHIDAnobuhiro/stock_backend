@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"stock_backend/internal/api"
+	"stock_backend/internal/platform/csrf"
 	"stock_backend/internal/platform/ratelimit"
 )
 
@@ -39,16 +40,18 @@ const (
 // AuthHandler は認証操作のHTTPリクエストを処理します。
 // AuthUsecaseインターフェースに依存し、JSONリクエスト/レスポンスを処理します。
 type AuthHandler struct {
-	auth      AuthUsecase
-	limiter   *ratelimit.Limiter
-	postHooks []PostSignupHook
+	auth         AuthUsecase
+	limiter      *ratelimit.Limiter
+	secureCookie bool
+	postHooks    []PostSignupHook
 }
 
 // NewAuthHandler はAuthHandlerの新しいインスタンスを生成します。
 // 依存性注入用のコンストラクタで、外部からAuthUsecaseとレートリミッターを注入します。
+// secureCookie が true の場合、Secure属性付きのCookieを設定します（本番環境用）。
 // postHooks にはサインアップ後に実行するフックを任意で渡せます。
-func NewAuthHandler(auth AuthUsecase, limiter *ratelimit.Limiter, postHooks ...PostSignupHook) *AuthHandler {
-	return &AuthHandler{auth: auth, limiter: limiter, postHooks: postHooks}
+func NewAuthHandler(auth AuthUsecase, limiter *ratelimit.Limiter, secureCookie bool, postHooks ...PostSignupHook) *AuthHandler {
+	return &AuthHandler{auth: auth, limiter: limiter, secureCookie: secureCookie, postHooks: postHooks}
 }
 
 // Signup はユーザー登録APIエンドポイントを処理します。
@@ -115,6 +118,33 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, api.ErrorResponse{Error: "invalid email or password"})
 		return
 	}
+
+	// auth_token: httpOnly Cookie（JavaScriptから読み取り不可 → XSS対策）
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("auth_token", token, 3600, "/", "", h.secureCookie, true)
+
+	// csrf_token: 非httpOnly Cookie（JavaScriptが読み取りX-CSRF-Tokenヘッダーにセット → CSRF対策）
+	csrfToken, err := csrf.GenerateToken()
+	if err != nil {
+		slog.Error("failed to generate csrf token", "error", err)
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "internal error"})
+		return
+	}
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("csrf_token", csrfToken, 3600, "/", "", h.secureCookie, false)
+
 	slog.Info("user login successful", "email", req.Email, "remote_addr", c.ClientIP())
-	c.JSON(http.StatusOK, api.TokenResponse{Token: token})
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "ok"})
+}
+
+// Logout はauth_tokenとcsrf_tokenのCookieを削除してログアウトします。
+// 期限切れトークンでも動作するよう認証不要のルートに配置します。
+func (h *AuthHandler) Logout(c *gin.Context) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("auth_token", "", -1, "/", "", h.secureCookie, true)
+
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("csrf_token", "", -1, "/", "", h.secureCookie, false)
+
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "ok"})
 }

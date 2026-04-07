@@ -13,15 +13,24 @@ import (
 const ContextUserID = "userID"
 
 // AuthRequired はJWTトークンを検証し、認証済みユーザーのみにアクセスを制限するGinミドルウェアを返します。
+// 認証はCookie（auth_token）を優先し、存在しない場合はAuthorizationヘッダーにフォールバックします。
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 1. Authorizationヘッダーを取得
-		auth := c.GetHeader("Authorization")
-		if !strings.HasPrefix(auth, "Bearer ") {
+		// 1. auth_token Cookie を優先（Next.jsブラウザクライアント用）
+		var tokenStr string
+		if cookie, err := c.Cookie("auth_token"); err == nil && cookie != "" {
+			tokenStr = cookie
+		} else {
+			// 2. Authorization: Bearer ヘッダーにフォールバック（APIクライアント・curl等）
+			auth := c.GetHeader("Authorization")
+			if strings.HasPrefix(auth, "Bearer ") {
+				tokenStr = strings.TrimPrefix(auth, "Bearer ")
+			}
+		}
+		if tokenStr == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing bearer token"})
 			return
 		}
-		tokenStr := strings.TrimPrefix(auth, "Bearer ")
 
 		// 2. 環境変数からシークレットキーを読み込み
 		secret := os.Getenv(EnvKeyJWTSecret)
