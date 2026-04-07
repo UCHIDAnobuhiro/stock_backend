@@ -122,7 +122,8 @@ func TestCachingCandleRepository_Find_CacheHit(t *testing.T) {
 	}
 	cachedJSON, _ := json.Marshal(cachedCandles)
 
-	mock.ExpectGet("candles:AAPL:1day:100").SetVal(string(cachedJSON))
+	// キャッシュキーは outputsize を含まない
+	mock.ExpectGet("candles:AAPL:1day").SetVal(string(cachedJSON))
 
 	innerCalled := false
 	inner := &mockCandleRepo{
@@ -148,7 +149,42 @@ func TestCachingCandleRepository_Find_CacheHit(t *testing.T) {
 	}
 }
 
-// TestCachingCandleRepository_Find_CacheMiss はキャッシュミス時にDBからデータを取得し、キャッシュに保存することを検証します。
+// TestCachingCandleRepository_Find_CacheHit_Slices はキャッシュに複数件ある場合にoutputsize件にスライスして返すことを検証します。
+func TestCachingCandleRepository_Find_CacheHit_Slices(t *testing.T) {
+	t.Parallel()
+
+	rdb, mock := redismock.NewClientMock()
+	defer func() { _ = rdb.Close() }()
+
+	// キャッシュには5件保存されている
+	cachedCandles := []entity.Candle{
+		{Symbol: "AAPL", Interval: "1day", Open: 100.0},
+		{Symbol: "AAPL", Interval: "1day", Open: 101.0},
+		{Symbol: "AAPL", Interval: "1day", Open: 102.0},
+		{Symbol: "AAPL", Interval: "1day", Open: 103.0},
+		{Symbol: "AAPL", Interval: "1day", Open: 104.0},
+	}
+	cachedJSON, _ := json.Marshal(cachedCandles)
+
+	mock.ExpectGet("candles:AAPL:1day").SetVal(string(cachedJSON))
+
+	inner := &mockCandleRepo{}
+	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
+
+	// outputsize=3 を指定 → 先頭3件のみ返る
+	candles, err := repo.Find(context.Background(), "AAPL", "1day", 3)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(candles) != 3 {
+		t.Errorf("expected 3 candles, got %d", len(candles))
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("unfulfilled mock expectations: %v", err)
+	}
+}
+
+// TestCachingCandleRepository_Find_CacheMiss はキャッシュミス時にDBから全データを取得し、キャッシュに保存してoutputsize件を返すことを検証します。
 func TestCachingCandleRepository_Find_CacheMiss(t *testing.T) {
 	t.Parallel()
 
@@ -161,12 +197,16 @@ func TestCachingCandleRepository_Find_CacheMiss(t *testing.T) {
 	expectedJSON, _ := json.Marshal(expectedCandles)
 
 	// Cache miss
-	mock.ExpectGet("candles:AAPL:1day:100").RedisNil()
-	// Set cache after fetching from inner
-	mock.ExpectSet("candles:AAPL:1day:100", expectedJSON, 5*time.Minute).SetVal("OK")
+	mock.ExpectGet("candles:AAPL:1day").RedisNil()
+	// Set cache after fetching from inner (全データで保存)
+	mock.ExpectSet("candles:AAPL:1day", expectedJSON, 5*time.Minute).SetVal("OK")
 
 	inner := &mockCandleRepo{
 		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+			// maxCacheOutputSize(5000) で呼ばれることを検証
+			if outputsize != maxCacheOutputSize {
+				t.Errorf("expected outputsize %d, got %d", maxCacheOutputSize, outputsize)
+			}
 			return expectedCandles, nil
 		},
 	}
@@ -193,7 +233,7 @@ func TestCachingCandleRepository_Find_InnerError(t *testing.T) {
 
 	expectedErr := errors.New("database error")
 
-	mock.ExpectGet("candles:AAPL:1day:100").RedisNil()
+	mock.ExpectGet("candles:AAPL:1day").RedisNil()
 
 	inner := &mockCandleRepo{
 		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
@@ -225,11 +265,11 @@ func TestCachingCandleRepository_Find_CorruptedCache(t *testing.T) {
 	expectedJSON, _ := json.Marshal(expectedCandles)
 
 	// Return invalid JSON from cache
-	mock.ExpectGet("candles:AAPL:1day:100").SetVal("invalid json")
+	mock.ExpectGet("candles:AAPL:1day").SetVal("invalid json")
 	// Delete corrupted cache
-	mock.ExpectDel("candles:AAPL:1day:100").SetVal(1)
+	mock.ExpectDel("candles:AAPL:1day").SetVal(1)
 	// Set new cache after fetching from inner
-	mock.ExpectSet("candles:AAPL:1day:100", expectedJSON, 5*time.Minute).SetVal("OK")
+	mock.ExpectSet("candles:AAPL:1day", expectedJSON, 5*time.Minute).SetVal("OK")
 
 	inner := &mockCandleRepo{
 		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
@@ -315,22 +355,30 @@ func TestCachingCandleRepository_UpsertBatch_EmptyCandles(t *testing.T) {
 	}
 }
 
-// TestCachingCandleRepository_UpsertBatch_CacheInvalidation はUpsertBatch後に関連するキャッシュが無効化されることを検証します。
-func TestCachingCandleRepository_UpsertBatch_CacheInvalidation(t *testing.T) {
+// TestCachingCandleRepository_UpsertBatch_CacheWarmUp はUpsertBatch後にキャッシュが削除され最新データで再生成されることを検証します。
+func TestCachingCandleRepository_UpsertBatch_CacheWarmUp(t *testing.T) {
 	t.Parallel()
 
 	rdb, mock := redismock.NewClientMock()
 	defer func() { _ = rdb.Close() }()
 
+	warmCandles := []entity.Candle{
+		{Symbol: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
+	}
+	warmJSON, _ := json.Marshal(warmCandles)
+
 	inner := &mockCandleRepo{
 		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
 			return nil
 		},
+		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+			return warmCandles, nil
+		},
 	}
 
-	// Expect cache invalidation via SCAN and DEL
-	mock.ExpectScan(0, "candles:AAPL:1day:*", 200).SetVal([]string{"candles:AAPL:1day:100", "candles:AAPL:1day:200"}, 0)
-	mock.ExpectDel("candles:AAPL:1day:100", "candles:AAPL:1day:200").SetVal(2)
+	// 既存キャッシュを削除してから最新データで再生成
+	mock.ExpectDel("candles:AAPL:1day").SetVal(1)
+	mock.ExpectSet("candles:AAPL:1day", warmJSON, 5*time.Minute).SetVal("OK")
 
 	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
 	err := repo.UpsertBatch(context.Background(), []entity.Candle{
@@ -344,21 +392,32 @@ func TestCachingCandleRepository_UpsertBatch_CacheInvalidation(t *testing.T) {
 	}
 }
 
-// TestCachingCandleRepository_UpsertBatch_DeduplicatesInvalidation は同一symbol+intervalのキャッシュ無効化が重複せず1回のみ実行されることを検証します。
-func TestCachingCandleRepository_UpsertBatch_DeduplicatesInvalidation(t *testing.T) {
+// TestCachingCandleRepository_UpsertBatch_DeduplicatesWarmUp は同一symbol+intervalのウォームアップが重複せず1回のみ実行されることを検証します。
+func TestCachingCandleRepository_UpsertBatch_DeduplicatesWarmUp(t *testing.T) {
 	t.Parallel()
 
 	rdb, mock := redismock.NewClientMock()
 	defer func() { _ = rdb.Close() }()
 
+	warmCandles := []entity.Candle{
+		{Symbol: "AAPL", Interval: "1day", Open: 150.0},
+	}
+	warmJSON, _ := json.Marshal(warmCandles)
+
+	findCallCount := 0
 	inner := &mockCandleRepo{
 		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
 			return nil
 		},
+		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+			findCallCount++
+			return warmCandles, nil
+		},
 	}
 
-	// Only expect one SCAN call for AAPL:1day despite multiple candles
-	mock.ExpectScan(0, "candles:AAPL:1day:*", 200).SetVal([]string{}, 0)
+	// AAPL:1day が3件あっても DEL と SET は1回ずつのみ
+	mock.ExpectDel("candles:AAPL:1day").SetVal(1)
+	mock.ExpectSet("candles:AAPL:1day", warmJSON, 5*time.Minute).SetVal("OK")
 
 	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
 	err := repo.UpsertBatch(context.Background(), []entity.Candle{
@@ -368,6 +427,9 @@ func TestCachingCandleRepository_UpsertBatch_DeduplicatesInvalidation(t *testing
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if findCallCount != 1 {
+		t.Errorf("expected inner.Find to be called once, got %d", findCallCount)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("unfulfilled mock expectations: %v", err)
