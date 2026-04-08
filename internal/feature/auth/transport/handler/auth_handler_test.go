@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -74,6 +75,31 @@ func assertJSONResponse(t *testing.T, w *httptest.ResponseRecorder, expectedStat
 	require.NoError(t, err)
 
 	assert.Equal(t, expectedBody, responseBody)
+}
+
+// assertLoginCookies はログイン成功時のSet-CookieヘッダーにCookieが正しく設定されていることを検証します。
+func assertLoginCookies(t *testing.T, w *httptest.ResponseRecorder) {
+	t.Helper()
+
+	var authTokenCookie, csrfTokenCookie string
+	for _, c := range w.Header().Values("Set-Cookie") {
+		if strings.HasPrefix(c, "auth_token=") {
+			authTokenCookie = c
+		}
+		if strings.HasPrefix(c, "csrf_token=") {
+			csrfTokenCookie = c
+		}
+	}
+
+	// auth_token: HttpOnly かつ SameSite=Lax であること
+	assert.NotEmpty(t, authTokenCookie, "auth_token cookie should be set")
+	assert.Contains(t, authTokenCookie, "HttpOnly", "auth_token should be HttpOnly")
+	assert.Contains(t, authTokenCookie, "SameSite=Lax", "auth_token should have SameSite=Lax")
+
+	// csrf_token: 非HttpOnly（JavaScriptから読み取れる）かつ SameSite=Lax であること
+	assert.NotEmpty(t, csrfTokenCookie, "csrf_token cookie should be set")
+	assert.NotContains(t, csrfTokenCookie, "HttpOnly", "csrf_token must not be HttpOnly")
+	assert.Contains(t, csrfTokenCookie, "SameSite=Lax", "csrf_token should have SameSite=Lax")
 }
 
 // TestAuthHandler_Signup はサインアップハンドラーのHTTPリクエスト/レスポンス処理をテストします。
@@ -191,6 +217,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		mockLoginFunc  func(ctx context.Context, email, password string) (string, error)
 		expectedStatus int
 		expectedBody   gin.H
+		checkCookies   bool
 	}{
 		{
 			name:           "success: user login",
@@ -198,6 +225,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			mockLoginFunc:  func(ctx context.Context, email, password string) (string, error) { return "dummy-jwt-token", nil },
 			expectedStatus: http.StatusOK,
 			expectedBody:   gin.H{"message": "ok"},
+			checkCookies:   true,
 		},
 		{
 			name:           "failure: invalid email address",
@@ -245,6 +273,40 @@ func TestAuthHandler_Login(t *testing.T) {
 
 			w := makeRequest(t, router, http.MethodPost, "/login", tt.requestBody)
 			assertJSONResponse(t, w, tt.expectedStatus, tt.expectedBody)
+			if tt.checkCookies {
+				assertLoginCookies(t, w)
+			}
 		})
 	}
+}
+
+// TestAuthHandler_Logout はログアウトハンドラーがCookieを削除することを検証します。
+func TestAuthHandler_Logout(t *testing.T) {
+	t.Parallel()
+
+	h := handler.NewAuthHandler(&mockAuthUsecase{}, nil, false)
+
+	router := gin.New()
+	router.POST("/logout", h.Logout)
+
+	w := makeRequest(t, router, http.MethodPost, "/logout", gin.H{})
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var authTokenCookie, csrfTokenCookie string
+	for _, c := range w.Header().Values("Set-Cookie") {
+		if strings.HasPrefix(c, "auth_token=") {
+			authTokenCookie = c
+		}
+		if strings.HasPrefix(c, "csrf_token=") {
+			csrfTokenCookie = c
+		}
+	}
+
+	// ログアウト時は Max-Age=0 でCookieを削除すること
+	assert.NotEmpty(t, authTokenCookie, "auth_token cookie should be present in response")
+	assert.Contains(t, authTokenCookie, "Max-Age=0", "auth_token cookie should be deleted (Max-Age=0)")
+
+	assert.NotEmpty(t, csrfTokenCookie, "csrf_token cookie should be present in response")
+	assert.Contains(t, csrfTokenCookie, "Max-Age=0", "csrf_token cookie should be deleted (Max-Age=0)")
 }

@@ -119,17 +119,19 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// auth_token: httpOnly Cookie（JavaScriptから読み取り不可 → XSS対策）
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("auth_token", token, 3600, "/", "", h.secureCookie, true)
-
-	// csrf_token: 非httpOnly Cookie（JavaScriptが読み取りX-CSRF-Tokenヘッダーにセット → CSRF対策）
+	// CSRFトークンを先に生成（失敗した場合はCookieを設定しない → 部分ログイン状態を防止）
 	csrfToken, err := csrf.GenerateToken()
 	if err != nil {
 		slog.Error("failed to generate csrf token", "error", err)
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "internal error"})
 		return
 	}
+
+	// 両トークンが揃ってからCookieをセット（原子性保証）
+	// auth_token: httpOnly Cookie（JavaScriptから読み取り不可 → XSS対策）
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("auth_token", token, 3600, "/", "", h.secureCookie, true)
+	// csrf_token: 非httpOnly Cookie（JavaScriptが読み取りX-CSRF-Tokenヘッダーにセット → CSRF対策）
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("csrf_token", csrfToken, 3600, "/", "", h.secureCookie, false)
 

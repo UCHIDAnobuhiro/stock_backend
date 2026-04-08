@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -136,8 +137,15 @@ func main() {
 	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
 	watchlistUC := watchlistusecase.NewWatchlistUsecase(watchlistRepo, symbolRepo)
 
-	// APP_ENV=production の場合のみ Secure Cookie を有効化
+	// COOKIE_SECURE を優先し、未設定なら APP_ENV=production をフォールバックとして使用
 	secureCookie := os.Getenv("APP_ENV") == "production"
+	if raw := os.Getenv("COOKIE_SECURE"); raw != "" {
+		if parsed, err := strconv.ParseBool(raw); err == nil {
+			secureCookie = parsed
+		} else {
+			slog.Warn("invalid COOKIE_SECURE value, falling back to default", "value", raw, "default", secureCookie)
+		}
+	}
 
 	// ハンドラー
 	authH := authhandler.NewAuthHandler(authUC, rateLimiter, secureCookie, watchlistUC)

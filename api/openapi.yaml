@@ -224,6 +224,7 @@ paths:
         - watchlist
       security:
         - cookieAuth: []
+          csrfHeader: []
         - bearerAuth: []
       requestBody:
         required: true
@@ -240,6 +241,12 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         "400":
           description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: CSRFトークン不一致
           content:
             application/json:
               schema:
@@ -265,6 +272,7 @@ paths:
         - watchlist
       security:
         - cookieAuth: []
+          csrfHeader: []
         - bearerAuth: []
       parameters:
         - name: code
@@ -276,6 +284,12 @@ paths:
       responses:
         "204":
           description: 削除成功
+        "403":
+          description: CSRFトークン不一致
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: ウォッチリストに存在しない
           content:
@@ -291,6 +305,7 @@ paths:
         - watchlist
       security:
         - cookieAuth: []
+          csrfHeader: []
         - bearerAuth: []
       requestBody:
         required: true
@@ -307,6 +322,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: CSRFトークン不一致
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /v1/logo/detect:
     post:
@@ -316,6 +337,7 @@ paths:
         - logo
       security:
         - cookieAuth: []
+          csrfHeader: []
         - bearerAuth: []
       requestBody:
         required: true
@@ -345,6 +367,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: CSRFトークン不一致
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "502":
           description: 外部API通信エラー
           content:
@@ -360,6 +388,7 @@ paths:
         - logo
       security:
         - cookieAuth: []
+          csrfHeader: []
         - bearerAuth: []
       requestBody:
         required: true
@@ -376,6 +405,12 @@ paths:
                 $ref: "#/components/schemas/CompanyAnalysisResponse"
         "400":
           description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: CSRFトークン不一致
           content:
             application/json:
               schema:
@@ -397,6 +432,11 @@ components:
       type: apiKey
       in: cookie
       name: auth_token
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Cookie認証使用時に必須。csrf_token CookieをJavaScriptで読み取り、このヘッダーにセットする（Double Submit Cookieパターン）
 
   schemas:
     SignupRequest:
