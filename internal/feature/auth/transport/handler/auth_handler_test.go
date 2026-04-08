@@ -78,7 +78,8 @@ func assertJSONResponse(t *testing.T, w *httptest.ResponseRecorder, expectedStat
 }
 
 // assertLoginCookies はログイン成功時のSet-CookieヘッダーにCookieが正しく設定されていることを検証します。
-func assertLoginCookies(t *testing.T, w *httptest.ResponseRecorder) {
+// secureCookie=true の場合は Secure 属性も検証します。
+func assertLoginCookies(t *testing.T, w *httptest.ResponseRecorder, secureCookie bool) {
 	t.Helper()
 
 	var authTokenCookie, csrfTokenCookie string
@@ -100,6 +101,12 @@ func assertLoginCookies(t *testing.T, w *httptest.ResponseRecorder) {
 	assert.NotEmpty(t, csrfTokenCookie, "csrf_token cookie should be set")
 	assert.NotContains(t, csrfTokenCookie, "HttpOnly", "csrf_token must not be HttpOnly")
 	assert.Contains(t, csrfTokenCookie, "SameSite=Lax", "csrf_token should have SameSite=Lax")
+
+	// secureCookie=true の場合: 両Cookieに Secure 属性が付くこと
+	if secureCookie {
+		assert.Contains(t, authTokenCookie, "Secure", "auth_token should have Secure attribute")
+		assert.Contains(t, csrfTokenCookie, "Secure", "csrf_token should have Secure attribute")
+	}
 }
 
 // TestAuthHandler_Signup はサインアップハンドラーのHTTPリクエスト/レスポンス処理をテストします。
@@ -218,6 +225,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		expectedStatus int
 		expectedBody   gin.H
 		checkCookies   bool
+		secureCookie   bool
 	}{
 		{
 			name:           "success: user login",
@@ -226,6 +234,16 @@ func TestAuthHandler_Login(t *testing.T) {
 			expectedStatus: http.StatusOK,
 			expectedBody:   gin.H{"message": "ok"},
 			checkCookies:   true,
+			secureCookie:   false,
+		},
+		{
+			name:           "success: user login (secureCookie=true)",
+			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
+			mockLoginFunc:  func(ctx context.Context, email, password string) (string, error) { return "dummy-jwt-token", nil },
+			expectedStatus: http.StatusOK,
+			expectedBody:   gin.H{"message": "ok"},
+			checkCookies:   true,
+			secureCookie:   true,
 		},
 		{
 			name:           "failure: invalid email address",
@@ -266,7 +284,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			t.Parallel()
 
 			mockUC := &mockAuthUsecase{LoginFunc: tt.mockLoginFunc}
-			h := handler.NewAuthHandler(mockUC, nil, false)
+			h := handler.NewAuthHandler(mockUC, nil, tt.secureCookie)
 
 			router := gin.New()
 			router.POST("/login", h.Login)
@@ -274,7 +292,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			w := makeRequest(t, router, http.MethodPost, "/login", tt.requestBody)
 			assertJSONResponse(t, w, tt.expectedStatus, tt.expectedBody)
 			if tt.checkCookies {
-				assertLoginCookies(t, w)
+				assertLoginCookies(t, w, tt.secureCookie)
 			}
 		})
 	}
@@ -284,29 +302,49 @@ func TestAuthHandler_Login(t *testing.T) {
 func TestAuthHandler_Logout(t *testing.T) {
 	t.Parallel()
 
-	h := handler.NewAuthHandler(&mockAuthUsecase{}, nil, false)
-
-	router := gin.New()
-	router.DELETE("/logout", h.Logout)
-
-	w := makeRequest(t, router, http.MethodDelete, "/logout", gin.H{})
-
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var authTokenCookie, csrfTokenCookie string
-	for _, c := range w.Header().Values("Set-Cookie") {
-		if strings.HasPrefix(c, "auth_token=") {
-			authTokenCookie = c
-		}
-		if strings.HasPrefix(c, "csrf_token=") {
-			csrfTokenCookie = c
-		}
+	tests := []struct {
+		name         string
+		secureCookie bool
+	}{
+		{name: "secureCookie=false", secureCookie: false},
+		{name: "secureCookie=true", secureCookie: true},
 	}
 
-	// ログアウト時は Max-Age=0 でCookieを削除すること
-	assert.NotEmpty(t, authTokenCookie, "auth_token cookie should be present in response")
-	assert.Contains(t, authTokenCookie, "Max-Age=0", "auth_token cookie should be deleted (Max-Age=0)")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	assert.NotEmpty(t, csrfTokenCookie, "csrf_token cookie should be present in response")
-	assert.Contains(t, csrfTokenCookie, "Max-Age=0", "csrf_token cookie should be deleted (Max-Age=0)")
+			h := handler.NewAuthHandler(&mockAuthUsecase{}, nil, tt.secureCookie)
+
+			router := gin.New()
+			router.DELETE("/logout", h.Logout)
+
+			w := makeRequest(t, router, http.MethodDelete, "/logout", gin.H{})
+
+			assert.Equal(t, http.StatusOK, w.Code)
+
+			var authTokenCookie, csrfTokenCookie string
+			for _, c := range w.Header().Values("Set-Cookie") {
+				if strings.HasPrefix(c, "auth_token=") {
+					authTokenCookie = c
+				}
+				if strings.HasPrefix(c, "csrf_token=") {
+					csrfTokenCookie = c
+				}
+			}
+
+			// ログアウト時は Max-Age=0 でCookieを削除すること
+			assert.NotEmpty(t, authTokenCookie, "auth_token cookie should be present in response")
+			assert.Contains(t, authTokenCookie, "Max-Age=0", "auth_token cookie should be deleted (Max-Age=0)")
+
+			assert.NotEmpty(t, csrfTokenCookie, "csrf_token cookie should be present in response")
+			assert.Contains(t, csrfTokenCookie, "Max-Age=0", "csrf_token cookie should be deleted (Max-Age=0)")
+
+			// secureCookie=true の場合: 両Cookieに Secure 属性が付くこと
+			if tt.secureCookie {
+				assert.Contains(t, authTokenCookie, "Secure", "auth_token should have Secure attribute")
+				assert.Contains(t, csrfTokenCookie, "Secure", "csrf_token should have Secure attribute")
+			}
+		})
+	}
 }
