@@ -287,9 +287,9 @@ func TestAuthHandler_Logout(t *testing.T) {
 	h := handler.NewAuthHandler(&mockAuthUsecase{}, nil, false)
 
 	router := gin.New()
-	router.POST("/logout", h.Logout)
+	router.DELETE("/logout", h.Logout)
 
-	w := makeRequest(t, router, http.MethodPost, "/logout", gin.H{})
+	w := makeRequest(t, router, http.MethodDelete, "/logout", gin.H{})
 
 	assert.Equal(t, http.StatusOK, w.Code)
 

@@ -3,6 +3,7 @@ package csrf
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"net/http"
 
@@ -58,7 +59,7 @@ func Protect() gin.HandlerFunc {
 		}
 
 		headerVal := c.GetHeader(HeaderName)
-		if headerVal == "" || headerVal != cookieVal {
+		if headerVal == "" || subtle.ConstantTimeCompare([]byte(headerVal), []byte(cookieVal)) != 1 {
 			c.AbortWithStatusJSON(http.StatusForbidden, api.ErrorResponse{Error: "csrf token mismatch"})
 			return
 		}
