@@ -102,10 +102,13 @@ func assertLoginCookies(t *testing.T, w *httptest.ResponseRecorder, secureCookie
 	assert.NotContains(t, csrfTokenCookie, "HttpOnly", "csrf_token must not be HttpOnly")
 	assert.Contains(t, csrfTokenCookie, "SameSite=Lax", "csrf_token should have SameSite=Lax")
 
-	// secureCookie=true の場合: 両Cookieに Secure 属性が付くこと
+	// secureCookie=true の場合: 両Cookieに Secure 属性が付くこと / false の場合: 付かないこと
 	if secureCookie {
 		assert.Contains(t, authTokenCookie, "Secure", "auth_token should have Secure attribute")
 		assert.Contains(t, csrfTokenCookie, "Secure", "csrf_token should have Secure attribute")
+	} else {
+		assert.NotContains(t, authTokenCookie, "Secure", "auth_token must not have Secure attribute")
+		assert.NotContains(t, csrfTokenCookie, "Secure", "csrf_token must not have Secure attribute")
 	}
 }
 
@@ -340,10 +343,13 @@ func TestAuthHandler_Logout(t *testing.T) {
 			assert.NotEmpty(t, csrfTokenCookie, "csrf_token cookie should be present in response")
 			assert.Contains(t, csrfTokenCookie, "Max-Age=0", "csrf_token cookie should be deleted (Max-Age=0)")
 
-			// secureCookie=true の場合: 両Cookieに Secure 属性が付くこと
+			// secureCookie=true の場合: 両Cookieに Secure 属性が付くこと / false の場合: 付かないこと
 			if tt.secureCookie {
 				assert.Contains(t, authTokenCookie, "Secure", "auth_token should have Secure attribute")
 				assert.Contains(t, csrfTokenCookie, "Secure", "csrf_token should have Secure attribute")
+			} else {
+				assert.NotContains(t, authTokenCookie, "Secure", "auth_token must not have Secure attribute")
+				assert.NotContains(t, csrfTokenCookie, "Secure", "csrf_token must not have Secure attribute")
 			}
 		})
 	}
