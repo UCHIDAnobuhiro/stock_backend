@@ -128,6 +128,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// 両トークンが揃ってからCookieをセット（原子性保証）
+	// GinのSetSameSiteは直後のSetCookie1回にのみ適用されリセットされる仕様のため、
+	// Cookieごとに毎回SetSameSiteを呼ぶ必要がある。
 	// auth_token: httpOnly Cookie（JavaScriptから読み取り不可 → XSS対策）
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("auth_token", token, 3600, "/", "", h.secureCookie, true)
@@ -142,6 +144,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // Logout はauth_tokenとcsrf_tokenのCookieを削除してログアウトします。
 // 期限切れトークンでも動作するよう認証不要のルートに配置します。
 func (h *AuthHandler) Logout(c *gin.Context) {
+	// GinのSetSameSiteは直後のSetCookie1回にのみ適用されリセットされる仕様のため、
+	// Cookieごとに毎回SetSameSiteを呼ぶ必要がある。
+	// MaxAge=-1 はGinがMax-Age=0に変換し、ブラウザにCookieの即時削除を指示する。
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("auth_token", "", -1, "/", "", h.secureCookie, true)
 
