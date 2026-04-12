@@ -64,6 +64,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバーエラー（サインアップ後処理の失敗等）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /v1/login:
     post:
@@ -238,6 +244,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /v1/watchlist/{code}:
     delete:
@@ -263,6 +275,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /v1/watchlist/order:
     put:
@@ -283,6 +301,12 @@ paths:
           description: 並び替え成功
         "400":
           description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバーエラー
           content:
             application/json:
               schema:
@@ -320,6 +344,18 @@ paths:
                   $ref: "#/components/schemas/DetectedLogoResponse"
         "400":
           description: バリデーションエラー（画像未指定等）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: 画像サイズが上限（10MB）を超えている
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバーエラー（ファイル操作失敗等）
           content:
             application/json:
               schema:
