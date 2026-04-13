@@ -405,14 +405,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "502":
-          description: 外部API通信エラー
+        "500":
+          description: サーバーエラー
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "500":
-          description: サーバーエラー
+        "502":
+          description: 外部API通信エラー
           content:
             application/json:
               schema:
