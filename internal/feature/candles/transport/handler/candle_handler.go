@@ -38,7 +38,11 @@ func (h *CandlesHandler) GetCandlesHandler(c *gin.Context) {
 	interval := c.DefaultQuery("interval", "1day")
 	outputsizeStr := c.DefaultQuery("outputsize", "200")
 	// 文字列を整数に変換
-	outputsize, _ := strconv.Atoi(outputsizeStr)
+	outputsize, err := strconv.Atoi(outputsizeStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "outputsize must be an integer"})
+		return
+	}
 
 	candles, err := h.uc.GetCandles(c.Request.Context(), code, interval, outputsize)
 	if err != nil {

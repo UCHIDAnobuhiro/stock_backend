@@ -85,10 +85,6 @@ func (h *WatchlistHandler) Add(c *gin.Context) {
 func (h *WatchlistHandler) Remove(c *gin.Context) {
 	userID := c.MustGet(jwtmw.ContextUserID).(uint)
 	code := c.Param("code")
-	if code == "" {
-		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "symbol code is required"})
-		return
-	}
 
 	if err := h.uc.RemoveSymbol(c.Request.Context(), userID, code); err != nil {
 		switch {
