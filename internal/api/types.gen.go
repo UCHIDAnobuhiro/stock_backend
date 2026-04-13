@@ -9,6 +9,7 @@ import (
 
 const (
 	BearerAuthScopes = "bearerAuth.Scopes"
+	CookieAuthScopes = "cookieAuth.Scopes"
 )
 
 // AddWatchlistRequest defines model for AddWatchlistRequest.
@@ -110,12 +111,6 @@ type SymbolItem struct {
 
 	// Name 企業名
 	Name string `json:"name"`
-}
-
-// TokenResponse defines model for TokenResponse.
-type TokenResponse struct {
-	// Token JWTトークン
-	Token string `json:"token"`
 }
 
 // WatchlistItem defines model for WatchlistItem.

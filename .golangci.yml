@@ -39,6 +39,20 @@ linters:
               desc: "domain/usecase must not depend on transport"
             - pkg: "stock_backend/internal/api"
               desc: "domain/usecase must not depend on API types (transport layer only)"
+            - pkg: "stock_backend/internal/platform/csrf"
+              desc: "domain/usecase must not depend on platform packages"
+            - pkg: "stock_backend/internal/platform/cache"
+              desc: "domain/usecase must not depend on platform packages"
+            - pkg: "stock_backend/internal/platform/db"
+              desc: "domain/usecase must not depend on platform packages"
+            - pkg: "stock_backend/internal/platform/http"
+              desc: "domain/usecase must not depend on platform packages"
+            - pkg: "stock_backend/internal/platform/jwt"
+              desc: "domain/usecase must not depend on platform packages"
+            - pkg: "stock_backend/internal/platform/redis"
+              desc: "domain/usecase must not depend on platform packages"
+            - pkg: "stock_backend/internal/platform/ratelimit"
+              desc: "domain/usecase must not depend on platform packages"
 
         # feature同士の依存禁止
         auth-isolation:
