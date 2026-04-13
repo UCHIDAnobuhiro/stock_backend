@@ -1,6 +1,7 @@
 package jwtmw
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,20 +18,26 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// TestAuthRequired_MissingBearerToken はBearerトークンがない場合やプレフィックスが不正な場合に401が返されることを検証します。
-func TestAuthRequired_MissingBearerToken(t *testing.T) {
-	// Set up environment for this test
+// setAuthCookie はテスト用にauth_token Cookieをリクエストにセットするヘルパーです。
+func setAuthCookie(req *http.Request, token string) {
+	req.AddCookie(&http.Cookie{
+		Name:  CookieAuthToken,
+		Value: token,
+	})
+}
+
+// TestAuthRequired_MissingCookie はauth_token Cookieが存在しない場合に401が返されることを検証します。
+func TestAuthRequired_MissingCookie(t *testing.T) {
 	t.Setenv(EnvKeyJWTSecret, "test-secret")
 
 	tests := []struct {
-		name       string
-		authHeader string
+		name string
+		// Cookieなし、または空のCookie
+		setCookie bool
+		value     string
 	}{
-		{"no header", ""},
-		{"empty header", ""},
-		{"basic auth", "Basic dXNlcjpwYXNz"},
-		{"bearer lowercase", "bearer token123"},
-		{"no space after Bearer", "Bearertoken123"},
+		{"no cookie", false, ""},
+		{"empty cookie value", true, ""},
 	}
 
 	for _, tt := range tests {
@@ -38,8 +45,8 @@ func TestAuthRequired_MissingBearerToken(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-			if tt.authHeader != "" {
-				c.Request.Header.Set("Authorization", tt.authHeader)
+			if tt.setCookie {
+				c.Request.AddCookie(&http.Cookie{Name: CookieAuthToken, Value: tt.value})
 			}
 
 			handler := AuthRequired()
@@ -57,13 +64,12 @@ func TestAuthRequired_MissingBearerToken(t *testing.T) {
 
 // TestAuthRequired_MissingJWTSecret はJWT_SECRET環境変数が未設定の場合に500が返されることを検証します。
 func TestAuthRequired_MissingJWTSecret(t *testing.T) {
-	// Ensure JWT_SECRET is not set (t.Setenv with empty string)
 	t.Setenv(EnvKeyJWTSecret, "")
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-	c.Request.Header.Set("Authorization", "Bearer sometoken")
+	setAuthCookie(c.Request, "sometoken")
 
 	handler := AuthRequired()
 	handler(c)
@@ -93,7 +99,7 @@ func TestAuthRequired_InvalidToken(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-			c.Request.Header.Set("Authorization", "Bearer "+tt.token)
+			setAuthCookie(c.Request, tt.token)
 
 			handler := AuthRequired()
 			handler(c)
@@ -127,7 +133,7 @@ func TestAuthRequired_ValidToken(t *testing.T) {
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-			c.Request.Header.Set("Authorization", "Bearer "+token)
+			setAuthCookie(c.Request, token)
 
 			handler := AuthRequired()
 			handler(c)
@@ -165,7 +171,7 @@ func TestAuthRequired_InvalidSigningMethod(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-	c.Request.Header.Set("Authorization", "Bearer "+tokenStr)
+	setAuthCookie(c.Request, tokenStr)
 
 	handler := AuthRequired()
 	handler(c)
@@ -181,7 +187,7 @@ func createTokenWithSecret(secret string, userID uint, expiration time.Duration)
 		"sub":   float64(userID),
 		"exp":   time.Now().Add(expiration).Unix(),
 		"iat":   time.Now().Unix(),
-		"email": "test@example.com",
+		"email": fmt.Sprintf("user%d@example.com", userID),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, _ := token.SignedString([]byte(secret))

@@ -19,6 +19,7 @@ import (
 
 // NewRouter はすべてのアプリケーションルートを設定したGinルーターを生成します。
 // 公開ルート（signup, login）とJWT認証ミドルウェア付きの保護ルート（candles, symbols, logo, watchlist）を設定します。
+// 状態変更を伴う保護ルート（POST/PUT/DELETE）にはCSRF検証ミドルウェアも適用します。
 func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.CandlesHandler,
 	symbol *symbollisthandler.SymbolHandler, logo *logohandler.LogoDetectionHandler,
 	watchlist *watchlisthandler.WatchlistHandler,
@@ -34,7 +35,7 @@ func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.Can
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", jwtmw.HeaderCSRFToken},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
@@ -66,18 +67,26 @@ func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.Can
 			authHandler.Login,
 		)
 
-		// 保護ルート（認証必須）
+		// 保護ルート（JWT認証必須）
 		auth := v1.Group("/")
 		auth.Use(jwtmw.AuthRequired())
 		{
+			// 読み取り専用（CSRFなし）
 			auth.GET("/candles/:code", candles.GetCandlesHandler)
 			auth.GET("/symbols", symbol.List)
-			auth.POST("/logo/detect", logo.DetectLogos)
-			auth.POST("/logo/analyze", logo.AnalyzeCompany)
 			auth.GET("/watchlist", watchlist.List)
-			auth.POST("/watchlist", watchlist.Add)
-			auth.DELETE("/watchlist/:code", watchlist.Remove)
-			auth.PUT("/watchlist/order", watchlist.Reorder)
+			auth.DELETE("/logout", authHandler.Logout)
+
+			// 状態変更（CSRF検証必須）
+			mutate := auth.Group("/")
+			mutate.Use(jwtmw.CSRFRequired())
+			{
+				mutate.POST("/watchlist", watchlist.Add)
+				mutate.DELETE("/watchlist/:code", watchlist.Remove)
+				mutate.PUT("/watchlist/order", watchlist.Reorder)
+				mutate.POST("/logo/detect", logo.DetectLogos)
+				mutate.POST("/logo/analyze", logo.AnalyzeCompany)
+			}
 		}
 	}
 

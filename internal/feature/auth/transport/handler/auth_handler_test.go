@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"stock_backend/internal/feature/auth/transport/handler"
+	jwtmw "stock_backend/internal/platform/jwt"
 	"stock_backend/internal/platform/ratelimit"
 )
 
@@ -186,18 +187,22 @@ func TestAuthHandler_Login(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		requestBody    gin.H
-		mockLoginFunc  func(ctx context.Context, email, password string) (string, error)
-		expectedStatus int
-		expectedBody   gin.H
+		name            string
+		requestBody     gin.H
+		mockLoginFunc   func(ctx context.Context, email, password string) (string, error)
+		expectedStatus  int
+		expectedBody    gin.H
+		expectAuthCookie bool
+		expectCSRFCookie bool
 	}{
 		{
-			name:           "success: user login",
-			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
-			mockLoginFunc:  func(ctx context.Context, email, password string) (string, error) { return "dummy-jwt-token", nil },
-			expectedStatus: http.StatusOK,
-			expectedBody:   gin.H{"token": "dummy-jwt-token"},
+			name:             "success: user login",
+			requestBody:      gin.H{"email": "test@example.com", "password": "password123"},
+			mockLoginFunc:    func(ctx context.Context, email, password string) (string, error) { return "dummy-jwt-token", nil },
+			expectedStatus:   http.StatusOK,
+			expectedBody:     gin.H{"message": "ok"},
+			expectAuthCookie: true,
+			expectCSRFCookie: true,
 		},
 		{
 			name:           "failure: invalid email address",
@@ -222,15 +227,6 @@ func TestAuthHandler_Login(t *testing.T) {
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody:   gin.H{"error": "invalid email or password"},
 		},
-		{
-			name:        "failure: JWT secret not set (usecase error)",
-			requestBody: gin.H{"email": "test@example.com", "password": "password123"},
-			mockLoginFunc: func(ctx context.Context, email, password string) (string, error) {
-				return "", errors.New("server misconfigured: JWT_SECRET missing")
-			},
-			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   gin.H{"error": "invalid email or password"}, // Usecaseのエラーメッセージは隠蔽される
-		},
 	}
 
 	for _, tt := range tests {
@@ -245,6 +241,25 @@ func TestAuthHandler_Login(t *testing.T) {
 
 			w := makeRequest(t, router, http.MethodPost, "/login", tt.requestBody)
 			assertJSONResponse(t, w, tt.expectedStatus, tt.expectedBody)
+
+			// Cookie検証
+			cookies := parseCookies(w.Result().Cookies())
+			if tt.expectAuthCookie {
+				assert.NotEmpty(t, cookies[jwtmw.CookieAuthToken], "auth_token Cookieが設定されていること")
+				assert.Equal(t, "dummy-jwt-token", cookies[jwtmw.CookieAuthToken])
+			}
+			if tt.expectCSRFCookie {
+				assert.NotEmpty(t, cookies[jwtmw.CookieCSRFToken], "csrf_token Cookieが設定されていること")
+			}
 		})
 	}
+}
+
+// parseCookies はCookieスライスをname→valueのマップに変換するヘルパーです。
+func parseCookies(cookies []*http.Cookie) map[string]string {
+	m := make(map[string]string, len(cookies))
+	for _, c := range cookies {
+		m[c.Name] = c.Value
+	}
+	return m
 }

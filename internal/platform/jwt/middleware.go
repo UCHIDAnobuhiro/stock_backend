@@ -3,7 +3,6 @@ package jwtmw
 import (
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -12,18 +11,17 @@ import (
 // ContextUserID はGinコンテキストに認証済みユーザーIDを格納するためのキーです。
 const ContextUserID = "userID"
 
-// AuthRequired はJWTトークンを検証し、認証済みユーザーのみにアクセスを制限するGinミドルウェアを返します。
+// AuthRequired はauth_token CookieのJWTを検証し、認証済みユーザーのみにアクセスを制限するGinミドルウェアを返します。
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 1. Authorizationヘッダーを取得
-		auth := c.GetHeader("Authorization")
-		if !strings.HasPrefix(auth, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing bearer token"})
+		// 1. auth_token CookieからJWTトークンを取得
+		tokenStr, err := c.Cookie(CookieAuthToken)
+		if err != nil || tokenStr == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing auth token"})
 			return
 		}
-		tokenStr := strings.TrimPrefix(auth, "Bearer ")
 
-		// 2. 環境変数からシークレットキーを読み込み
+		// 2. 環境変数からJWTシークレットキーを読み込み
 		secret := os.Getenv(EnvKeyJWTSecret)
 		if secret == "" {
 			// サーバー設定ミス（JWT_SECRETが未設定）

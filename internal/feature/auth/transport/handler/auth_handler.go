@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"stock_backend/internal/api"
+	jwtmw "stock_backend/internal/platform/jwt"
 	"stock_backend/internal/platform/ratelimit"
 )
 
@@ -82,10 +83,8 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 }
 
 // Login はユーザーログインAPIエンドポイントを処理します。
-// - リクエストJSONをLoginReqにバインド
-// - バリデーションエラー時は400を返却
-// - 認証失敗時は401を返却
-// - 認証成功時はJWTトークン付きで200を返却
+// 認証成功時はauth_token（HttpOnly）とcsrf_token（非HttpOnly）CookieをSet-Cookieで発行し、
+// MessageResponseを返します。
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req api.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -115,6 +114,28 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, api.ErrorResponse{Error: "invalid email or password"})
 		return
 	}
+
+	csrfToken, err := jwtmw.GenerateCSRFToken()
+	if err != nil {
+		slog.Error("failed to generate csrf token", "error", err)
+		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
+		return
+	}
+
+	// auth_token: HttpOnly（XSS対策）
+	c.SetCookie(jwtmw.CookieAuthToken, token, jwtmw.CookieMaxAge, "/", "", false, true)
+	// csrf_token: 非HttpOnly（JS側でヘッダーにセットするため）
+	c.SetCookie(jwtmw.CookieCSRFToken, csrfToken, jwtmw.CookieMaxAge, "/", "", false, false)
+
 	slog.Info("user login successful", "email", req.Email, "remote_addr", c.ClientIP())
-	c.JSON(http.StatusOK, api.TokenResponse{Token: token})
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "ok"})
+}
+
+// Logout はユーザーログアウトAPIエンドポイントを処理します。
+// auth_tokenおよびcsrf_token CookieをMaxAge=-1で削除します。
+func (h *AuthHandler) Logout(c *gin.Context) {
+	c.SetCookie(jwtmw.CookieAuthToken, "", -1, "/", "", false, true)
+	c.SetCookie(jwtmw.CookieCSRFToken, "", -1, "/", "", false, false)
+	slog.Info("user logout", "remote_addr", c.ClientIP())
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "ok"})
 }
