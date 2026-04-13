@@ -76,16 +76,11 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 			expectedBody:   `{"error":"internal server error"}`,
 		},
 		{
-			name: "edge case: invalid outputsize string uses default value",
-			url:  "/candles/7203.T?outputsize=invalid",
-			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
-				// ハンドラーは0（strconv.Atoi("invalid")の結果）をusecaseに渡す。
-				// デフォルト値への変換はusecaseレイヤーで処理される。
-				assert.Equal(t, 0, outputsize)
-				return []entity.Candle{}, nil
-			},
-			expectedStatus: http.StatusOK,
-			expectedBody:   `[]`,
+			name:           "error: invalid outputsize string returns 400",
+			url:            "/candles/7203.T?outputsize=invalid",
+			mockGetCandles: nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"error":"outputsize must be an integer"}`,
 		},
 	}
 
