@@ -114,6 +114,10 @@ sequenceDiagram
 
 ログインユーザーのウォッチリストを `sort_key` 昇順で取得します。JWT認証が必要です。
 
+**認証方式**（優先順位順）:
+1. `auth_token` Cookie（ブラウザクライアント）+ `X-CSRF-Token` ヘッダー（必須）
+2. `Authorization: Bearer <token>` ヘッダー（APIクライアント・curl等）
+
 **レスポンス**
 
 - **200 OK** - 成功
@@ -129,7 +133,7 @@ sequenceDiagram
 
 ### POST /v1/watchlist
 
-ウォッチリストに銘柄を追加します。JWT認証が必要です。
+ウォッチリストに銘柄を追加します。JWT認証（+ CSRFトークン）が必要です。
 
 **リクエストボディ**
 ```json
@@ -150,7 +154,7 @@ sequenceDiagram
 
 ### DELETE /v1/watchlist/:code
 
-ウォッチリストから銘柄を削除します。JWT認証が必要です。
+ウォッチリストから銘柄を削除します。JWT認証（+ CSRFトークン）が必要です。
 
 **パスパラメータ**
 | パラメータ | 説明 | 例 |
@@ -170,7 +174,7 @@ sequenceDiagram
 
 ### PUT /v1/watchlist/order
 
-ウォッチリストの並び順を一括更新します。JWT認証が必要です。
+ウォッチリストの並び順を一括更新します。JWT認証（+ CSRFトークン）が必要です。
 
 **リクエストボディ**
 ```json

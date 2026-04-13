@@ -46,7 +46,9 @@ sequenceDiagram
 
 アクティブな株式銘柄の一覧を取得します。
 
-**認証**: 必須（JWT Bearerトークン）
+**認証方式**（優先順位順）:
+1. `auth_token` Cookie（ブラウザクライアント）+ `X-CSRF-Token` ヘッダー（必須）
+2. `Authorization: Bearer <token>` ヘッダー（APIクライアント・curl等）
 
 **レスポンス**
 

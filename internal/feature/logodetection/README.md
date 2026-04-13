@@ -95,6 +95,10 @@ sequenceDiagram
 
 画像をアップロードしてロゴを検出します。JWT認証が必要です。
 
+**認証方式**（優先順位順）:
+1. `auth_token` Cookie（ブラウザクライアント）+ `X-CSRF-Token` ヘッダー（必須）
+2. `Authorization: Bearer <token>` ヘッダー（APIクライアント・curl等）
+
 **Content-Type**: `multipart/form-data`
 
 **リクエストフィールド**
@@ -106,7 +110,8 @@ sequenceDiagram
 **リクエスト例**
 ```http
 POST /v1/logo/detect
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Cookie: auth_token=eyJhbGc...
+X-CSRF-Token: <csrf_token Cookieの値>
 Content-Type: multipart/form-data; boundary=----FormBoundary
 
 ------FormBoundary
@@ -158,6 +163,10 @@ Content-Type: image/jpeg
 
 企業名からAI分析サマリーを生成します。JWT認証が必要です。
 
+**認証方式**（優先順位順）:
+1. `auth_token` Cookie（ブラウザクライアント）+ `X-CSRF-Token` ヘッダー（必須）
+2. `Authorization: Bearer <token>` ヘッダー（APIクライアント・curl等）
+
 **Content-Type**: `application/json`
 
 **リクエストボディ**
@@ -177,7 +186,8 @@ Content-Type: image/jpeg
 **リクエスト例**
 ```http
 POST /v1/logo/analyze
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Cookie: auth_token=eyJhbGc...
+X-CSRF-Token: <csrf_token Cookieの値>
 Content-Type: application/json
 
 {
