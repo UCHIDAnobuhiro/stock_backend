@@ -114,8 +114,26 @@ sequenceDiagram
     Usecase->>JWTGenerator: GenerateToken(userID, email)
     JWTGenerator-->>Usecase: JWT Token
     Usecase-->>Handler: JWT Token
-    Handler-->>Client: 200 OK<br/>{token: "eyJhbGc..."}
+    Handler->>Handler: GenerateCSRFToken()
+    Handler->>Handler: SetCookie("auth_token", token, httpOnly=true)
+    Handler->>Handler: SetCookie("csrf_token", csrfToken, httpOnly=false)
+    Handler-->>Client: 200 OK<br/>{"message":"ok"}<br/>Set-Cookie: auth_token=...; HttpOnly<br/>Set-Cookie: csrf_token=...
 ```
+
+### ログアウトフロー
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Handler as AuthHandler
+
+    Client->>Handler: DELETE /v1/logout
+    Handler->>Handler: SetCookie("auth_token", "", MaxAge=-1)
+    Handler->>Handler: SetCookie("csrf_token", "", MaxAge=-1)
+    Handler-->>Client: 200 OK {"message":"ok"}<br/>Set-Cookie: auth_token=; Max-Age=0<br/>Set-Cookie: csrf_token=; Max-Age=0
+```
+
+**注意**: ログアウトは期限切れトークンでも動作するよう、認証不要のルートに配置されています。
 
 ## API仕様
 
@@ -187,11 +205,15 @@ sequenceDiagram
 - **200 OK** - 認証成功
   ```json
   {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    "message": "ok"
   }
   ```
 
-  **JWTクレーム:**
+  **Set-Cookieヘッダー:**
+  - `auth_token`: JWTトークン（`HttpOnly; SameSite=Lax; Max-Age=3600`）— JavaScriptから読み取り不可（XSS対策）
+  - `csrf_token`: CSRFトークン（`SameSite=Lax; Max-Age=3600`）— JavaScriptが読み取り `X-CSRF-Token` ヘッダーにセット（CSRF対策）
+
+  **JWTクレーム（auth_token内）:**
   - `sub`: ユーザーID（uint）
   - `email`: ユーザーのメールアドレス
   - `iat`: 発行日時（Unixタイムスタンプ）
@@ -218,6 +240,25 @@ sequenceDiagram
   }
   ```
   ヘッダー: `Retry-After: <秒数>`
+
+### DELETE /v1/logout
+
+ログアウトします（`auth_token` と `csrf_token` のCookieを削除）。認証不要です。
+
+**レスポンス**
+
+- **200 OK** - ログアウト成功
+  ```json
+  {
+    "message": "ok"
+  }
+  ```
+
+  **Set-Cookieヘッダー:**
+  - `auth_token`: 空文字列、`Max-Age=0`（即時削除）
+  - `csrf_token`: 空文字列、`Max-Age=0`（即時削除）
+
+**注意**: 期限切れトークンを持つクライアントでも必ずログアウトできるよう、認証不要のエンドポイントに設定されています。
 
 ## レートリミット
 
@@ -353,7 +394,11 @@ graph TB
 1. **クリーンアーキテクチャ**: ドメイン層はインフラストラクチャ層から独立
 2. **依存性逆転**: Usecaseは具体的な実装ではなく、UserRepositoryインターフェースとJWTGeneratorインターフェースを定義・依存（Goの「インターフェースは利用者が定義する」原則に従う）
 3. **インターフェースの所有権**: リポジトリインターフェースとJWT生成インターフェースは、使用されるusecase層で定義（Goのベストプラクティス）
-4. **セキュリティ**:
+4. **Cookie + CSRF 二重保護**:
+   - `auth_token`: httpOnly Cookie（XSS攻撃からトークンを保護）
+   - `csrf_token`: 非httpOnly Cookie（JavaScriptが `X-CSRF-Token` ヘッダーにセット）
+   - 両トークンの一致を検証（Double Submit Cookieパターン）
+5. **セキュリティ**:
    - パスワードは保存前にbcryptでハッシュ化
    - タイミング攻撃の防止（ユーザー未検出時もbcrypt比較を実行）
    - JWTトークンはHS256アルゴリズムで署名（`platform/jwt` で実装）
@@ -534,13 +579,18 @@ PASSWORD_PEPPER=your-password-pepper-change-this-in-production
 
 1. **パスワードハッシュ化**: HMAC-SHA256ペッパー + bcryptを使用（デフォルトコスト: 10）。ペッパーは環境変数 `PASSWORD_PEPPER` で管理し、DBが漏洩した場合の追加防御層として機能。bcryptの72バイト入力制限を回避するため、HMAC-SHA256で固定長出力に変換後にbcryptでハッシュ化
 2. **タイミング攻撃防止**: ユーザーが存在しない場合でもダミーハッシュを使用してbcrypt比較を実行し、レスポンス時間の差異による情報漏洩を防止
-3. **JWTの有効期限**: 1時間で自動的に失効
-4. **エラーメッセージの統一化**:
+3. **Cookie + CSRF 二重保護**:
+   - `auth_token`（httpOnly）: JavaScriptから読み取り不可のためXSS攻撃でトークン窃取不可
+   - `csrf_token`（非httpOnly）: JavaScriptが読み取り `X-CSRF-Token` ヘッダーにセット → CSRF攻撃を防止
+   - `SameSite=Lax` 設定でクロスサイトリクエストを制限
+4. **JWTの有効期限**: 1時間で自動的に失効
+5. **認証方式フォールバック**: `auth_token` Cookieを優先、存在しない場合は `Authorization: Bearer <token>` ヘッダーにフォールバック（API/curlクライアント対応）
+6. **エラーメッセージの統一化**:
    - バリデーションエラー: 汎用 "invalid request" メッセージを返却
    - ログイン失敗: 統一された "invalid email or password" メッセージを返却
    - サインアップ失敗: 汎用 "signup failed" メッセージを返却
    - 列挙攻撃を防止するため、詳細なエラー情報はサーバーログにのみ記録
-5. **JWT_SECRET**: 環境変数で管理。本番環境では強力な秘密鍵を使用すること
+7. **JWT_SECRET**: 環境変数で管理。本番環境では強力な秘密鍵を使用すること
 
 ## 今後の拡張
 

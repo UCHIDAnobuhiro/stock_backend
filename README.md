@@ -31,6 +31,13 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
   - 画像からロゴを検出（Cloud Vision API）
   - 検出した企業の分析サマリーを生成（Gemini API / Vertex AI）
 
+- **セキュリティ強化**
+
+  - CSRF保護（Double Submit Cookieパターン、保護ルートに適用）
+  - IPベースのレートリミット（Redisスライディングウィンドウ方式）
+  - セキュリティヘッダー付与（X-Content-Type-Options等）
+  - SameSite Cookie設定によるクロスサイトリクエスト制御
+
 - **データベース永続化**
   - PostgreSQL / Cloud SQLによるデータ永続化
   - GORM ORMによるデータ管理
@@ -47,7 +54,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 | DB              | PostgreSQL / Cloud SQL                                              |
 | キャッシュ      | Redis                                                               |
 | AI / ML         | Cloud Vision API / Gemini API（Vertex AI）                          |
-| 認証            | JWT / bcrypt                                                        |
+| 認証・セキュリティ | JWT / bcrypt / CSRF（Double Submit Cookie）/ レートリミット       |
 | API仕様         | OpenAPI 3.0.3 / oapi-codegen（型生成）                              |
 | 設定管理        | **.env.docker（ローカル）/ Secret Manager（本番）+ os.Getenv()**    |
 | コンテナ        | Docker / Docker Compose                                             |
@@ -118,14 +125,17 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │
 │   ├── platform/               # インフラストラクチャ層（外部依存）
 │   │   ├── cache/              # キャッシュユーティリティ（TimeUntilNext8AM等）
+│   │   ├── csrf/               # CSRF保護（Double Submit Cookieパターン）
 │   │   ├── db/                 # データベース接続初期化
 │   │   ├── http/               # HTTPクライアント設定
-│   │   │   └── handler/        # ヘルスチェックハンドラー
+│   │   │   ├── handler/        # ヘルスチェックハンドラー
+│   │   │   └── middleware/     # セキュリティヘッダーミドルウェア
 │   │   ├── jwt/                # JWT生成/検証/ミドルウェア
+│   │   ├── ratelimit/          # Redisベースのスライディングウィンドウレートリミッター
 │   │   └── redis/              # Redisクライアント実装
 │   │
 │   └── shared/                 # 共有ユーティリティ
-│       └── ratelimiter/        # レートリミット
+│       └── ratelimiter/        # レートリミット（旧実装・互換維持）
 │
 ├── docker/                     # Docker関連ファイル
 │   ├── Dockerfile.ingest       # ingest用Dockerfile（本番）
@@ -168,18 +178,20 @@ go generate ./internal/api/...
 
 生成されるファイル: `internal/api/types.gen.go`（手動編集不可）
 
-## 認証設計（JWT + リフレッシュトークン）
+## 認証・セキュリティ設計
 
 ### 現在の実装
 
-- JWTアクセストークンによる認証
-- `Authorization: Bearer <token>` ヘッダーによる検証
+- JWTアクセストークンによる認証（`Authorization: Bearer <token>` ヘッダー）
+- **CSRF保護**: Double Submit Cookieパターン（`csrf_token` Cookie + `X-CSRF-Token` ヘッダーの一致を検証）
+- **レートリミット**: Redisスライディングウィンドウ方式（signup: 5回/時、login: 10回/分）
+- **セキュリティヘッダー**: `X-Content-Type-Options`、`X-Frame-Options` 等を全レスポンスに付与
+- **SameSite Cookie**: `Lax` 設定でクロスサイトリクエストを制御
 
 ### 今後の計画（ハイブリッド認証）
 
 - **短期JWT（5〜10分）** + **サーバー管理リフレッシュトークン** 方式の実装
 - `/auth/refresh` によるアクセストークンの自動更新
-- `/auth/logout` によるデバイス単位の即時無効化
 - リフレッシュトークンをDBまたはRedisに保存し、**ローテーション管理**を実施
 
 ## データフロー（例: 株価取得）
@@ -205,10 +217,11 @@ go generate ./internal/api/...
 
 ### 認証
 
-| メソッド | パス         | 認証   | 説明                                  |
-| -------- | ------------ | ------ | ------------------------------------- |
-| POST     | `/v1/signup` | 不要   | 新規ユーザー登録                      |
-| POST     | `/v1/login`  | 不要   | ログイン（JWTアクセストークンを発行） |
+| メソッド | パス           | 認証   | 説明                                              |
+| -------- | -------------- | ------ | ------------------------------------------------- |
+| POST     | `/v1/signup`   | 不要   | 新規ユーザー登録（IPレートリミット: 5回/時）      |
+| POST     | `/v1/login`    | 不要   | ログイン（JWTアクセストークンを発行、10回/分）    |
+| DELETE   | `/v1/logout`   | 不要   | ログアウト（期限切れトークンでも実行可能）        |
 
 ---
 
@@ -241,8 +254,10 @@ go generate ./internal/api/...
 
 ### 補足
 
-- `/v1/candles`、`/v1/symbols`、`/v1/watchlist` は **JWT認証（`Authorization: Bearer <token>`）** が必要です。
-- 今後、リフレッシュトークン対応として `/auth/refresh` と `/auth/logout` を追加予定です。
+- `/v1/candles`、`/v1/symbols`、`/v1/watchlist`、`/v1/logo/*` は **JWT認証（`Authorization: Bearer <token>`）** が必要です。
+- 認証済みエンドポイントはすべて **CSRFトークン（`X-CSRF-Token` ヘッダー）** も必須です。
+- `/v1/signup` と `/v1/login` には **IPベースのレートリミット** が適用されています。
+- 今後、リフレッシュトークン対応として `/auth/refresh` を追加予定です。
 
 ## クラウドアーキテクチャ（Google Cloud）
 

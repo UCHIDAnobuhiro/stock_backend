@@ -59,12 +59,18 @@ internal/
 ├── feature/          # フィーチャーモジュール（垂直スライス）
 │   ├── auth/
 │   ├── candles/
-│   └── symbollist/
+│   ├── logodetection/
+│   ├── symbollist/
+│   └── watchlist/
 ├── platform/         # インフラストラクチャ層（旧 "infrastructure"）
 │   ├── cache/        # キャッシュユーティリティ（TimeUntilNext8AM等）
+│   ├── csrf/         # CSRF保護（Double Submit Cookieパターン）
 │   ├── db/           # データベース初期化
 │   ├── http/         # HTTPクライアント設定 + ヘルスチェックハンドラー
+│   │   ├── handler/  # ヘルスチェックハンドラー
+│   │   └── middleware/ # セキュリティヘッダーミドルウェア
 │   ├── jwt/          # JWT生成・ミドルウェア
+│   ├── ratelimit/    # Redisベースのスライディングウィンドウレートリミッター
 │   └── redis/        # Redisクライアントセットアップ
 └── shared/           # 共有ユーティリティ（例: レートリミッター）
 ```

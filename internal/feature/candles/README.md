@@ -112,6 +112,10 @@ sequenceDiagram
 
 指定された銘柄のローソク足データを取得します。JWT認証が必要です。
 
+**認証方式**（優先順位順）:
+1. `auth_token` Cookie（ブラウザクライアント）+ `X-CSRF-Token` ヘッダー（必須）
+2. `Authorization: Bearer <token>` ヘッダー（APIクライアント・curl等）— この場合CSRFチェックをスキップ
+
 **パスパラメータ**
 | パラメータ | 説明 | 例 |
 |-----------|------|-----|
@@ -123,9 +127,16 @@ sequenceDiagram
 | `interval` | `1day` | 時間間隔（`1day`, `1week`, `1month`） |
 | `outputsize` | `200` | 返却するデータポイント数（最大: 5000） |
 
-**リクエスト例**
+**リクエスト例（Cookieベース）**
+```http
+GET /v1/candles/7203.T?interval=1day&outputsize=100
+Cookie: auth_token=eyJhbGc...
+X-CSRF-Token: <csrf_token Cookieの値>
 ```
-GET /candles/7203.T?interval=1day&outputsize=100
+
+**リクエスト例（Bearerヘッダー）**
+```http
+GET /v1/candles/7203.T?interval=1day&outputsize=100
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
@@ -154,10 +165,17 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
   ```
   注: 結果は時間の降順（新しい順）でソートされます。
 
-- **401 Unauthorized** - JWTトークンが未指定または無効
+- **401 Unauthorized** - 認証トークンが未指定または無効
   ```json
   {
-    "error": "authorization header required"
+    "error": "missing authentication token"
+  }
+  ```
+
+- **403 Forbidden** - CSRFトークンが不正（Cookieベース認証時）
+  ```json
+  {
+    "error": "invalid csrf token"
   }
   ```
 
