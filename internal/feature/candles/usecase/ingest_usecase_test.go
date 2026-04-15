@@ -78,32 +78,32 @@ func TestDedupCandles(t *testing.T) {
 		wantKeys []string // "symbol|interval|unix" 形式で期待するキー一覧
 	}{
 		{
-			name:    "重複なしの場合は全件返す",
-			input:   []entity.Candle{
+			name: "重複なしの場合は全件返す",
+			input: []entity.Candle{
 				{Symbol: "AAPL", Interval: "1day", Time: base},
 				{Symbol: "AAPL", Interval: "1day", Time: base.AddDate(0, 0, 1)},
 			},
 			wantLen: 2,
 		},
 		{
-			name:    "同一タイムスタンプの重複は1件に絞る",
-			input:   []entity.Candle{
+			name: "同一タイムスタンプの重複は1件に絞る",
+			input: []entity.Candle{
 				{Symbol: "AAPL", Interval: "1day", Time: base},
 				{Symbol: "AAPL", Interval: "1day", Time: base},
 			},
 			wantLen: 1,
 		},
 		{
-			name:    "symbolが異なれば別エントリとして扱う",
-			input:   []entity.Candle{
+			name: "symbolが異なれば別エントリとして扱う",
+			input: []entity.Candle{
 				{Symbol: "AAPL", Interval: "1day", Time: base},
 				{Symbol: "GOOG", Interval: "1day", Time: base},
 			},
 			wantLen: 2,
 		},
 		{
-			name:    "intervalが異なれば別エントリとして扱う",
-			input:   []entity.Candle{
+			name: "intervalが異なれば別エントリとして扱う",
+			input: []entity.Candle{
 				{Symbol: "AAPL", Interval: "1day", Time: base},
 				{Symbol: "AAPL", Interval: "1week", Time: base},
 			},
@@ -115,8 +115,8 @@ func TestDedupCandles(t *testing.T) {
 			wantLen: 0,
 		},
 		{
-			name:    "元スライスを変更しない（backing array 非共有）",
-			input:   []entity.Candle{
+			name: "元スライスを変更しない（backing array 非共有）",
+			input: []entity.Candle{
 				{Symbol: "AAPL", Interval: "1day", Time: base, Close: 100},
 				{Symbol: "AAPL", Interval: "1day", Time: base, Close: 200}, // 重複
 				{Symbol: "AAPL", Interval: "1day", Time: base.AddDate(0, 0, 1), Close: 300},
