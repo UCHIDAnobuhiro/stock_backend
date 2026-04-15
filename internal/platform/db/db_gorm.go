@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -32,6 +33,32 @@ func LoadConfigFromEnv() Config {
 		Port:         os.Getenv("DB_PORT"),
 		InstanceName: os.Getenv("INSTANCE_CONNECTION_NAME"),
 	}
+}
+
+// Validate は Config の必須項目が設定されているかを検証します。
+// InstanceName が設定されている場合は Cloud SQL 接続とみなし、Host/Port は不要です。
+// それ以外の場合は TCP 接続として Host/Port を必須とします。
+// Password は空でも許容します（ローカル開発で空パスワード運用を想定）。
+func (c Config) Validate() error {
+	var missing []string
+	if strings.TrimSpace(c.User) == "" {
+		missing = append(missing, "DB_USER")
+	}
+	if strings.TrimSpace(c.Name) == "" {
+		missing = append(missing, "DB_NAME")
+	}
+	if strings.TrimSpace(c.InstanceName) == "" {
+		if strings.TrimSpace(c.Host) == "" {
+			missing = append(missing, "DB_HOST")
+		}
+		if strings.TrimSpace(c.Port) == "" {
+			missing = append(missing, "DB_PORT")
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("missing required environment variables: %s", strings.Join(missing, ", "))
+	}
+	return nil
 }
 
 // BuildDSN は設定からPostgreSQL DSN文字列を構築します。
@@ -98,6 +125,14 @@ func RunMigrations(db *gorm.DB, models ...any) error {
 // リトライロジックを含み、失敗時はプロセスを終了します（本番環境用）。
 func OpenDB() *gorm.DB {
 	cfg := LoadConfigFromEnv()
+	if err := cfg.Validate(); err != nil {
+		slog.Error("invalid DB config", "error", err)
+		os.Exit(1)
+	}
+	if cfg.InstanceName != "" && (cfg.Host != "" || cfg.Port != "") {
+		slog.Warn("DB_HOST and DB_PORT are ignored when INSTANCE_CONNECTION_NAME is set",
+			"host", cfg.Host, "port", cfg.Port, "instance", cfg.InstanceName)
+	}
 	dsn := BuildDSN(cfg)
 
 	db, err := ConnectWithRetry(dsn, 60*time.Second, DefaultOpener)
