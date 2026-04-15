@@ -1,7 +1,11 @@
 package db
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -72,6 +76,145 @@ func TestBuildDSN_CloudSQLTakesPrecedence(t *testing.T) {
 	if dsn != expected {
 		t.Errorf("expected DSN %q, got %q", expected, dsn)
 	}
+}
+
+// TestBuildDSN_EscapesSpecialCharacters は値に空白・シングルクオート・バックスラッシュを含む場合に
+// libpq 仕様に従って DSN が正しくエスケープされることを検証します。
+func TestBuildDSN_EscapesSpecialCharacters(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		cfg      Config
+		expected string
+	}{
+		{
+			name: "password with space",
+			cfg: Config{
+				User:     "u",
+				Password: "p@ss word",
+				Name:     "d",
+				Host:     "h",
+				Port:     "5432",
+			},
+			expected: "host=h port=5432 user=u password='p@ss word' dbname=d sslmode=disable",
+		},
+		{
+			name: "password with single quote and backslash",
+			cfg: Config{
+				User:     "u",
+				Password: `p'a\ss`,
+				Name:     "d",
+				Host:     "h",
+				Port:     "5432",
+			},
+			expected: `host=h port=5432 user=u password='p\'a\\ss' dbname=d sslmode=disable`,
+		},
+		{
+			name: "empty password is quoted",
+			cfg: Config{
+				User:     "u",
+				Password: "",
+				Name:     "d",
+				Host:     "h",
+				Port:     "5432",
+			},
+			expected: "host=h port=5432 user=u password='' dbname=d sslmode=disable",
+		},
+		{
+			name: "user with equals sign",
+			cfg: Config{
+				User:     "us=er",
+				Password: "p",
+				Name:     "d",
+				Host:     "h",
+				Port:     "5432",
+			},
+			expected: "host=h port=5432 user='us=er' password=p dbname=d sslmode=disable",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := BuildDSN(tt.cfg)
+			if got != tt.expected {
+				t.Errorf("BuildDSN mismatch\n want: %q\n  got: %q", tt.expected, got)
+			}
+		})
+	}
+}
+
+// TestPassword_Masking は Password 型がログ・文字列化・JSON シリアライズのいずれの経路でも
+// 平文を露出せず "***" にマスクされることを検証します。
+func TestPassword_Masking(t *testing.T) {
+	t.Parallel()
+
+	const secret = "super-secret"
+	p := Password(secret)
+
+	t.Run("String", func(t *testing.T) {
+		t.Parallel()
+		if got := p.String(); got != "***" {
+			t.Errorf("String() = %q, want %q", got, "***")
+		}
+	})
+
+	t.Run("fmt %v and %s do not leak", func(t *testing.T) {
+		t.Parallel()
+		for _, verb := range []string{"%v", "%s", "%+v", "%#v"} {
+			got := fmt.Sprintf(verb, p)
+			if strings.Contains(got, secret) {
+				t.Errorf("fmt %q leaked secret: %q", verb, got)
+			}
+		}
+	})
+
+	t.Run("embedded in Config via %+v does not leak", func(t *testing.T) {
+		t.Parallel()
+		cfg := Config{User: "u", Password: p, Name: "d"}
+		got := fmt.Sprintf("%+v", cfg)
+		if strings.Contains(got, secret) {
+			t.Errorf("Config format leaked secret: %q", got)
+		}
+	})
+
+	t.Run("MarshalJSON", func(t *testing.T) {
+		t.Parallel()
+		b, err := json.Marshal(p)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(b) != `"***"` {
+			t.Errorf("MarshalJSON = %s, want %q", b, `"***"`)
+		}
+		cfg := Config{User: "u", Password: p, Name: "d"}
+		cb, err := json.Marshal(cfg)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if strings.Contains(string(cb), secret) {
+			t.Errorf("Config JSON leaked secret: %s", cb)
+		}
+	})
+
+	t.Run("slog structured logging does not leak", func(t *testing.T) {
+		t.Parallel()
+		var buf bytes.Buffer
+		logger := slog.New(slog.NewTextHandler(&buf, nil))
+		logger.Info("connecting", "password", p)
+		if strings.Contains(buf.String(), secret) {
+			t.Errorf("slog leaked secret: %s", buf.String())
+		}
+	})
+
+	t.Run("explicit string conversion still exposes value", func(t *testing.T) {
+		t.Parallel()
+		// DSN 構築など実値が必要な場面では明示的変換で取得できる
+		if string(p) != secret {
+			t.Errorf("string(p) = %q, want %q", string(p), secret)
+		}
+	})
 }
 
 // TestConnectWithRetry_SuccessOnFirstTry は初回接続成功時にリトライせずDBを返すことを検証します。
@@ -288,8 +431,8 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	if cfg.User != "envuser" {
 		t.Errorf("expected User 'envuser', got %q", cfg.User)
 	}
-	if cfg.Password != "envpass" {
-		t.Errorf("expected Password 'envpass', got %q", cfg.Password)
+	if string(cfg.Password) != "envpass" {
+		t.Errorf("expected Password 'envpass', got %q", string(cfg.Password))
 	}
 	if cfg.Name != "envdb" {
 		t.Errorf("expected Name 'envdb', got %q", cfg.Name)

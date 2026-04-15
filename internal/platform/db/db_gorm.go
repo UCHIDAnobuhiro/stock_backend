@@ -13,10 +13,28 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+// Password はログ出力・文字列化・JSONシリアライズ時に値をマスクする機密文字列型です。
+// fmt.Stringer / fmt.GoStringer / json.Marshaler / slog.LogValuer を実装しているため、
+// 誤って構造体ごとログ出力しても平文パスワードは "***" に置換されます。
+// DSN 構築など実値が必要な場合は string(p) で明示的に変換してください。
+type Password string
+
+// String は %s / %v などのフォーマット時にパスワードをマスクします。
+func (Password) String() string { return "***" }
+
+// GoString は %#v 書式でのマスク出力を提供します。
+func (Password) GoString() string { return "***" }
+
+// MarshalJSON は JSON シリアライズ時にパスワードをマスクします。
+func (Password) MarshalJSON() ([]byte, error) { return []byte(`"***"`), nil }
+
+// LogValue は slog による構造化ログ出力時にパスワードをマスクします。
+func (Password) LogValue() slog.Value { return slog.StringValue("***") }
+
 // Config はデータベース接続設定を保持します。
 type Config struct {
 	User         string
-	Password     string
+	Password     Password
 	Name         string
 	Host         string
 	Port         string
@@ -27,7 +45,7 @@ type Config struct {
 func LoadConfigFromEnv() Config {
 	return Config{
 		User:         os.Getenv("DB_USER"),
-		Password:     os.Getenv("DB_PASSWORD"),
+		Password:     Password(os.Getenv("DB_PASSWORD")),
 		Name:         os.Getenv("DB_NAME"),
 		Host:         os.Getenv("DB_HOST"),
 		Port:         os.Getenv("DB_PORT"),
@@ -61,16 +79,38 @@ func (c Config) Validate() error {
 	return nil
 }
 
+// quotePGValue は libpq の key=value 形式で安全に値を埋め込めるようエスケープします。
+// 値に空白・'='・シングルクオート・バックスラッシュが含まれる場合、または空値の場合は
+// シングルクオートで囲み、内部の '\' と '\” をエスケープします。
+// 参考: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING-KEYWORD-VALUE
+func quotePGValue(v string) string {
+	if v == "" || strings.ContainsAny(v, " \t\n\r='\\") {
+		escaped := strings.ReplaceAll(v, `\`, `\\`)
+		escaped = strings.ReplaceAll(escaped, `'`, `\'`)
+		return "'" + escaped + "'"
+	}
+	return v
+}
+
 // BuildDSN は設定からPostgreSQL DSN文字列を構築します。
 // InstanceNameが設定されている場合はCloud SQL Unixソケット接続を作成します。
 // それ以外の場合はHostとPortを使用してTCP接続を作成します。
+// 各値は libpq の仕様に従ってエスケープされるため、パスワード等に空白や特殊文字が
+// 含まれていても安全に DSN を生成できます。
 func BuildDSN(cfg Config) string {
 	if cfg.InstanceName != "" {
-		return fmt.Sprintf("host=/cloudsql/%s user=%s password=%s dbname=%s",
-			cfg.InstanceName, cfg.User, cfg.Password, cfg.Name)
+		return fmt.Sprintf("host=%s user=%s password=%s dbname=%s",
+			quotePGValue("/cloudsql/"+cfg.InstanceName),
+			quotePGValue(cfg.User),
+			quotePGValue(string(cfg.Password)),
+			quotePGValue(cfg.Name))
 	}
 	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.Name)
+		quotePGValue(cfg.Host),
+		quotePGValue(cfg.Port),
+		quotePGValue(cfg.User),
+		quotePGValue(string(cfg.Password)),
+		quotePGValue(cfg.Name))
 }
 
 // Opener はデータベース接続を開くための関数型です。
