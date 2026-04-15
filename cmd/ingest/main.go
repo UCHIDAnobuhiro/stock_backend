@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"log/slog"
+	"os"
+	"strconv"
 	"time"
 
 	"stock_backend/internal/app/di"
@@ -17,7 +19,7 @@ import (
 )
 
 const (
-	rateLimitPerMinute = 8 // TwelveData APIのレートリミット（無料枠: 8リクエスト/分）
+	rateLimitPerMinute = 7 // TwelveData APIのレートリミット（無料枠上限8/分、固定ウィンドウずれ対策で1つ余裕を持たせる）
 )
 
 func main() {
@@ -45,7 +47,13 @@ func main() {
 
 	uc := candlesusecase.NewIngestUsecase(marketRepo, cachedCandleRepo, symbolRepo, rateLimiter)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	timeoutHours := 3
+	if v := os.Getenv("INGEST_TIMEOUT_HOURS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			timeoutHours = n
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutHours)*time.Hour)
 	defer cancel()
 
 	if err := uc.IngestAll(ctx); err != nil {
