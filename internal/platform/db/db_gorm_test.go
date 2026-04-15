@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -137,6 +138,137 @@ func TestConnectWithRetry_TimeoutAfterRetries(t *testing.T) {
 	}
 	if attemptCount == 0 {
 		t.Error("expected at least one connection attempt")
+	}
+}
+
+// TestConfig_Validate_TCP_Success は TCP 接続で必須項目が揃っていればエラーにならないことを検証します。
+func TestConfig_Validate_TCP_Success(t *testing.T) {
+	t.Parallel()
+
+	cfg := Config{
+		User:     "u",
+		Password: "p",
+		Name:     "d",
+		Host:     "h",
+		Port:     "5432",
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}
+
+// TestConfig_Validate_CloudSQL_Success は Cloud SQL 接続で Host/Port が空でもエラーにならないことを検証します。
+func TestConfig_Validate_CloudSQL_Success(t *testing.T) {
+	t.Parallel()
+
+	cfg := Config{
+		User:         "u",
+		Name:         "d",
+		InstanceName: "project:region:instance",
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}
+
+// TestConfig_Validate_EmptyPasswordAllowed はパスワード未設定でもエラーにならないことを検証します。
+func TestConfig_Validate_EmptyPasswordAllowed(t *testing.T) {
+	t.Parallel()
+
+	cfg := Config{
+		User: "u",
+		Name: "d",
+		Host: "h",
+		Port: "5432",
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}
+
+// TestConfig_Validate_MissingRequired は必須項目が欠けている場合にエラーが返ることを検証します。
+// wantVars: エラーメッセージに含まれるべき変数名
+// notWantVars: エラーメッセージに含まれてはいけない変数名
+func TestConfig_Validate_MissingRequired(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		cfg         Config
+		wantVars    []string
+		notWantVars []string
+	}{
+		{
+			name:        "all empty (TCP)",
+			cfg:         Config{},
+			wantVars:    []string{"DB_USER", "DB_NAME", "DB_HOST", "DB_PORT"},
+			notWantVars: nil,
+		},
+		{
+			name:        "missing user",
+			cfg:         Config{Name: "d", Host: "h", Port: "5432"},
+			wantVars:    []string{"DB_USER"},
+			notWantVars: []string{"DB_NAME", "DB_HOST", "DB_PORT"},
+		},
+		{
+			name:        "missing name",
+			cfg:         Config{User: "u", Host: "h", Port: "5432"},
+			wantVars:    []string{"DB_NAME"},
+			notWantVars: []string{"DB_USER", "DB_HOST", "DB_PORT"},
+		},
+		{
+			name:        "missing host/port (TCP)",
+			cfg:         Config{User: "u", Name: "d"},
+			wantVars:    []string{"DB_HOST", "DB_PORT"},
+			notWantVars: []string{"DB_USER", "DB_NAME"},
+		},
+		{
+			name:        "CloudSQL missing user",
+			cfg:         Config{Name: "d", InstanceName: "proj:reg:inst"},
+			wantVars:    []string{"DB_USER"},
+			notWantVars: []string{"DB_NAME", "DB_HOST", "DB_PORT"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := tt.cfg.Validate()
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			for _, v := range tt.wantVars {
+				if !strings.Contains(err.Error(), v) {
+					t.Errorf("expected error to mention %q, got %q", v, err.Error())
+				}
+			}
+			for _, v := range tt.notWantVars {
+				if strings.Contains(err.Error(), v) {
+					t.Errorf("error should not mention %q, got %q", v, err.Error())
+				}
+			}
+		})
+	}
+}
+
+// TestConfig_Validate_WhitespaceOnly は空白文字のみの値が未設定と同じく弾かれることを検証します。
+func TestConfig_Validate_WhitespaceOnly(t *testing.T) {
+	t.Parallel()
+
+	cfg := Config{
+		User: "   ",
+		Name: "\t",
+		Host: "h",
+		Port: "5432",
+	}
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	for _, v := range []string{"DB_USER", "DB_NAME"} {
+		if !strings.Contains(err.Error(), v) {
+			t.Errorf("expected error to mention %q, got %q", v, err.Error())
+		}
 	}
 }
 
