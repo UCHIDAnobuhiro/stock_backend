@@ -1,3 +1,5 @@
+-- 警告: このスクリプトは symbols を参照する全テーブル（candles, watchlists 等）を CASCADE で全削除します。
+-- ローカル開発環境専用です。本番・staging 環境では絶対に実行しないでください。
 TRUNCATE TABLE symbols CASCADE;
 
 INSERT INTO symbols (code, name, market) VALUES

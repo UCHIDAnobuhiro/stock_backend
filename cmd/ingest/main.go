@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"log/slog"
+	"os"
+	"strconv"
 	"time"
 
 	"stock_backend/internal/app/di"
@@ -45,7 +47,13 @@ func main() {
 
 	uc := candlesusecase.NewIngestUsecase(marketRepo, cachedCandleRepo, symbolRepo, rateLimiter)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Hour)
+	timeoutHours := 3
+	if v := os.Getenv("INGEST_TIMEOUT_HOURS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			timeoutHours = n
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutHours)*time.Hour)
 	defer cancel()
 
 	if err := uc.IngestAll(ctx); err != nil {

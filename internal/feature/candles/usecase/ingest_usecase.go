@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -88,9 +89,9 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol string, outputsiz
 // 同一バッチ内で同じ行を2回更新しようとする PostgreSQL エラー (SQLSTATE 21000) を防ぎます。
 func dedupCandles(candles []entity.Candle) []entity.Candle {
 	seen := make(map[string]struct{}, len(candles))
-	out := candles[:0]
+	out := make([]entity.Candle, 0, len(candles))
 	for _, c := range candles {
-		key := c.Symbol + "|" + c.Interval + "|" + c.Time.String()
+		key := fmt.Sprintf("%s|%s|%d", c.Symbol, c.Interval, c.Time.Unix())
 		if _, ok := seen[key]; !ok {
 			seen[key] = struct{}{}
 			out = append(out, c)

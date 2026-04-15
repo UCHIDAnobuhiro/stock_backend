@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -64,6 +65,96 @@ type mockRateLimiter struct {
 func (m *mockRateLimiter) WaitIfNeeded() {
 	m.WaitIfNeededCalls++
 	// テスト用に待機せず即座にリターン
+}
+
+// TestDedupCandles は dedupCandles 関数の重複除去ロジックをテストします。
+func TestDedupCandles(t *testing.T) {
+	base := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	testCases := []struct {
+		name     string
+		input    []entity.Candle
+		wantLen  int
+		wantKeys []string // "symbol|interval|unix" 形式で期待するキー一覧
+	}{
+		{
+			name:    "重複なしの場合は全件返す",
+			input:   []entity.Candle{
+				{Symbol: "AAPL", Interval: "1day", Time: base},
+				{Symbol: "AAPL", Interval: "1day", Time: base.AddDate(0, 0, 1)},
+			},
+			wantLen: 2,
+		},
+		{
+			name:    "同一タイムスタンプの重複は1件に絞る",
+			input:   []entity.Candle{
+				{Symbol: "AAPL", Interval: "1day", Time: base},
+				{Symbol: "AAPL", Interval: "1day", Time: base},
+			},
+			wantLen: 1,
+		},
+		{
+			name:    "symbolが異なれば別エントリとして扱う",
+			input:   []entity.Candle{
+				{Symbol: "AAPL", Interval: "1day", Time: base},
+				{Symbol: "GOOG", Interval: "1day", Time: base},
+			},
+			wantLen: 2,
+		},
+		{
+			name:    "intervalが異なれば別エントリとして扱う",
+			input:   []entity.Candle{
+				{Symbol: "AAPL", Interval: "1day", Time: base},
+				{Symbol: "AAPL", Interval: "1week", Time: base},
+			},
+			wantLen: 2,
+		},
+		{
+			name:    "空スライスは空スライスを返す",
+			input:   []entity.Candle{},
+			wantLen: 0,
+		},
+		{
+			name:    "元スライスを変更しない（backing array 非共有）",
+			input:   []entity.Candle{
+				{Symbol: "AAPL", Interval: "1day", Time: base, Close: 100},
+				{Symbol: "AAPL", Interval: "1day", Time: base, Close: 200}, // 重複
+				{Symbol: "AAPL", Interval: "1day", Time: base.AddDate(0, 0, 1), Close: 300},
+			},
+			wantLen: 2,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// 元スライスのコピーを保持して変更されていないか確認
+			original := make([]entity.Candle, len(tc.input))
+			copy(original, tc.input)
+
+			got := dedupCandles(tc.input)
+
+			if len(got) != tc.wantLen {
+				t.Errorf("len=%d, want %d", len(got), tc.wantLen)
+			}
+
+			// 元スライスが変更されていないことを確認
+			for i, c := range tc.input {
+				if c != original[i] {
+					t.Errorf("input[%d] was modified: got %+v, want %+v", i, c, original[i])
+				}
+			}
+
+			// 出力に重複がないことを確認
+			seen := make(map[string]struct{})
+			for _, c := range got {
+				key := fmt.Sprintf("%s|%s|%d", c.Symbol, c.Interval, c.Time.Unix())
+				if _, exists := seen[key]; exists {
+					t.Errorf("duplicate key in output: %s", key)
+				}
+				seen[key] = struct{}{}
+			}
+		})
+	}
 }
 
 // TestIngestUsecase_ingestOne はingestOneメソッドのデータ取得・保存処理をテストします。
