@@ -187,38 +187,46 @@ func TestConfig_Validate_EmptyPasswordAllowed(t *testing.T) {
 }
 
 // TestConfig_Validate_MissingRequired は必須項目が欠けている場合にエラーが返ることを検証します。
+// wantVars: エラーメッセージに含まれるべき変数名
+// notWantVars: エラーメッセージに含まれてはいけない変数名
 func TestConfig_Validate_MissingRequired(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		cfg      Config
-		wantVars []string
+		name        string
+		cfg         Config
+		wantVars    []string
+		notWantVars []string
 	}{
 		{
-			name:     "all empty (TCP)",
-			cfg:      Config{},
-			wantVars: []string{"DB_USER", "DB_NAME", "DB_HOST", "DB_PORT"},
+			name:        "all empty (TCP)",
+			cfg:         Config{},
+			wantVars:    []string{"DB_USER", "DB_NAME", "DB_HOST", "DB_PORT"},
+			notWantVars: nil,
 		},
 		{
-			name:     "missing user",
-			cfg:      Config{Name: "d", Host: "h", Port: "5432"},
-			wantVars: []string{"DB_USER"},
+			name:        "missing user",
+			cfg:         Config{Name: "d", Host: "h", Port: "5432"},
+			wantVars:    []string{"DB_USER"},
+			notWantVars: []string{"DB_NAME", "DB_HOST", "DB_PORT"},
 		},
 		{
-			name:     "missing name",
-			cfg:      Config{User: "u", Host: "h", Port: "5432"},
-			wantVars: []string{"DB_NAME"},
+			name:        "missing name",
+			cfg:         Config{User: "u", Host: "h", Port: "5432"},
+			wantVars:    []string{"DB_NAME"},
+			notWantVars: []string{"DB_USER", "DB_HOST", "DB_PORT"},
 		},
 		{
-			name:     "missing host/port (TCP)",
-			cfg:      Config{User: "u", Name: "d"},
-			wantVars: []string{"DB_HOST", "DB_PORT"},
+			name:        "missing host/port (TCP)",
+			cfg:         Config{User: "u", Name: "d"},
+			wantVars:    []string{"DB_HOST", "DB_PORT"},
+			notWantVars: []string{"DB_USER", "DB_NAME"},
 		},
 		{
-			name:     "CloudSQL missing user",
-			cfg:      Config{Name: "d", InstanceName: "proj:reg:inst"},
-			wantVars: []string{"DB_USER"},
+			name:        "CloudSQL missing user",
+			cfg:         Config{Name: "d", InstanceName: "proj:reg:inst"},
+			wantVars:    []string{"DB_USER"},
+			notWantVars: []string{"DB_NAME", "DB_HOST", "DB_PORT"},
 		},
 	}
 
@@ -234,7 +242,33 @@ func TestConfig_Validate_MissingRequired(t *testing.T) {
 					t.Errorf("expected error to mention %q, got %q", v, err.Error())
 				}
 			}
+			for _, v := range tt.notWantVars {
+				if strings.Contains(err.Error(), v) {
+					t.Errorf("error should not mention %q, got %q", v, err.Error())
+				}
+			}
 		})
+	}
+}
+
+// TestConfig_Validate_WhitespaceOnly は空白文字のみの値が未設定と同じく弾かれることを検証します。
+func TestConfig_Validate_WhitespaceOnly(t *testing.T) {
+	t.Parallel()
+
+	cfg := Config{
+		User: "   ",
+		Name: "\t",
+		Host: "h",
+		Port: "5432",
+	}
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	for _, v := range []string{"DB_USER", "DB_NAME"} {
+		if !strings.Contains(err.Error(), v) {
+			t.Errorf("expected error to mention %q, got %q", v, err.Error())
+		}
 	}
 }
 

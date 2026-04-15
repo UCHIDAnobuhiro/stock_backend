@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"gorm.io/driver/postgres"
@@ -40,22 +41,22 @@ func LoadConfigFromEnv() Config {
 // Password は空でも許容します（ローカル開発で空パスワード運用を想定）。
 func (c Config) Validate() error {
 	var missing []string
-	if c.User == "" {
+	if strings.TrimSpace(c.User) == "" {
 		missing = append(missing, "DB_USER")
 	}
-	if c.Name == "" {
+	if strings.TrimSpace(c.Name) == "" {
 		missing = append(missing, "DB_NAME")
 	}
-	if c.InstanceName == "" {
-		if c.Host == "" {
+	if strings.TrimSpace(c.InstanceName) == "" {
+		if strings.TrimSpace(c.Host) == "" {
 			missing = append(missing, "DB_HOST")
 		}
-		if c.Port == "" {
+		if strings.TrimSpace(c.Port) == "" {
 			missing = append(missing, "DB_PORT")
 		}
 	}
 	if len(missing) > 0 {
-		return fmt.Errorf("missing required environment variables: %v", missing)
+		return fmt.Errorf("missing required environment variables: %s", strings.Join(missing, ", "))
 	}
 	return nil
 }
@@ -127,6 +128,10 @@ func OpenDB() *gorm.DB {
 	if err := cfg.Validate(); err != nil {
 		slog.Error("invalid DB config", "error", err)
 		os.Exit(1)
+	}
+	if cfg.InstanceName != "" && (cfg.Host != "" || cfg.Port != "") {
+		slog.Warn("DB_HOST and DB_PORT are ignored when INSTANCE_CONNECTION_NAME is set",
+			"host", cfg.Host, "port", cfg.Port, "instance", cfg.InstanceName)
 	}
 	dsn := BuildDSN(cfg)
 
