@@ -1,3 +1,5 @@
+TRUNCATE TABLE symbols CASCADE;
+
 INSERT INTO symbols (code, name, market) VALUES
 -- 時価総額上位（メガキャップ）
 ('NVDA', 'NVIDIA Corp', 'NASDAQ'),
@@ -122,7 +124,6 @@ INSERT INTO symbols (code, name, market) VALUES
 ('MA', 'Mastercard Inc.', 'NYSE'),
 ('AXP', 'American Express Co.', 'NYSE'),
 ('COF', 'Capital One Financial Corp.', 'NYSE'),
-('DFS', 'Discover Financial Services', 'NYSE'),
 ('SYF', 'Synchrony Financial', 'NYSE'),
 -- 金融 - 資産運用・証券
 ('GS', 'Goldman Sachs Group Inc.', 'NYSE'),
@@ -240,8 +241,6 @@ INSERT INTO symbols (code, name, market) VALUES
 ('EOG', 'EOG Resources Inc.', 'NYSE'),
 ('DVN', 'Devon Energy Corp.', 'NYSE'),
 ('OXY', 'Occidental Petroleum Corp.', 'NYSE'),
-('HES', 'Hess Corp.', 'NYSE'),
-('MRO', 'Marathon Oil Corp.', 'NYSE'),
 ('CTRA', 'Coterra Energy Inc.', 'NYSE'),
 ('FANG', 'Diamondback Energy Inc.', 'NASDAQ'),
 ('EQT', 'EQT Corp.', 'NYSE'),
@@ -419,7 +418,6 @@ INSERT INTO symbols (code, name, market) VALUES
 ('DIS', 'Walt Disney Co.', 'NYSE'),
 ('CMCSA', 'Comcast Corp.', 'NASDAQ'),
 ('WBD', 'Warner Bros. Discovery Inc.', 'NASDAQ'),
-('PARA', 'Paramount Global', 'NASDAQ'),
 ('FOXA', 'Fox Corp. (Class A)', 'NASDAQ'),
 ('FOX', 'Fox Corp. (Class B)', 'NASDAQ'),
 ('LYV', 'Live Nation Entertainment Inc.', 'NYSE'),
@@ -431,7 +429,6 @@ INSERT INTO symbols (code, name, market) VALUES
 -- 通信サービス - 広告・デジタル
 ('TTD', 'Trade Desk Inc.', 'NASDAQ'),
 ('OMC', 'Omnicom Group Inc.', 'NYSE'),
-('IPG', 'Interpublic Group of Companies Inc.', 'NYSE'),
 ('MTCH', 'Match Group Inc.', 'NASDAQ')
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
@@ -449,7 +446,6 @@ INSERT INTO symbols (code, name, market) VALUES
 ('TER', 'Teradyne Inc.', 'NASDAQ'),
 ('TDY', 'Teledyne Technologies Inc.', 'NYSE'),
 -- 情報技術 - ソフトウェア・ネットワーク追加
-('ANSS', 'ANSYS Inc.', 'NASDAQ'),
 ('FFIV', 'F5 Inc.', 'NASDAQ'),
 ('AKAM', 'Akamai Technologies Inc.', 'NASDAQ'),
 ('VRSN', 'VeriSign Inc.', 'NASDAQ'),
@@ -487,7 +483,6 @@ INSERT INTO symbols (code, name, market) VALUES
 ('ALLY', 'Ally Financial Inc.', 'NYSE'),
 ('FHN', 'First Horizon Corp.', 'NYSE'),
 ('ZION', 'Zions Bancorporation N.A.', 'NASDAQ'),
-('CMA', 'Comerica Inc.', 'NYSE'),
 -- 一般消費財 - 小売追加
 ('DG', 'Dollar General Corp.', 'NYSE'),
 ('DLTR', 'Dollar Tree Inc.', 'NASDAQ'),
@@ -510,7 +505,6 @@ INSERT INTO symbols (code, name, market) VALUES
 -- 生活必需品追加
 ('CLX', 'Clorox Co.', 'NYSE'),
 ('KMB', 'Kimberly-Clark Corp.', 'NYSE'),
-('WBA', 'Walgreens Boots Alliance Inc.', 'NASDAQ'),
 ('REYN', 'Reynolds Consumer Products Inc.', 'NASDAQ'),
 -- エネルギー - パイプライン追加
 ('OKE', 'ONEOK Inc.', 'NYSE'),
@@ -520,13 +514,11 @@ INSERT INTO symbols (code, name, market) VALUES
 ('NOV', 'NOV Inc.', 'NYSE'),
 -- 素材追加
 ('OLN', 'Olin Corp.', 'NYSE'),
-('BLL', 'Ball Corp.', 'NYSE'),
 ('OC', 'Owens Corning', 'NYSE'),
 ('MAS', 'Masco Corp.', 'NYSE'),
 ('FBIN', 'Fortune Brands Innovations Inc.', 'NYSE'),
 ('TREX', 'Trex Co. Inc.', 'NYSE'),
 ('ATI', 'ATI Inc.', 'NYSE'),
-('AZEK', 'AZEK Co. Inc.', 'NYSE'),
 ('BLD', 'TopBuild Corp.', 'NYSE'),
 -- 資本財 - 産業機械追加
 ('PNR', 'Pentair plc', 'NYSE'),
