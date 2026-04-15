@@ -80,7 +80,23 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol string, outputsiz
 	all = append(all, weekly...)
 	all = append(all, monthly...)
 
-	return iu.candle.UpsertBatch(ctx, all)
+	return iu.candle.UpsertBatch(ctx, dedupCandles(all))
+}
+
+// dedupCandles は (symbol, interval, time) の組み合わせが重複するエントリを除去します。
+// TwelveData API が重複タイムスタンプを返した場合に ON CONFLICT DO UPDATE が
+// 同一バッチ内で同じ行を2回更新しようとする PostgreSQL エラー (SQLSTATE 21000) を防ぎます。
+func dedupCandles(candles []entity.Candle) []entity.Candle {
+	seen := make(map[string]struct{}, len(candles))
+	out := candles[:0]
+	for _, c := range candles {
+		key := c.Symbol + "|" + c.Interval + "|" + c.Time.String()
+		if _, ok := seen[key]; !ok {
+			seen[key] = struct{}{}
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 // IngestAll はアクティブな全銘柄の時系列データを取得し、
