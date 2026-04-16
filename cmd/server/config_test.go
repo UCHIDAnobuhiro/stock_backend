@@ -69,8 +69,8 @@ func TestParseCORSOrigins(t *testing.T) {
 	}
 }
 
-// TestParseBoolEnv は raw の bool パースとフォールバック動作を検証します。
-func TestParseBoolEnv(t *testing.T) {
+// TestParseBoolString は raw の bool パースとフォールバック動作を検証します。
+func TestParseBoolString(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -142,9 +142,9 @@ func TestParseBoolEnv(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotValue, gotOK := parseBoolEnv(tt.raw, tt.fallback)
+			gotValue, gotOK := parseBoolString(tt.raw, tt.fallback)
 			if gotValue != tt.wantValue || gotOK != tt.wantOK {
-				t.Errorf("parseBoolEnv(%q, %v) = (%v, %v), want (%v, %v)",
+				t.Errorf("parseBoolString(%q, %v) = (%v, %v), want (%v, %v)",
 					tt.raw, tt.fallback, gotValue, gotOK, tt.wantValue, tt.wantOK)
 			}
 		})

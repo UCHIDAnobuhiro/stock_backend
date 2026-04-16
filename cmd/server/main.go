@@ -136,7 +136,8 @@ func main() {
 
 	// COOKIE_SECURE を優先し、未設定なら APP_ENV=production をフォールバックとして使用
 	cookieSecureRaw := os.Getenv("COOKIE_SECURE")
-	secureCookie, ok := parseBoolEnv(cookieSecureRaw, os.Getenv("APP_ENV") == "production")
+	defaultSecure := os.Getenv("APP_ENV") == "production"
+	secureCookie, ok := parseBoolString(cookieSecureRaw, defaultSecure)
 	if !ok {
 		slog.Warn("invalid COOKIE_SECURE value, falling back to default", "value", cookieSecureRaw, "default", secureCookie)
 	}
