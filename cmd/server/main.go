@@ -4,12 +4,9 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	redisv9 "github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 
 	"stock_backend/internal/app/router"
 	authadapters "stock_backend/internal/feature/auth/adapters"
@@ -138,13 +135,10 @@ func main() {
 	watchlistUC := watchlistusecase.NewWatchlistUsecase(watchlistRepo, symbolRepo)
 
 	// COOKIE_SECURE を優先し、未設定なら APP_ENV=production をフォールバックとして使用
-	secureCookie := os.Getenv("APP_ENV") == "production"
-	if raw := os.Getenv("COOKIE_SECURE"); raw != "" {
-		if parsed, err := strconv.ParseBool(raw); err == nil {
-			secureCookie = parsed
-		} else {
-			slog.Warn("invalid COOKIE_SECURE value, falling back to default", "value", raw, "default", secureCookie)
-		}
+	cookieSecureRaw := os.Getenv("COOKIE_SECURE")
+	secureCookie, ok := parseBoolEnv(cookieSecureRaw, os.Getenv("APP_ENV") == "production")
+	if !ok {
+		slog.Warn("invalid COOKIE_SECURE value, falling back to default", "value", cookieSecureRaw, "default", secureCookie)
 	}
 
 	// ハンドラー
@@ -155,15 +149,9 @@ func main() {
 	watchlistH := watchlisthandler.NewWatchlistHandler(watchlistUC)
 
 	// CORS許可オリジンを環境変数から読み込む（デフォルト: http://localhost:3000）
-	corsOrigins := []string{"http://localhost:3000"}
-	if raw := os.Getenv("CORS_ALLOWED_ORIGINS"); raw != "" {
-		parts := strings.Split(raw, ",")
-		corsOrigins = make([]string, 0, len(parts))
-		for _, p := range parts {
-			if trimmed := strings.TrimSpace(p); trimmed != "" {
-				corsOrigins = append(corsOrigins, trimmed)
-			}
-		}
+	corsOrigins := parseCORSOrigins(os.Getenv("CORS_ALLOWED_ORIGINS"))
+	if corsOrigins == nil {
+		corsOrigins = []string{"http://localhost:3000"}
 	}
 
 	// ルーター作成
@@ -174,24 +162,4 @@ func main() {
 		slog.Error("Server failed to start", "error", err)
 		os.Exit(1)
 	}
-}
-
-// addWatchlistFKConstraints はwatchlistsテーブルのFK制約を冪等に追加します。
-// GORMのAutoMigrateはFK制約を自動生成しないため、マイグレーション後に明示的に実行します。
-func addWatchlistFKConstraints(db *gorm.DB) error {
-	if !db.Migrator().HasConstraint(&watchlistentity.UserSymbol{}, "fk_watchlists_user") {
-		if err := db.Exec(`ALTER TABLE watchlists ADD CONSTRAINT fk_watchlists_user
-			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`).Error; err != nil {
-			return err
-		}
-		slog.Info("added FK constraint: fk_watchlists_user")
-	}
-	if !db.Migrator().HasConstraint(&watchlistentity.UserSymbol{}, "fk_watchlists_symbol") {
-		if err := db.Exec(`ALTER TABLE watchlists ADD CONSTRAINT fk_watchlists_symbol
-			FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT`).Error; err != nil {
-			return err
-		}
-		slog.Info("added FK constraint: fk_watchlists_symbol")
-	}
-	return nil
 }

@@ -116,7 +116,10 @@ feature/<name>/
    - Repositories → Usecases → Handlers のワイヤリングは主に main.go で直接実施
    - `internal/app/di/` には一部のファクトリ関数を配置（例: MarketRepositoryの生成）
 4. **2つのエントリーポイント**:
-   - `cmd/server/main.go`: REST APIサーバー（ポート8080）
+   - `cmd/server/`: REST APIサーバー（ポート8080）
+     - `main.go`: 起動・DIワイヤリング
+     - `config.go`: 環境変数パース（`CORS_ALLOWED_ORIGINS` / `COOKIE_SECURE` 等の純粋関数ヘルパー）
+     - `migrations.go`: `AutoMigrate` 後に冪等に実行するFK制約追加処理
    - `cmd/ingest/main.go`: TwelveData APIから株価データを取得するバッチジョブ
 
 ### 外部依存
