@@ -16,6 +16,11 @@ import (
 // usecaseのMaxOutputSizeと合わせています（依存ルール上usecaseをimport不可のためここで定義）。
 const maxCacheOutputSize = 5000
 
+// DefaultCacheTTL はingestの連続失敗時に古いデータが残り続けないためのセーフティネットTTL。
+// 通常運用ではingestのUpsertBatchによりキャッシュが日次で上書きされるため、
+// この値はフォールバックとしてのみ機能する。
+const DefaultCacheTTL = 7 * 24 * time.Hour
+
 // candleRepository はCachingCandleRepositoryが内部で必要とする読み書きインターフェースです。
 type candleRepository interface {
 	Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
