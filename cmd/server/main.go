@@ -8,6 +8,7 @@ import (
 
 	redisv9 "github.com/redis/go-redis/v9"
 
+	"stock_backend/internal/app/config"
 	"stock_backend/internal/app/router"
 	authadapters "stock_backend/internal/feature/auth/adapters"
 	authentity "stock_backend/internal/feature/auth/domain/entity"
@@ -61,7 +62,7 @@ func main() {
 			slog.Error("failed to migrate", "error", err)
 			os.Exit(1)
 		}
-		if err := addWatchlistFKConstraints(db); err != nil {
+		if err := watchlistadapters.AddFKConstraints(db); err != nil {
 			slog.Error("failed to add watchlist FK constraints", "error", err)
 			os.Exit(1)
 		}
@@ -137,7 +138,7 @@ func main() {
 	// COOKIE_SECURE を優先し、未設定なら APP_ENV=production をフォールバックとして使用
 	cookieSecureRaw := os.Getenv("COOKIE_SECURE")
 	defaultSecure := os.Getenv("APP_ENV") == "production"
-	secureCookie, ok := parseBoolString(cookieSecureRaw, defaultSecure)
+	secureCookie, ok := config.ParseBoolString(cookieSecureRaw, defaultSecure)
 	if !ok {
 		slog.Warn("invalid COOKIE_SECURE value, falling back to default", "value", cookieSecureRaw, "default", secureCookie)
 	}
@@ -150,7 +151,7 @@ func main() {
 	watchlistH := watchlisthandler.NewWatchlistHandler(watchlistUC)
 
 	// CORS許可オリジンを環境変数から読み込む（デフォルト: http://localhost:3000）
-	corsOrigins := parseCORSOrigins(os.Getenv("CORS_ALLOWED_ORIGINS"))
+	corsOrigins := config.ParseCORSOrigins(os.Getenv("CORS_ALLOWED_ORIGINS"))
 	if corsOrigins == nil {
 		corsOrigins = []string{"http://localhost:3000"}
 	}

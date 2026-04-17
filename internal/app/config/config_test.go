@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"reflect"
@@ -61,9 +61,9 @@ func TestParseCORSOrigins(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := parseCORSOrigins(tt.raw)
+			got := ParseCORSOrigins(tt.raw)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("parseCORSOrigins(%q) = %v, want %v", tt.raw, got, tt.want)
+				t.Errorf("ParseCORSOrigins(%q) = %v, want %v", tt.raw, got, tt.want)
 			}
 		})
 	}
@@ -142,9 +142,9 @@ func TestParseBoolString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotValue, gotOK := parseBoolString(tt.raw, tt.fallback)
+			gotValue, gotOK := ParseBoolString(tt.raw, tt.fallback)
 			if gotValue != tt.wantValue || gotOK != tt.wantOK {
-				t.Errorf("parseBoolString(%q, %v) = (%v, %v), want (%v, %v)",
+				t.Errorf("ParseBoolString(%q, %v) = (%v, %v), want (%v, %v)",
 					tt.raw, tt.fallback, gotValue, gotOK, tt.wantValue, tt.wantOK)
 			}
 		})
