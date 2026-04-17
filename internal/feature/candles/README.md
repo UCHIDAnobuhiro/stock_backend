@@ -484,8 +484,8 @@ go test ./internal/feature/candles/... -v -race -cover
 
 | 設定 | 値 | 説明 |
 |------|-----|------|
-| キー形式 | `candles:{symbol}:{interval}:{outputsize}` | クエリごとの一意なキー |
-| 本番TTL | 翌朝8時（JST）まで | `platform/cache.TimeUntilNext8AM()`で動的計算 |
+| キー形式 | `candles:{symbol}:{interval}` | symbol+interval単位でキャッシュ（全データ最大5000件を保存） |
+| 本番TTL | 7日 | `candlesadapters.DefaultCacheTTL`。ingest連続失敗時のセーフティネット、通常は日次ingestで上書き |
 | デフォルトTTL | 5分 | コンストラクタにttl=0を渡した場合のフォールバック |
 | 名前空間 | `candles` | 分離のためのキープレフィックス |
 

@@ -29,7 +29,6 @@ import (
 	watchlistentity "stock_backend/internal/feature/watchlist/domain/entity"
 	watchlisthandler "stock_backend/internal/feature/watchlist/transport/handler"
 	watchlistusecase "stock_backend/internal/feature/watchlist/usecase"
-	"stock_backend/internal/platform/cache"
 	infradb "stock_backend/internal/platform/db"
 	jwtmw "stock_backend/internal/platform/jwt"
 	"stock_backend/internal/platform/ratelimit"
@@ -88,9 +87,8 @@ func main() {
 	candleRepo := candlesadapters.NewCandleRepository(db)
 	watchlistRepo := watchlistadapters.NewWatchlistRepository(db)
 
-	// Redisキャッシュでラップ
-	ttl := cache.TimeUntilNext8AM()
-	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, ttl, candleRepo, "candles")
+	// Redisキャッシュでラップ（TTLはingest連続失敗時のセーフティネット、通常は日次ingestで上書き）
+	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, candlesadapters.DefaultCacheTTL, candleRepo, "candles")
 
 	// JWTジェネレータ
 	jwtSecret := os.Getenv(jwtmw.EnvKeyJWTSecret)

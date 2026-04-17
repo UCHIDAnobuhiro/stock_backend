@@ -124,7 +124,6 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │           └── handler/    # HTTPハンドラー
 │   │
 │   ├── platform/               # インフラストラクチャ層（外部依存）
-│   │   ├── cache/              # キャッシュユーティリティ（TimeUntilNext8AM等）
 │   │   ├── csrf/               # CSRF保護（Double Submit Cookieパターン）
 │   │   ├── db/                 # データベース接続初期化
 │   │   ├── http/               # HTTPクライアント設定

@@ -41,8 +41,6 @@ linters:
               desc: "domain/usecase must not depend on API types (transport layer only)"
             - pkg: "stock_backend/internal/platform/csrf"
               desc: "domain/usecase must not depend on platform packages"
-            - pkg: "stock_backend/internal/platform/cache"
-              desc: "domain/usecase must not depend on platform packages"
             - pkg: "stock_backend/internal/platform/db"
               desc: "domain/usecase must not depend on platform packages"
             - pkg: "stock_backend/internal/platform/http"

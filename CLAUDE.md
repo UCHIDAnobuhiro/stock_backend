@@ -63,7 +63,6 @@ internal/
 │   ├── symbollist/
 │   └── watchlist/
 ├── platform/         # インフラストラクチャ層（旧 "infrastructure"）
-│   ├── cache/        # キャッシュユーティリティ（TimeUntilNext8AM等）
 │   ├── csrf/         # CSRF保護（Double Submit Cookieパターン）
 │   ├── db/           # データベース初期化
 │   ├── http/         # HTTPクライアント設定 + ヘルスチェックハンドラー
