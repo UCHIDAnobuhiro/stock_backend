@@ -486,6 +486,7 @@ go test ./internal/feature/candles/... -v -race -cover
 |------|-----|------|
 | キー形式 | `candles:{symbol}:{interval}` | symbol+interval単位でキャッシュ（全データ最大5000件を保存） |
 | 本番TTL | 7日 | `candlesadapters.DefaultCacheTTL`。ingest連続失敗時のセーフティネット、通常は日次ingestで上書き |
+| TTL上書き | `CANDLES_CACHE_TTL_HOURS` env | 時間単位の正の整数を指定するとデフォルトを上書き。不正値（0以下・非数値）は警告ログを出してデフォルトにフォールバック |
 | デフォルトTTL | 5分 | コンストラクタにttl=0を渡した場合のフォールバック |
 | 名前空間 | `candles` | 分離のためのキープレフィックス |
 

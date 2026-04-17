@@ -88,7 +88,12 @@ func main() {
 	watchlistRepo := watchlistadapters.NewWatchlistRepository(db)
 
 	// Redisキャッシュでラップ（TTLはingest連続失敗時のセーフティネット、通常は日次ingestで上書き）
-	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, candlesadapters.DefaultCacheTTL, candleRepo, "candles")
+	rawCacheTTL := os.Getenv("CANDLES_CACHE_TTL_HOURS")
+	cacheTTL, ok := config.ParseDurationHours(rawCacheTTL, candlesadapters.DefaultCacheTTL)
+	if !ok {
+		slog.Warn("invalid CANDLES_CACHE_TTL_HOURS, falling back to default", "raw", rawCacheTTL)
+	}
+	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, cacheTTL, candleRepo, "candles")
 
 	// JWTジェネレータ
 	jwtSecret := os.Getenv(jwtmw.EnvKeyJWTSecret)

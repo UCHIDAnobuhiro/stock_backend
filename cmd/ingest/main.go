@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	redisv9 "github.com/redis/go-redis/v9"
+
+	"stock_backend/internal/app/config"
 	"stock_backend/internal/app/di"
 	candlesadapters "stock_backend/internal/feature/candles/adapters"
 	candlesusecase "stock_backend/internal/feature/candles/usecase"
@@ -29,8 +32,7 @@ func main() {
 	rateLimiter := ratelimiter.NewRateLimiter(rateLimitPerMinute, time.Minute)
 
 	// Redis接続（ベストエフォート: 接続失敗時はキャッシュウォームアップなしで続行）
-	var rdb interface{ Close() error }
-	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(nil, candlesadapters.DefaultCacheTTL, candleRepo, "candles")
+	var rdb *redisv9.Client
 	if tmp, err := infraredis.NewRedisClient(); err != nil {
 		slog.Warn("Redis unavailable, cache warm-up disabled", "error", err)
 	} else {
@@ -40,8 +42,15 @@ func main() {
 				slog.Error("Failed to close Redis client", "error", err)
 			}
 		}()
-		cachedCandleRepo = candlesadapters.NewCachingCandleRepository(tmp, candlesadapters.DefaultCacheTTL, candleRepo, "candles")
 	}
+
+	// TTLはingest連続失敗時のセーフティネット、通常は UpsertBatch で日次上書き
+	rawCacheTTL := os.Getenv("CANDLES_CACHE_TTL_HOURS")
+	cacheTTL, ok := config.ParseDurationHours(rawCacheTTL, candlesadapters.DefaultCacheTTL)
+	if !ok {
+		slog.Warn("invalid CANDLES_CACHE_TTL_HOURS, falling back to default", "raw", rawCacheTTL)
+	}
+	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, cacheTTL, candleRepo, "candles")
 
 	uc := candlesusecase.NewIngestUsecase(marketRepo, cachedCandleRepo, symbolRepo, rateLimiter)
 
