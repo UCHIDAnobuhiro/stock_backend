@@ -3,7 +3,6 @@ package config
 import (
 	"reflect"
 	"testing"
-	"time"
 )
 
 // TestParseCORSOrigins は CORS_ALLOWED_ORIGINS env の生文字列パースが
@@ -146,69 +145,6 @@ func TestParseBoolString(t *testing.T) {
 			gotValue, gotOK := ParseBoolString(tt.raw, tt.fallback)
 			if gotValue != tt.wantValue || gotOK != tt.wantOK {
 				t.Errorf("ParseBoolString(%q, %v) = (%v, %v), want (%v, %v)",
-					tt.raw, tt.fallback, gotValue, gotOK, tt.wantValue, tt.wantOK)
-			}
-		})
-	}
-}
-
-// TestParseDurationHours は raw の時間整数パースとフォールバック動作を検証します。
-func TestParseDurationHours(t *testing.T) {
-	t.Parallel()
-
-	fallback := 7 * 24 * time.Hour
-
-	tests := []struct {
-		name      string
-		raw       string
-		fallback  time.Duration
-		wantValue time.Duration
-		wantOK    bool
-	}{
-		{
-			name:      "空文字は (fallback, true)",
-			raw:       "",
-			fallback:  fallback,
-			wantValue: fallback,
-			wantOK:    true,
-		},
-		{
-			name:      "正の整数は時間として解釈される",
-			raw:       "24",
-			fallback:  fallback,
-			wantValue: 24 * time.Hour,
-			wantOK:    true,
-		},
-		{
-			name:      "0 は (fallback, false)",
-			raw:       "0",
-			fallback:  fallback,
-			wantValue: fallback,
-			wantOK:    false,
-		},
-		{
-			name:      "負値は (fallback, false)",
-			raw:       "-1",
-			fallback:  fallback,
-			wantValue: fallback,
-			wantOK:    false,
-		},
-		{
-			name:      "非数値文字列は (fallback, false)",
-			raw:       "abc",
-			fallback:  fallback,
-			wantValue: fallback,
-			wantOK:    false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			gotValue, gotOK := ParseDurationHours(tt.raw, tt.fallback)
-			if gotValue != tt.wantValue || gotOK != tt.wantOK {
-				t.Errorf("ParseDurationHours(%q, %v) = (%v, %v), want (%v, %v)",
 					tt.raw, tt.fallback, gotValue, gotOK, tt.wantValue, tt.wantOK)
 			}
 		})

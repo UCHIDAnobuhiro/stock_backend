@@ -10,7 +10,6 @@ import (
 
 	redisv9 "github.com/redis/go-redis/v9"
 
-	"stock_backend/internal/app/config"
 	"stock_backend/internal/app/di"
 	candlesadapters "stock_backend/internal/feature/candles/adapters"
 	candlesusecase "stock_backend/internal/feature/candles/usecase"
@@ -45,12 +44,7 @@ func main() {
 	}
 
 	// TTLはingest連続失敗時のセーフティネット、通常は UpsertBatch で日次上書き
-	rawCacheTTL := os.Getenv("CANDLES_CACHE_TTL_HOURS")
-	cacheTTL, ok := config.ParseDurationHours(rawCacheTTL, candlesadapters.DefaultCacheTTL)
-	if !ok {
-		slog.Warn("invalid CANDLES_CACHE_TTL_HOURS, falling back to default", "raw", rawCacheTTL)
-	}
-	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, cacheTTL, candleRepo, "candles")
+	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, candlesadapters.DefaultCacheTTL, candleRepo, "candles")
 
 	uc := candlesusecase.NewIngestUsecase(marketRepo, cachedCandleRepo, symbolRepo, rateLimiter)
 

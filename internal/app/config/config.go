@@ -5,7 +5,6 @@ package config
 import (
 	"strconv"
 	"strings"
-	"time"
 )
 
 // ParseCORSOrigins は CORS_ALLOWED_ORIGINS env の生文字列を、カンマ区切りで
@@ -43,21 +42,4 @@ func ParseBoolString(raw string, fallback bool) (value bool, ok bool) {
 		return fallback, false
 	}
 	return parsed, true
-}
-
-// ParseDurationHours は raw を時間単位の整数として解釈し time.Duration を返す。
-//   - raw が空文字の場合は (fallback, true) を返す（未設定は正常系扱い）。
-//   - 正の整数として解釈できる場合は (value * time.Hour, true) を返す。
-//   - 不正値または 0 以下の場合は (fallback, false) を返す。呼び出し側で警告ログなどの判断に利用する。
-//
-// env を直接読まず純粋な文字列を受け取るため、呼び出し側は os.Getenv 等で取得した値を渡す。
-func ParseDurationHours(raw string, fallback time.Duration) (value time.Duration, ok bool) {
-	if raw == "" {
-		return fallback, true
-	}
-	n, err := strconv.Atoi(raw)
-	if err != nil || n <= 0 {
-		return fallback, false
-	}
-	return time.Duration(n) * time.Hour, true
 }
