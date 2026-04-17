@@ -1,4 +1,4 @@
-package main
+package adapters
 
 import (
 	"log/slog"
@@ -8,9 +8,9 @@ import (
 	watchlistentity "stock_backend/internal/feature/watchlist/domain/entity"
 )
 
-// addWatchlistFKConstraints はwatchlistsテーブルのFK制約を冪等に追加します。
+// AddFKConstraints はwatchlistsテーブルのFK制約を冪等に追加します。
 // GORMのAutoMigrateはFK制約を自動生成しないため、マイグレーション後に明示的に実行します。
-func addWatchlistFKConstraints(db *gorm.DB) error {
+func AddFKConstraints(db *gorm.DB) error {
 	if !db.Migrator().HasConstraint(&watchlistentity.UserSymbol{}, "fk_watchlists_user") {
 		if err := db.Exec(`ALTER TABLE watchlists ADD CONSTRAINT fk_watchlists_user
 			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`).Error; err != nil {
