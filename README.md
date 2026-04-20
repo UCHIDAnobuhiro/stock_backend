@@ -373,6 +373,15 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p 
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock --profile on-demand run --rm tbls diff --config /work/.tbls.yml
 ```
 
+GCP 認証情報を持たない環境などで `backend-dev` の起動が難しい場合は、手順 1) を以下の軽量バイナリ (`cmd/migrate`) に置き換えられます。
+
+```bash
+# 1') db だけ起動して cmd/migrate でスキーマを反映（GCP 認証不要）
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock up -d db
+DB_HOST=localhost DB_PORT=5432 DB_USER=appuser DB_PASSWORD=apppass DB_NAME=app \
+  go run ./cmd/migrate
+```
+
 CI の `Schema Doc Drift` ジョブでスキーマと `docs/schema/` の乖離を検出するため、スキーマを変更した PR では必ず再生成してコミットしてください。
 
 ### 補足

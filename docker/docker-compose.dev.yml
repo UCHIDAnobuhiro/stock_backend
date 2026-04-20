@@ -89,7 +89,8 @@ services:
     restart: unless-stopped
 
   tbls:
-    image: ghcr.io/k1low/tbls:latest
+    # CI の k1LoW/setup-tbls がインストールするバージョンと揃えること
+    image: ghcr.io/k1low/tbls:v1.94.4
     container_name: stock-tbls
     profiles: ["on-demand"]
     depends_on:
