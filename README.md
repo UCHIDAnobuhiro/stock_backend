@@ -71,6 +71,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │
 ├── cmd/
 │   ├── ingest/                 # データ取得・取り込み（バッチジョブ）
+│   ├── migrate/                # スキーマのマイグレーション専用バイナリ（CI / Cloud Run pre-deploy 用）
 │   └── server/                 # メインエントリーポイント（main.go）
 │
 ├── internal/
@@ -353,6 +354,35 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p 
 ```bash
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock run --rm --no-deps ingest
 ```
+
+### ER 図・テーブル定義書の生成（tbls）
+
+スキーマは [tbls](https://github.com/k1LoW/tbls) で稼働中の PostgreSQL から自動生成されます。
+生成物は [docs/schema/](docs/schema/) 配下にコミットされており、GitHub 上で Mermaid ER 図としてレンダリングされます。
+
+エンティティ（`internal/feature/**/domain/entity/` や GORM タグ）を変更したときは以下の手順で再生成します。
+
+```bash
+# 1) dev コンテナを起動してマイグレーションを反映
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock up -d backend-dev
+
+# 2) ER 図・テーブル定義書を再生成（docs/schema/ を上書き）
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock --profile on-demand run --rm tbls doc --config /work/.tbls.yml --force
+
+# 3) 差分が残っていないか確認（CI でも同じ内容をチェックしている）
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock --profile on-demand run --rm tbls diff --config /work/.tbls.yml
+```
+
+GCP 認証情報を持たない環境などで `backend-dev` の起動が難しい場合は、手順 1) を以下の軽量バイナリ (`cmd/migrate`) に置き換えられます。
+
+```bash
+# 1') db だけ起動して cmd/migrate でスキーマを反映（GCP 認証不要）
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock up -d db
+DB_HOST=localhost DB_PORT=5432 DB_USER=appuser DB_PASSWORD=apppass DB_NAME=app \
+  go run ./cmd/migrate
+```
+
+CI の `Schema Doc Drift` ジョブでスキーマと `docs/schema/` の乖離を検出するため、スキーマを変更した PR では必ず再生成してコミットしてください。
 
 ### 補足
 

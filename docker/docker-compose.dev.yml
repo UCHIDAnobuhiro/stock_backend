@@ -88,6 +88,20 @@ services:
       - ../api/openapi.yaml:/app/openapi.yaml:ro
     restart: unless-stopped
 
+  tbls:
+    # CI の k1LoW/setup-tbls がインストールするバージョンと揃えること
+    image: ghcr.io/k1low/tbls:v1.94.4
+    container_name: stock-tbls
+    profiles: ["on-demand"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TBLS_DSN: postgres://appuser:apppass@db:5432/app?sslmode=disable
+    working_dir: /work
+    volumes:
+      - ..:/work
+
 volumes:
   postgres_data:
   redis_data:

@@ -1,0 +1,371 @@
+{
+  "name": "app",
+  "tables": [
+    {
+      "name": "public.users",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": "nextval('users_id_seq'::regclass)"
+        },
+        {
+          "name": "email",
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "password",
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "users_pkey",
+          "def": "CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)",
+          "table": "public.users",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "idx_users_email",
+          "def": "CREATE UNIQUE INDEX idx_users_email ON public.users USING btree (email)",
+          "table": "public.users",
+          "columns": [
+            "email"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "users_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.candles",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": "nextval('candles_id_seq'::regclass)"
+        },
+        {
+          "name": "symbol",
+          "type": "varchar(32)",
+          "nullable": false
+        },
+        {
+          "name": "interval",
+          "type": "varchar(16)",
+          "nullable": false
+        },
+        {
+          "name": "time",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "open",
+          "type": "numeric",
+          "nullable": false
+        },
+        {
+          "name": "high",
+          "type": "numeric",
+          "nullable": false
+        },
+        {
+          "name": "low",
+          "type": "numeric",
+          "nullable": false
+        },
+        {
+          "name": "close",
+          "type": "numeric",
+          "nullable": false
+        },
+        {
+          "name": "volume",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "candles_pkey",
+          "def": "CREATE UNIQUE INDEX candles_pkey ON public.candles USING btree (id)",
+          "table": "public.candles",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "candle_sym_int_time",
+          "def": "CREATE UNIQUE INDEX candle_sym_int_time ON public.candles USING btree (symbol, \"interval\", \"time\")",
+          "table": "public.candles",
+          "columns": [
+            "symbol",
+            "interval",
+            "time"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "candles_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.candles",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.symbols",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": "nextval('symbols_id_seq'::regclass)"
+        },
+        {
+          "name": "code",
+          "type": "varchar(20)",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "market",
+          "type": "varchar(100)",
+          "nullable": false
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "symbols_pkey",
+          "def": "CREATE UNIQUE INDEX symbols_pkey ON public.symbols USING btree (id)",
+          "table": "public.symbols",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "idx_symbols_code",
+          "def": "CREATE UNIQUE INDEX idx_symbols_code ON public.symbols USING btree (code)",
+          "table": "public.symbols",
+          "columns": [
+            "code"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "symbols_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.symbols",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.watchlists",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": "nextval('watchlists_id_seq'::regclass)"
+        },
+        {
+          "name": "user_id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "symbol_code",
+          "type": "varchar(20)",
+          "nullable": false
+        },
+        {
+          "name": "sort_key",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "watchlists_pkey",
+          "def": "CREATE UNIQUE INDEX watchlists_pkey ON public.watchlists USING btree (id)",
+          "table": "public.watchlists",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "idx_watchlist_user_sort_key",
+          "def": "CREATE UNIQUE INDEX idx_watchlist_user_sort_key ON public.watchlists USING btree (user_id, sort_key)",
+          "table": "public.watchlists",
+          "columns": [
+            "user_id",
+            "sort_key"
+          ]
+        },
+        {
+          "name": "idx_watchlist_user_symbol",
+          "def": "CREATE UNIQUE INDEX idx_watchlist_user_symbol ON public.watchlists USING btree (user_id, symbol_code)",
+          "table": "public.watchlists",
+          "columns": [
+            "user_id",
+            "symbol_code"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "fk_watchlists_user",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.watchlists",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "fk_watchlists_symbol",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT",
+          "table": "public.watchlists",
+          "referenced_table": "public.symbols",
+          "columns": [
+            "symbol_code"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "watchlists_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.watchlists",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "table": "public.watchlists",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.watchlists",
+      "columns": [
+        "symbol_code"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.symbols",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
+    }
+  ],
+  "driver": {
+    "name": "postgres",
+    "database_version": "PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+    "meta": {
+      "current_schema": "public",
+      "search_paths": [
+        "appuser",
+        "public"
+      ],
+      "dict": {
+        "Functions": "Stored procedures and functions"
+      }
+    }
+  }
+}

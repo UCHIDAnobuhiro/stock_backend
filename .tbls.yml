@@ -1,0 +1,23 @@
+# tbls 設定ファイル
+# https://github.com/k1LoW/tbls
+#
+# docs/schema/ 配下にテーブル定義書と Mermaid 形式の ER 図を生成する。
+# DSN は環境変数 TBLS_DSN で上書き可能。
+
+dsn: postgres://appuser:apppass@db:5432/app?sslmode=disable
+
+docPath: docs/schema
+
+er:
+  format: mermaid
+  comment: true
+  hideDef: false
+
+# AutoMigrate で作られるが通常 ER 図に載せる必要がないテーブルがあれば除外する
+exclude: []
+
+# テーブル・カラムに注釈を付けたい場合はここに追記する
+comments: []
+
+# DB 側に FK がない論理的なリレーションがあればここに追記する
+relations: []
