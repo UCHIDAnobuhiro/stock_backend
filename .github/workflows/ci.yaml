@@ -91,11 +91,57 @@ jobs:
       - name: Run tests
         run: go test ./... -v -race -cover
 
+  # スキーマドキュメント（docs/schema/）がエンティティ変更と同期しているか検証
+  schema-doc-check:
+    name: Schema Doc Drift
+    needs: docs-check
+    if: needs.docs-check.outputs.code_changed == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: app
+          POSTGRES_USER: appuser
+          POSTGRES_PASSWORD: apppass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U appuser -d app"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Run migrations
+        env:
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DB_USER: appuser
+          DB_PASSWORD: apppass
+          DB_NAME: app
+        run: go run ./cmd/migrate
+
+      - name: Setup tbls
+        uses: k1LoW/setup-tbls@v1
+
+      - name: Check schema doc drift
+        env:
+          TBLS_DSN: postgres://appuser:apppass@localhost:5432/app?sslmode=disable
+        run: tbls diff --config .tbls.yml
+
   # 全CIジョブの結果を集約するゲートジョブ
   # GitHub Branch Protectionではこのジョブだけをrequiredに設定する
   ci-gate:
     name: CI Gate
-    needs: [lint, build-test]
+    needs: [lint, build-test, schema-doc-check]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -103,9 +149,11 @@ jobs:
         run: |
           LINT="${{ needs.lint.result }}"
           BUILD_TEST="${{ needs.build-test.result }}"
-          echo "lint=${LINT} build-test=${BUILD_TEST}"
+          SCHEMA_DOC="${{ needs.schema-doc-check.result }}"
+          echo "lint=${LINT} build-test=${BUILD_TEST} schema-doc=${SCHEMA_DOC}"
           if [[ "${LINT}" == "success" || "${LINT}" == "skipped" ]] && \
-             [[ "${BUILD_TEST}" == "success" || "${BUILD_TEST}" == "skipped" ]]; then
+             [[ "${BUILD_TEST}" == "success" || "${BUILD_TEST}" == "skipped" ]] && \
+             [[ "${SCHEMA_DOC}" == "success" || "${SCHEMA_DOC}" == "skipped" ]]; then
             echo "CI passed"
           else
             echo "CI failed"
