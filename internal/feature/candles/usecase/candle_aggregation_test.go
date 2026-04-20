@@ -190,7 +190,7 @@ func TestAggregateMonthly(t *testing.T) {
 	}
 }
 
-// assertCandlesEqual は2つの Candle スライスを比較します（Symbol/Interval は無視）。
+// assertCandlesEqual は2つの Candle スライスを比較します（SymbolCode/Interval は無視）。
 func assertCandlesEqual(t *testing.T, got, want []entity.Candle) {
 	t.Helper()
 	if want == nil {

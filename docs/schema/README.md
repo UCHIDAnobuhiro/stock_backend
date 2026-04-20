@@ -5,9 +5,9 @@
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.users](public.users.md) | 5 |  | BASE TABLE |
-| [public.candles](public.candles.md) | 9 |  | BASE TABLE |
 | [public.symbols](public.symbols.md) | 7 |  | BASE TABLE |
 | [public.watchlists](public.watchlists.md) | 6 |  | BASE TABLE |
+| [public.candles](public.candles.md) | 9 |  | BASE TABLE |
 
 ## Relations
 
@@ -16,6 +16,7 @@ erDiagram
 
 "public.watchlists" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.watchlists" }o--|| "public.symbols" : "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
+"public.candles" }o--|| "public.symbols" : "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
 
 "public.users" {
   bigint id ""
@@ -23,17 +24,6 @@ erDiagram
   varchar_255_ password ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
-}
-"public.candles" {
-  bigint id ""
-  varchar_32_ symbol ""
-  varchar_16_ interval ""
-  timestamp_with_time_zone time ""
-  numeric open ""
-  numeric high ""
-  numeric low ""
-  numeric close ""
-  bigint volume ""
 }
 "public.symbols" {
   bigint id ""
@@ -51,6 +41,17 @@ erDiagram
   bigint sort_key ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+}
+"public.candles" {
+  bigint id ""
+  varchar_20_ symbol_code FK ""
+  varchar_16_ interval ""
+  timestamp_with_time_zone time ""
+  numeric open ""
+  numeric high ""
+  numeric low ""
+  numeric close ""
+  bigint volume ""
 }
 ```
 

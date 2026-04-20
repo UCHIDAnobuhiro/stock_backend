@@ -80,32 +80,32 @@ func TestDedupCandles(t *testing.T) {
 		{
 			name: "重複なしの場合は全件返す",
 			input: []entity.Candle{
-				{Symbol: "AAPL", Interval: "1day", Time: base},
-				{Symbol: "AAPL", Interval: "1day", Time: base.AddDate(0, 0, 1)},
+				{SymbolCode: "AAPL", Interval: "1day", Time: base},
+				{SymbolCode: "AAPL", Interval: "1day", Time: base.AddDate(0, 0, 1)},
 			},
 			wantLen: 2,
 		},
 		{
 			name: "同一タイムスタンプの重複は1件に絞る",
 			input: []entity.Candle{
-				{Symbol: "AAPL", Interval: "1day", Time: base},
-				{Symbol: "AAPL", Interval: "1day", Time: base},
+				{SymbolCode: "AAPL", Interval: "1day", Time: base},
+				{SymbolCode: "AAPL", Interval: "1day", Time: base},
 			},
 			wantLen: 1,
 		},
 		{
 			name: "symbolが異なれば別エントリとして扱う",
 			input: []entity.Candle{
-				{Symbol: "AAPL", Interval: "1day", Time: base},
-				{Symbol: "GOOG", Interval: "1day", Time: base},
+				{SymbolCode: "AAPL", Interval: "1day", Time: base},
+				{SymbolCode: "GOOG", Interval: "1day", Time: base},
 			},
 			wantLen: 2,
 		},
 		{
 			name: "intervalが異なれば別エントリとして扱う",
 			input: []entity.Candle{
-				{Symbol: "AAPL", Interval: "1day", Time: base},
-				{Symbol: "AAPL", Interval: "1week", Time: base},
+				{SymbolCode: "AAPL", Interval: "1day", Time: base},
+				{SymbolCode: "AAPL", Interval: "1week", Time: base},
 			},
 			wantLen: 2,
 		},
@@ -117,9 +117,9 @@ func TestDedupCandles(t *testing.T) {
 		{
 			name: "元スライスを変更しない（backing array 非共有）",
 			input: []entity.Candle{
-				{Symbol: "AAPL", Interval: "1day", Time: base, Close: 100},
-				{Symbol: "AAPL", Interval: "1day", Time: base, Close: 200}, // 重複
-				{Symbol: "AAPL", Interval: "1day", Time: base.AddDate(0, 0, 1), Close: 300},
+				{SymbolCode: "AAPL", Interval: "1day", Time: base, Close: 100},
+				{SymbolCode: "AAPL", Interval: "1day", Time: base, Close: 200}, // 重複
+				{SymbolCode: "AAPL", Interval: "1day", Time: base.AddDate(0, 0, 1), Close: 300},
 			},
 			wantLen: 2,
 		},
@@ -147,7 +147,7 @@ func TestDedupCandles(t *testing.T) {
 			// 出力に重複がないことを確認
 			seen := make(map[string]struct{})
 			for _, c := range got {
-				key := fmt.Sprintf("%s|%s|%d", c.Symbol, c.Interval, c.Time.Unix())
+				key := fmt.Sprintf("%s|%s|%d", c.SymbolCode, c.Interval, c.Time.Unix())
 				if _, exists := seen[key]; exists {
 					t.Errorf("duplicate key in output: %s", key)
 				}
@@ -200,8 +200,8 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 			verifyCandles: func(t *testing.T, candles []entity.Candle) {
 				counts := map[string]int{}
 				for _, c := range candles {
-					if c.Symbol != "AAPL" {
-						t.Errorf("candle Symbol not set: got %s, want AAPL", c.Symbol)
+					if c.SymbolCode != "AAPL" {
+						t.Errorf("candle SymbolCode not set: got %s, want AAPL", c.SymbolCode)
 					}
 					counts[c.Interval]++
 				}
@@ -360,7 +360,7 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 				return mockCandles, nil
 			},
 			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
-				if len(candles) > 0 && candles[0].Symbol == "AAPL" {
+				if len(candles) > 0 && candles[0].SymbolCode == "AAPL" {
 					return ErrDB
 				}
 				return nil

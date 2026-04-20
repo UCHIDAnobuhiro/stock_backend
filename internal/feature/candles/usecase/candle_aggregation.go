@@ -99,7 +99,7 @@ func aggregate(
 	for _, k := range keyOrder {
 		b := buckets[k]
 		out = append(out, entity.Candle{
-			// Symbol と Interval は呼び出し元（ingestOne）でセットする
+			// SymbolCode と Interval は呼び出し元（ingestOne）でセットする
 			Time:   b.time,
 			Open:   b.open,
 			High:   b.high,

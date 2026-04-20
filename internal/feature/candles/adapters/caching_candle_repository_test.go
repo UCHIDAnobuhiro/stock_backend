@@ -89,7 +89,7 @@ func TestCachingCandleRepository_Find_NilRedis(t *testing.T) {
 	t.Parallel()
 
 	expectedCandles := []entity.Candle{
-		{Symbol: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
+		{SymbolCode: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
 	}
 
 	inner := &mockCandleRepo{
@@ -118,7 +118,7 @@ func TestCachingCandleRepository_Find_CacheHit(t *testing.T) {
 	defer func() { _ = rdb.Close() }()
 
 	cachedCandles := []entity.Candle{
-		{Symbol: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
+		{SymbolCode: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
 	}
 	cachedJSON, _ := json.Marshal(cachedCandles)
 
@@ -158,11 +158,11 @@ func TestCachingCandleRepository_Find_CacheHit_Slices(t *testing.T) {
 
 	// キャッシュには5件保存されている
 	cachedCandles := []entity.Candle{
-		{Symbol: "AAPL", Interval: "1day", Open: 100.0},
-		{Symbol: "AAPL", Interval: "1day", Open: 101.0},
-		{Symbol: "AAPL", Interval: "1day", Open: 102.0},
-		{Symbol: "AAPL", Interval: "1day", Open: 103.0},
-		{Symbol: "AAPL", Interval: "1day", Open: 104.0},
+		{SymbolCode: "AAPL", Interval: "1day", Open: 100.0},
+		{SymbolCode: "AAPL", Interval: "1day", Open: 101.0},
+		{SymbolCode: "AAPL", Interval: "1day", Open: 102.0},
+		{SymbolCode: "AAPL", Interval: "1day", Open: 103.0},
+		{SymbolCode: "AAPL", Interval: "1day", Open: 104.0},
 	}
 	cachedJSON, _ := json.Marshal(cachedCandles)
 
@@ -192,7 +192,7 @@ func TestCachingCandleRepository_Find_CacheMiss(t *testing.T) {
 	defer func() { _ = rdb.Close() }()
 
 	expectedCandles := []entity.Candle{
-		{Symbol: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
+		{SymbolCode: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
 	}
 	expectedJSON, _ := json.Marshal(expectedCandles)
 
@@ -260,7 +260,7 @@ func TestCachingCandleRepository_Find_CorruptedCache(t *testing.T) {
 	defer func() { _ = rdb.Close() }()
 
 	expectedCandles := []entity.Candle{
-		{Symbol: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
+		{SymbolCode: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
 	}
 	expectedJSON, _ := json.Marshal(expectedCandles)
 
@@ -304,7 +304,7 @@ func TestCachingCandleRepository_UpsertBatch_NilRedis(t *testing.T) {
 
 	repo := NewCachingCandleRepository(nil, 5*time.Minute, inner, "candles")
 	err := repo.UpsertBatch(context.Background(), []entity.Candle{
-		{Symbol: "AAPL", Interval: "1day"},
+		{SymbolCode: "AAPL", Interval: "1day"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -327,7 +327,7 @@ func TestCachingCandleRepository_UpsertBatch_InnerError(t *testing.T) {
 
 	repo := NewCachingCandleRepository(nil, 5*time.Minute, inner, "candles")
 	err := repo.UpsertBatch(context.Background(), []entity.Candle{
-		{Symbol: "AAPL", Interval: "1day"},
+		{SymbolCode: "AAPL", Interval: "1day"},
 	})
 
 	if !errors.Is(err, expectedErr) {
@@ -363,7 +363,7 @@ func TestCachingCandleRepository_UpsertBatch_CacheWarmUp(t *testing.T) {
 	defer func() { _ = rdb.Close() }()
 
 	warmCandles := []entity.Candle{
-		{Symbol: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
+		{SymbolCode: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
 	}
 	warmJSON, _ := json.Marshal(warmCandles)
 
@@ -382,7 +382,7 @@ func TestCachingCandleRepository_UpsertBatch_CacheWarmUp(t *testing.T) {
 
 	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
 	err := repo.UpsertBatch(context.Background(), []entity.Candle{
-		{Symbol: "AAPL", Interval: "1day"},
+		{SymbolCode: "AAPL", Interval: "1day"},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -400,7 +400,7 @@ func TestCachingCandleRepository_UpsertBatch_DeduplicatesWarmUp(t *testing.T) {
 	defer func() { _ = rdb.Close() }()
 
 	warmCandles := []entity.Candle{
-		{Symbol: "AAPL", Interval: "1day", Open: 150.0},
+		{SymbolCode: "AAPL", Interval: "1day", Open: 150.0},
 	}
 	warmJSON, _ := json.Marshal(warmCandles)
 
@@ -421,9 +421,9 @@ func TestCachingCandleRepository_UpsertBatch_DeduplicatesWarmUp(t *testing.T) {
 
 	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
 	err := repo.UpsertBatch(context.Background(), []entity.Candle{
-		{Symbol: "AAPL", Interval: "1day", Time: time.Now()},
-		{Symbol: "AAPL", Interval: "1day", Time: time.Now().Add(-24 * time.Hour)},
-		{Symbol: "AAPL", Interval: "1day", Time: time.Now().Add(-48 * time.Hour)},
+		{SymbolCode: "AAPL", Interval: "1day", Time: time.Now()},
+		{SymbolCode: "AAPL", Interval: "1day", Time: time.Now().Add(-24 * time.Hour)},
+		{SymbolCode: "AAPL", Interval: "1day", Time: time.Now().Add(-48 * time.Hour)},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
