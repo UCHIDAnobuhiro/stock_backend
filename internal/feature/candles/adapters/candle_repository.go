@@ -30,7 +30,7 @@ func NewCandleRepository(db *gorm.DB) *candleDBRepository {
 // symbol_code は symbols.code への外部キー（FK制約は AddFKConstraints で付与）。
 type CandleModel struct {
 	ID         uint      `gorm:"primaryKey"`
-	SymbolCode string    `gorm:"size:20;not null;column:symbol_code;uniqueIndex:candle_sym_int_time,priority:1"`
+	SymbolCode string    `gorm:"size:20;not null;uniqueIndex:candle_sym_int_time,priority:1"`
 	Interval   string    `gorm:"size:16;not null;uniqueIndex:candle_sym_int_time,priority:2"`
 	Time       time.Time `gorm:"not null;uniqueIndex:candle_sym_int_time,priority:3"`
 

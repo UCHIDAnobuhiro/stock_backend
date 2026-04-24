@@ -5,7 +5,7 @@ import "time"
 
 // Candle は特定の銘柄・時間間隔におけるOHLCV（始値、高値、安値、終値、出来高）ローソク足データを表します。
 type Candle struct {
-	SymbolCode string    // 銘柄コード（例: "AAPL", "7203.T"）。symbols.code への FK。
+	SymbolCode string    // 銘柄コード（例: "AAPL", "7203.T"）
 	Interval   string    // 時間間隔（例: "1day", "1week", "1month"）
 	Time       time.Time // このローソク足期間の開始タイムスタンプ
 	Open       float64   // 始値
