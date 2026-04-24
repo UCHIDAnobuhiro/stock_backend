@@ -64,6 +64,104 @@
       ]
     },
     {
+      "name": "public.candles",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": "nextval('candles_id_seq'::regclass)"
+        },
+        {
+          "name": "symbol_code",
+          "type": "varchar(20)",
+          "nullable": false
+        },
+        {
+          "name": "interval",
+          "type": "varchar(16)",
+          "nullable": false
+        },
+        {
+          "name": "time",
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "open",
+          "type": "numeric",
+          "nullable": false
+        },
+        {
+          "name": "high",
+          "type": "numeric",
+          "nullable": false
+        },
+        {
+          "name": "low",
+          "type": "numeric",
+          "nullable": false
+        },
+        {
+          "name": "close",
+          "type": "numeric",
+          "nullable": false
+        },
+        {
+          "name": "volume",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "candles_pkey",
+          "def": "CREATE UNIQUE INDEX candles_pkey ON public.candles USING btree (id)",
+          "table": "public.candles",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "candle_sym_int_time",
+          "def": "CREATE UNIQUE INDEX candle_sym_int_time ON public.candles USING btree (symbol_code, \"interval\", \"time\")",
+          "table": "public.candles",
+          "columns": [
+            "symbol_code",
+            "interval",
+            "time"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "candles_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.candles",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "fk_candles_symbol",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT",
+          "table": "public.candles",
+          "referenced_table": "public.symbols",
+          "columns": [
+            "symbol_code"
+          ],
+          "referenced_columns": [
+            "code"
+          ]
+        }
+      ]
+    },
+    {
       "name": "public.symbols",
       "type": "BASE TABLE",
       "columns": [
@@ -239,107 +337,22 @@
           ]
         }
       ]
-    },
-    {
-      "name": "public.candles",
-      "type": "BASE TABLE",
-      "columns": [
-        {
-          "name": "id",
-          "type": "bigint",
-          "nullable": false,
-          "default": "nextval('candles_id_seq'::regclass)"
-        },
-        {
-          "name": "symbol_code",
-          "type": "varchar(20)",
-          "nullable": false
-        },
-        {
-          "name": "interval",
-          "type": "varchar(16)",
-          "nullable": false
-        },
-        {
-          "name": "time",
-          "type": "timestamp with time zone",
-          "nullable": false
-        },
-        {
-          "name": "open",
-          "type": "numeric",
-          "nullable": false
-        },
-        {
-          "name": "high",
-          "type": "numeric",
-          "nullable": false
-        },
-        {
-          "name": "low",
-          "type": "numeric",
-          "nullable": false
-        },
-        {
-          "name": "close",
-          "type": "numeric",
-          "nullable": false
-        },
-        {
-          "name": "volume",
-          "type": "bigint",
-          "nullable": false,
-          "default": "0"
-        }
-      ],
-      "indexes": [
-        {
-          "name": "candles_pkey",
-          "def": "CREATE UNIQUE INDEX candles_pkey ON public.candles USING btree (id)",
-          "table": "public.candles",
-          "columns": [
-            "id"
-          ]
-        },
-        {
-          "name": "candle_sym_int_time",
-          "def": "CREATE UNIQUE INDEX candle_sym_int_time ON public.candles USING btree (symbol_code, \"interval\", \"time\")",
-          "table": "public.candles",
-          "columns": [
-            "symbol_code",
-            "interval",
-            "time"
-          ]
-        }
-      ],
-      "constraints": [
-        {
-          "name": "fk_candles_symbol",
-          "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT",
-          "table": "public.candles",
-          "referenced_table": "public.symbols",
-          "columns": [
-            "symbol_code"
-          ],
-          "referenced_columns": [
-            "code"
-          ]
-        },
-        {
-          "name": "candles_pkey",
-          "type": "PRIMARY KEY",
-          "def": "PRIMARY KEY (id)",
-          "table": "public.candles",
-          "referenced_table": "",
-          "columns": [
-            "id"
-          ]
-        }
-      ]
     }
   ],
   "relations": [
+    {
+      "table": "public.candles",
+      "columns": [
+        "symbol_code"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.symbols",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
+    },
     {
       "table": "public.watchlists",
       "columns": [
@@ -355,19 +368,6 @@
     },
     {
       "table": "public.watchlists",
-      "columns": [
-        "symbol_code"
-      ],
-      "cardinality": "zero_or_more",
-      "parent_table": "public.symbols",
-      "parent_columns": [
-        "code"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
-    },
-    {
-      "table": "public.candles",
       "columns": [
         "symbol_code"
       ],

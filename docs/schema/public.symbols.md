@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | bigint | nextval('symbols_id_seq'::regclass) | false |  |  |  |
-| code | varchar(20) |  | false | [public.watchlists](public.watchlists.md) [public.candles](public.candles.md) |  |  |
+| code | varchar(20) |  | false | [public.candles](public.candles.md) [public.watchlists](public.watchlists.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | market | varchar(100) |  | false |  |  |  |
 | is_active | boolean | true | false |  |  |  |
@@ -30,8 +30,8 @@
 ```mermaid
 erDiagram
 
-"public.watchlists" }o--|| "public.symbols" : "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
 "public.candles" }o--|| "public.symbols" : "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
+"public.watchlists" }o--|| "public.symbols" : "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
 
 "public.symbols" {
   bigint id ""
@@ -39,14 +39,6 @@ erDiagram
   varchar_255_ name ""
   varchar_100_ market ""
   boolean is_active ""
-  timestamp_with_time_zone created_at ""
-  timestamp_with_time_zone updated_at ""
-}
-"public.watchlists" {
-  bigint id ""
-  bigint user_id FK ""
-  varchar_20_ symbol_code FK ""
-  bigint sort_key ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
 }
@@ -60,6 +52,14 @@ erDiagram
   numeric low ""
   numeric close ""
   bigint volume ""
+}
+"public.watchlists" {
+  bigint id ""
+  bigint user_id FK ""
+  varchar_20_ symbol_code FK ""
+  bigint sort_key ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
 }
 ```
 
