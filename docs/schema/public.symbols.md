@@ -9,8 +9,8 @@
 | name | varchar(255) |  | false |  |  |  |
 | market | varchar(100) |  | false |  |  |  |
 | is_active | boolean | true | false |  |  |  |
-| created_at | timestamp with time zone |  | true |  |  |  |
-| updated_at | timestamp with time zone |  | true |  |  |  |
+| created_at | timestamp with time zone |  | false |  |  |  |
+| updated_at | timestamp with time zone |  | false |  |  |  |
 
 ## Constraints
 

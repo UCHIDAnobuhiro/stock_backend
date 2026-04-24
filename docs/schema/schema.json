@@ -195,12 +195,12 @@
         {
           "name": "created_at",
           "type": "timestamp with time zone",
-          "nullable": true
+          "nullable": false
         },
         {
           "name": "updated_at",
           "type": "timestamp with time zone",
-          "nullable": true
+          "nullable": false
         }
       ],
       "indexes": [
