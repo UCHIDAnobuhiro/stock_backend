@@ -25,5 +25,11 @@ func AddFKConstraints(db *gorm.DB) error {
 		}
 		slog.Info("added FK constraint: fk_watchlists_symbol")
 	}
+	// symbols への FK 参照チェック（ON DELETE RESTRICT）をフルスキャンにしないため、
+	// 複合 UNIQUE 先頭ではない symbol_code 単独のインデックスを追加する。
+	if err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_watchlists_symbol_code
+		ON watchlists (symbol_code)`).Error; err != nil {
+		return err
+	}
 	return nil
 }

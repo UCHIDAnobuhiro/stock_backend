@@ -24,12 +24,12 @@
         {
           "name": "created_at",
           "type": "timestamp with time zone",
-          "nullable": true
+          "nullable": false
         },
         {
           "name": "updated_at",
           "type": "timestamp with time zone",
-          "nullable": true
+          "nullable": false
         }
       ],
       "indexes": [
@@ -90,22 +90,22 @@
         },
         {
           "name": "open",
-          "type": "numeric",
+          "type": "numeric(15,4)",
           "nullable": false
         },
         {
           "name": "high",
-          "type": "numeric",
+          "type": "numeric(15,4)",
           "nullable": false
         },
         {
           "name": "low",
-          "type": "numeric",
+          "type": "numeric(15,4)",
           "nullable": false
         },
         {
           "name": "close",
-          "type": "numeric",
+          "type": "numeric(15,4)",
           "nullable": false
         },
         {
@@ -263,12 +263,12 @@
         {
           "name": "created_at",
           "type": "timestamp with time zone",
-          "nullable": true
+          "nullable": false
         },
         {
           "name": "updated_at",
           "type": "timestamp with time zone",
-          "nullable": true
+          "nullable": false
         }
       ],
       "indexes": [
@@ -295,6 +295,14 @@
           "table": "public.watchlists",
           "columns": [
             "user_id",
+            "symbol_code"
+          ]
+        },
+        {
+          "name": "idx_watchlists_symbol_code",
+          "def": "CREATE INDEX idx_watchlists_symbol_code ON public.watchlists USING btree (symbol_code)",
+          "table": "public.watchlists",
+          "columns": [
             "symbol_code"
           ]
         }

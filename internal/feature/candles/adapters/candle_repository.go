@@ -34,10 +34,10 @@ type CandleModel struct {
 	Interval   string    `gorm:"size:16;not null;uniqueIndex:candle_sym_int_time,priority:2"`
 	Time       time.Time `gorm:"not null;uniqueIndex:candle_sym_int_time,priority:3"`
 
-	Open   float64 `gorm:"not null"`
-	High   float64 `gorm:"not null"`
-	Low    float64 `gorm:"not null"`
-	Close  float64 `gorm:"not null"`
+	Open   float64 `gorm:"type:numeric(15,4);not null"`
+	High   float64 `gorm:"type:numeric(15,4);not null"`
+	Low    float64 `gorm:"type:numeric(15,4);not null"`
+	Close  float64 `gorm:"type:numeric(15,4);not null"`
 	Volume int64   `gorm:"not null;default:0"`
 }
 

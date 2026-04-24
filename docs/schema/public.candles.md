@@ -8,10 +8,10 @@
 | symbol_code | varchar(20) |  | false |  | [public.symbols](public.symbols.md) |  |
 | interval | varchar(16) |  | false |  |  |  |
 | time | timestamp with time zone |  | false |  |  |  |
-| open | numeric |  | false |  |  |  |
-| high | numeric |  | false |  |  |  |
-| low | numeric |  | false |  |  |  |
-| close | numeric |  | false |  |  |  |
+| open | numeric(15,4) |  | false |  |  |  |
+| high | numeric(15,4) |  | false |  |  |  |
+| low | numeric(15,4) |  | false |  |  |  |
+| close | numeric(15,4) |  | false |  |  |  |
 | volume | bigint | 0 | false |  |  |  |
 
 ## Constraints
@@ -40,10 +40,10 @@ erDiagram
   varchar_20_ symbol_code FK ""
   varchar_16_ interval ""
   timestamp_with_time_zone time ""
-  numeric open ""
-  numeric high ""
-  numeric low ""
-  numeric close ""
+  numeric_15_4_ open ""
+  numeric_15_4_ high ""
+  numeric_15_4_ low ""
+  numeric_15_4_ close ""
   bigint volume ""
 }
 "public.symbols" {

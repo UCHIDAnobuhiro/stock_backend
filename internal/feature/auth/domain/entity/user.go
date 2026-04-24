@@ -18,8 +18,8 @@ type User struct {
 	Password string `gorm:"size:255;not null"`
 
 	// CreatedAt はユーザーが作成された日時です。
-	CreatedAt time.Time
+	CreatedAt time.Time `gorm:"autoCreateTime;not null"`
 
 	// UpdatedAt はユーザーが最後に更新された日時です。
-	UpdatedAt time.Time
+	UpdatedAt time.Time `gorm:"autoUpdateTime;not null"`
 }
