@@ -9,8 +9,8 @@
 | name | varchar(255) |  | false |  |  |  |
 | market | varchar(100) |  | false |  |  |  |
 | is_active | boolean | true | false |  |  |  |
-| created_at | timestamp with time zone |  | true |  |  |  |
-| updated_at | timestamp with time zone |  | true |  |  |  |
+| created_at | timestamp with time zone |  | false |  |  |  |
+| updated_at | timestamp with time zone |  | false |  |  |  |
 
 ## Constraints
 
@@ -47,10 +47,10 @@ erDiagram
   varchar_20_ symbol_code FK ""
   varchar_16_ interval ""
   timestamp_with_time_zone time ""
-  numeric open ""
-  numeric high ""
-  numeric low ""
-  numeric close ""
+  numeric_15_4_ open ""
+  numeric_15_4_ high ""
+  numeric_15_4_ low ""
+  numeric_15_4_ close ""
   bigint volume ""
 }
 "public.watchlists" {

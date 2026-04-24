@@ -8,8 +8,8 @@
 | user_id | bigint |  | false |  | [public.users](public.users.md) |  |
 | symbol_code | varchar(20) |  | false |  | [public.symbols](public.symbols.md) |  |
 | sort_key | bigint | 0 | false |  |  |  |
-| created_at | timestamp with time zone |  | true |  |  |  |
-| updated_at | timestamp with time zone |  | true |  |  |  |
+| created_at | timestamp with time zone |  | false |  |  |  |
+| updated_at | timestamp with time zone |  | false |  |  |  |
 
 ## Constraints
 
@@ -26,6 +26,7 @@
 | watchlists_pkey | CREATE UNIQUE INDEX watchlists_pkey ON public.watchlists USING btree (id) |
 | idx_watchlist_user_sort_key | CREATE UNIQUE INDEX idx_watchlist_user_sort_key ON public.watchlists USING btree (user_id, sort_key) |
 | idx_watchlist_user_symbol | CREATE UNIQUE INDEX idx_watchlist_user_symbol ON public.watchlists USING btree (user_id, symbol_code) |
+| idx_watchlists_symbol_code | CREATE INDEX idx_watchlists_symbol_code ON public.watchlists USING btree (symbol_code) |
 
 ## Relations
 
