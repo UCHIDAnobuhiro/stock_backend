@@ -71,7 +71,7 @@ func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []ent
 	}
 	seen := map[symbolInterval]struct{}{}
 	for _, cd := range candles {
-		seen[symbolInterval{cd.Symbol, cd.Interval}] = struct{}{}
+		seen[symbolInterval{cd.SymbolCode, cd.Interval}] = struct{}{}
 	}
 
 	// 各 symbol+interval のキャッシュを削除し、最新データで再生成（ウォームアップ）

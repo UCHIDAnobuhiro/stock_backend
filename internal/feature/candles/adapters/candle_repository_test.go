@@ -31,14 +31,14 @@ func seedCandle(t *testing.T, db *gorm.DB, symbol, interval string, time time.Ti
 	t.Helper()
 
 	candle := &CandleModel{
-		Symbol:   symbol,
-		Interval: interval,
-		Time:     time,
-		Open:     100.0,
-		High:     110.0,
-		Low:      90.0,
-		Close:    105.0,
-		Volume:   1000,
+		SymbolCode: symbol,
+		Interval:   interval,
+		Time:       time,
+		Open:       100.0,
+		High:       110.0,
+		Low:        90.0,
+		Close:      105.0,
+		Volume:     1000,
 	}
 	err := db.Create(candle).Error
 	require.NoError(t, err, "failed to seed candle")
@@ -73,14 +73,14 @@ func TestCandleRepository_UpsertBatch(t *testing.T) {
 			name: "success: insert single candle",
 			candles: []entity.Candle{
 				{
-					Symbol:   "AAPL",
-					Interval: "1day",
-					Time:     baseTime,
-					Open:     100.0,
-					High:     110.0,
-					Low:      90.0,
-					Close:    105.0,
-					Volume:   1000,
+					SymbolCode: "AAPL",
+					Interval:   "1day",
+					Time:       baseTime,
+					Open:       100.0,
+					High:       110.0,
+					Low:        90.0,
+					Close:      105.0,
+					Volume:     1000,
 				},
 			},
 			wantErr: false,
@@ -94,24 +94,24 @@ func TestCandleRepository_UpsertBatch(t *testing.T) {
 			name: "success: insert multiple candles",
 			candles: []entity.Candle{
 				{
-					Symbol:   "AAPL",
-					Interval: "1day",
-					Time:     baseTime,
-					Open:     100.0,
-					High:     110.0,
-					Low:      90.0,
-					Close:    105.0,
-					Volume:   1000,
+					SymbolCode: "AAPL",
+					Interval:   "1day",
+					Time:       baseTime,
+					Open:       100.0,
+					High:       110.0,
+					Low:        90.0,
+					Close:      105.0,
+					Volume:     1000,
 				},
 				{
-					Symbol:   "AAPL",
-					Interval: "1day",
-					Time:     baseTime.AddDate(0, 0, 1),
-					Open:     105.0,
-					High:     115.0,
-					Low:      95.0,
-					Close:    110.0,
-					Volume:   1500,
+					SymbolCode: "AAPL",
+					Interval:   "1day",
+					Time:       baseTime.AddDate(0, 0, 1),
+					Open:       105.0,
+					High:       115.0,
+					Low:        95.0,
+					Close:      110.0,
+					Volume:     1500,
 				},
 			},
 			wantErr: false,
@@ -135,14 +135,14 @@ func TestCandleRepository_UpsertBatch(t *testing.T) {
 			name: "success: upsert updates existing candle",
 			candles: []entity.Candle{
 				{
-					Symbol:   "AAPL",
-					Interval: "1day",
-					Time:     baseTime,
-					Open:     200.0,
-					High:     220.0,
-					Low:      180.0,
-					Close:    210.0,
-					Volume:   2000,
+					SymbolCode: "AAPL",
+					Interval:   "1day",
+					Time:       baseTime,
+					Open:       200.0,
+					High:       220.0,
+					Low:        180.0,
+					Close:      210.0,
+					Volume:     2000,
 				},
 			},
 			wantErr: false,
@@ -167,24 +167,24 @@ func TestCandleRepository_UpsertBatch(t *testing.T) {
 			name: "success: upsert with mixed insert and update",
 			candles: []entity.Candle{
 				{
-					Symbol:   "AAPL",
-					Interval: "1day",
-					Time:     baseTime,
-					Open:     200.0,
-					High:     220.0,
-					Low:      180.0,
-					Close:    210.0,
-					Volume:   2000,
+					SymbolCode: "AAPL",
+					Interval:   "1day",
+					Time:       baseTime,
+					Open:       200.0,
+					High:       220.0,
+					Low:        180.0,
+					Close:      210.0,
+					Volume:     2000,
 				},
 				{
-					Symbol:   "AAPL",
-					Interval: "1day",
-					Time:     baseTime.AddDate(0, 0, 1),
-					Open:     210.0,
-					High:     230.0,
-					Low:      190.0,
-					Close:    220.0,
-					Volume:   2500,
+					SymbolCode: "AAPL",
+					Interval:   "1day",
+					Time:       baseTime.AddDate(0, 0, 1),
+					Open:       210.0,
+					High:       230.0,
+					Low:        190.0,
+					Close:      220.0,
+					Volume:     2500,
 				},
 			},
 			wantErr: false,
@@ -275,7 +275,7 @@ func TestCandleRepository_Find(t *testing.T) {
 			},
 			validateFunc: func(t *testing.T, candles []entity.Candle) {
 				assert.Len(t, candles, 1, "should return only AAPL candle")
-				assert.Equal(t, "AAPL", candles[0].Symbol)
+				assert.Equal(t, "AAPL", candles[0].SymbolCode)
 			},
 		},
 		{
@@ -376,14 +376,14 @@ func TestCandleRepository_Find_EntityMapping(t *testing.T) {
 
 	testTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
 	candle := &CandleModel{
-		Symbol:   "AAPL",
-		Interval: "1day",
-		Time:     testTime,
-		Open:     150.5,
-		High:     155.75,
-		Low:      149.25,
-		Close:    154.0,
-		Volume:   5000000,
+		SymbolCode: "AAPL",
+		Interval:   "1day",
+		Time:       testTime,
+		Open:       150.5,
+		High:       155.75,
+		Low:        149.25,
+		Close:      154.0,
+		Volume:     5000000,
 	}
 	err := db.Create(candle).Error
 	require.NoError(t, err)
@@ -392,7 +392,7 @@ func TestCandleRepository_Find_EntityMapping(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 
-	assert.Equal(t, "AAPL", result[0].Symbol, "Symbol does not match")
+	assert.Equal(t, "AAPL", result[0].SymbolCode, "SymbolCode does not match")
 	assert.Equal(t, "1day", result[0].Interval, "Interval does not match")
 	assert.Equal(t, testTime.Unix(), result[0].Time.Unix(), "Time does not match")
 	assert.Equal(t, 150.5, result[0].Open, "Open does not match")

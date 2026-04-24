@@ -56,7 +56,7 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol string, outputsiz
 	}
 
 	for i := range daily {
-		daily[i].Symbol = symbol
+		daily[i].SymbolCode = symbol
 		daily[i].Interval = "1day"
 	}
 
@@ -64,7 +64,7 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol string, outputsiz
 		return int(t.Weekday()) == 1 // 月曜日が ISO 週の開始
 	})
 	for i := range weekly {
-		weekly[i].Symbol = symbol
+		weekly[i].SymbolCode = symbol
 		weekly[i].Interval = "1week"
 	}
 
@@ -72,7 +72,7 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, symbol string, outputsiz
 		return t.Day() == 1 // 1日が月の開始
 	})
 	for i := range monthly {
-		monthly[i].Symbol = symbol
+		monthly[i].SymbolCode = symbol
 		monthly[i].Interval = "1month"
 	}
 
@@ -91,7 +91,7 @@ func dedupCandles(candles []entity.Candle) []entity.Candle {
 	seen := make(map[string]struct{}, len(candles))
 	out := make([]entity.Candle, 0, len(candles))
 	for _, c := range candles {
-		key := fmt.Sprintf("%s|%s|%d", c.Symbol, c.Interval, c.Time.Unix())
+		key := fmt.Sprintf("%s|%s|%d", c.SymbolCode, c.Interval, c.Time.Unix())
 		if _, ok := seen[key]; !ok {
 			seen[key] = struct{}{}
 			out = append(out, c)

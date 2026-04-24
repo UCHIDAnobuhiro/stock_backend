@@ -14,6 +14,7 @@
 ```mermaid
 erDiagram
 
+"public.candles" }o--|| "public.symbols" : "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
 "public.watchlists" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.watchlists" }o--|| "public.symbols" : "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
 
@@ -26,7 +27,7 @@ erDiagram
 }
 "public.candles" {
   bigint id ""
-  varchar_32_ symbol ""
+  varchar_20_ symbol_code FK ""
   varchar_16_ interval ""
   timestamp_with_time_zone time ""
   numeric open ""

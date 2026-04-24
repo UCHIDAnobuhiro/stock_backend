@@ -74,8 +74,8 @@
           "default": "nextval('candles_id_seq'::regclass)"
         },
         {
-          "name": "symbol",
-          "type": "varchar(32)",
+          "name": "symbol_code",
+          "type": "varchar(20)",
           "nullable": false
         },
         {
@@ -126,10 +126,10 @@
         },
         {
           "name": "candle_sym_int_time",
-          "def": "CREATE UNIQUE INDEX candle_sym_int_time ON public.candles USING btree (symbol, \"interval\", \"time\")",
+          "def": "CREATE UNIQUE INDEX candle_sym_int_time ON public.candles USING btree (symbol_code, \"interval\", \"time\")",
           "table": "public.candles",
           "columns": [
-            "symbol",
+            "symbol_code",
             "interval",
             "time"
           ]
@@ -144,6 +144,19 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        },
+        {
+          "name": "fk_candles_symbol",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT",
+          "table": "public.candles",
+          "referenced_table": "public.symbols",
+          "columns": [
+            "symbol_code"
+          ],
+          "referenced_columns": [
+            "code"
           ]
         }
       ]
@@ -327,6 +340,19 @@
     }
   ],
   "relations": [
+    {
+      "table": "public.candles",
+      "columns": [
+        "symbol_code"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.symbols",
+      "parent_columns": [
+        "code"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
+    },
     {
       "table": "public.watchlists",
       "columns": [

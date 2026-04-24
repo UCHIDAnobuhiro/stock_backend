@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | bigint | nextval('candles_id_seq'::regclass) | false |  |  |  |
-| symbol | varchar(32) |  | false |  |  |  |
+| symbol_code | varchar(20) |  | false |  | [public.symbols](public.symbols.md) |  |
 | interval | varchar(16) |  | false |  |  |  |
 | time | timestamp with time zone |  | false |  |  |  |
 | open | numeric |  | false |  |  |  |
@@ -19,23 +19,25 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | candles_pkey | PRIMARY KEY | PRIMARY KEY (id) |
+| fk_candles_symbol | FOREIGN KEY | FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | candles_pkey | CREATE UNIQUE INDEX candles_pkey ON public.candles USING btree (id) |
-| candle_sym_int_time | CREATE UNIQUE INDEX candle_sym_int_time ON public.candles USING btree (symbol, "interval", "time") |
+| candle_sym_int_time | CREATE UNIQUE INDEX candle_sym_int_time ON public.candles USING btree (symbol_code, "interval", "time") |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
+"public.candles" }o--|| "public.symbols" : "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
 
 "public.candles" {
   bigint id ""
-  varchar_32_ symbol ""
+  varchar_20_ symbol_code FK ""
   varchar_16_ interval ""
   timestamp_with_time_zone time ""
   numeric open ""
@@ -43,6 +45,15 @@ erDiagram
   numeric low ""
   numeric close ""
   bigint volume ""
+}
+"public.symbols" {
+  bigint id ""
+  varchar_20_ code ""
+  varchar_255_ name ""
+  varchar_100_ market ""
+  boolean is_active ""
+  timestamp_with_time_zone created_at ""
+  timestamp_with_time_zone updated_at ""
 }
 ```
 

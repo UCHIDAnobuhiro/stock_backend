@@ -26,12 +26,13 @@ func NewCandleRepository(db *gorm.DB) *candleDBRepository {
 }
 
 // CandleModel はローソク足データのデータベースモデルです。
-// Upsert操作のために（symbol, interval, time）の複合ユニークインデックスを使用します。
+// Upsert操作のために（symbol_code, interval, time）の複合ユニークインデックスを使用します。
+// symbol_code は symbols.code への外部キー（FK制約は AddFKConstraints で付与）。
 type CandleModel struct {
-	ID       uint      `gorm:"primaryKey"`
-	Symbol   string    `gorm:"size:32;not null;uniqueIndex:candle_sym_int_time,priority:1"`
-	Interval string    `gorm:"size:16;not null;uniqueIndex:candle_sym_int_time,priority:2"`
-	Time     time.Time `gorm:"not null;uniqueIndex:candle_sym_int_time,priority:3"`
+	ID         uint      `gorm:"primaryKey"`
+	SymbolCode string    `gorm:"size:20;not null;uniqueIndex:candle_sym_int_time,priority:1"`
+	Interval   string    `gorm:"size:16;not null;uniqueIndex:candle_sym_int_time,priority:2"`
+	Time       time.Time `gorm:"not null;uniqueIndex:candle_sym_int_time,priority:3"`
 
 	Open   float64 `gorm:"not null"`
 	High   float64 `gorm:"not null"`
@@ -48,14 +49,14 @@ func (CandleModel) TableName() string {
 // toModel はドメインエンティティをデータベースモデルに変換します。
 func toModel(e entity.Candle) CandleModel {
 	return CandleModel{
-		Symbol:   e.Symbol,
-		Interval: e.Interval,
-		Time:     e.Time,
-		Open:     e.Open,
-		High:     e.High,
-		Low:      e.Low,
-		Close:    e.Close,
-		Volume:   e.Volume,
+		SymbolCode: e.SymbolCode,
+		Interval:   e.Interval,
+		Time:       e.Time,
+		Open:       e.Open,
+		High:       e.High,
+		Low:        e.Low,
+		Close:      e.Close,
+		Volume:     e.Volume,
 	}
 }
 
@@ -71,7 +72,7 @@ func (r *candleDBRepository) UpsertBatch(ctx context.Context, candles []entity.C
 	}
 
 	return r.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "symbol"}, {Name: "interval"}, {Name: "time"}},
+		Columns:   []clause.Column{{Name: "symbol_code"}, {Name: "interval"}, {Name: "time"}},
 		DoUpdates: clause.AssignmentColumns([]string{"open", "high", "low", "close", "volume"}),
 	}).Create(&ms).Error
 }
@@ -81,7 +82,7 @@ func (r *candleDBRepository) UpsertBatch(ctx context.Context, candles []entity.C
 func (r *candleDBRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 	var rows []CandleModel
 	q := r.db.WithContext(ctx).
-		Where("symbol = ? AND \"interval\" = ?", symbol, interval).
+		Where("symbol_code = ? AND \"interval\" = ?", symbol, interval).
 		Order("\"time\" DESC")
 	if outputsize > 0 {
 		q = q.Limit(outputsize)
@@ -92,14 +93,14 @@ func (r *candleDBRepository) Find(ctx context.Context, symbol, interval string, 
 	out := make([]entity.Candle, 0, len(rows))
 	for _, m := range rows {
 		out = append(out, entity.Candle{
-			Symbol:   m.Symbol,
-			Interval: m.Interval,
-			Time:     m.Time,
-			Open:     m.Open,
-			High:     m.High,
-			Low:      m.Low,
-			Close:    m.Close,
-			Volume:   m.Volume,
+			SymbolCode: m.SymbolCode,
+			Interval:   m.Interval,
+			Time:       m.Time,
+			Open:       m.Open,
+			High:       m.High,
+			Low:        m.Low,
+			Close:      m.Close,
+			Volume:     m.Volume,
 		})
 	}
 	return out, nil

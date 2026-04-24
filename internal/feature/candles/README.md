@@ -41,7 +41,7 @@ sequenceDiagram
         else Cache MISS
             Redis-->>Cache: nil
             Cache->>Repository: Find(symbol, interval, outputsize)
-            Repository->>DB: SELECT * FROM candles WHERE symbol=? AND interval=? ORDER BY time DESC LIMIT ?
+            Repository->>DB: SELECT * FROM candles WHERE symbol_code=? AND interval=? ORDER BY time DESC LIMIT ?
             DB-->>Repository: Rows
             Repository-->>Cache: []Candle
             Cache->>Redis: SET candles:AAPL:1day:200 (TTL)
@@ -280,7 +280,7 @@ graph TB
 
 #### ドメイン層
 - **Candle Entity**（[domain/entity/candle.go](domain/entity/candle.go)）: OHLCVローソク足データモデル
-  - `Symbol`: 銘柄コード（例: "AAPL", "7203.T"）
+  - `SymbolCode`: 銘柄コード（例: "AAPL", "7203.T"）。`symbols.code` への外部キー
   - `Interval`: 時間間隔（例: "1day", "1week", "1month"）
   - `Time`: ローソク足期間のタイムスタンプ
   - `Open`, `High`, `Low`, `Close`: 価格データ
@@ -290,7 +290,8 @@ graph TB
 - **candleDBRepository**: CandleRepositoryのリポジトリ実装（GORMを使用）
   - `Find`: 時間の降順でローソク足を取得
   - `UpsertBatch`: `ON CONFLICT DO UPDATE`によるバッチ挿入/更新
-  - （symbol, interval, time）の複合ユニークインデックス
+  - （symbol_code, interval, time）の複合ユニークインデックス
+  - `symbol_code` は `symbols.code` への FK（ON DELETE RESTRICT、`migration.go` の `AddFKConstraints` で付与）
 
 #### アダプター層（キャッシュ）
 - **CachingCandleRepository**（[adapters/caching_candle_repository.go](adapters/caching_candle_repository.go)）: Redisキャッシュデコレータ
