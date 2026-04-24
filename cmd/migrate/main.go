@@ -37,6 +37,10 @@ func main() {
 		slog.Error("failed to add watchlist FK constraints", "error", err)
 		os.Exit(1)
 	}
+	if err := candlesadapters.AddFKConstraints(db); err != nil {
+		slog.Error("failed to add candles FK constraints", "error", err)
+		os.Exit(1)
+	}
 
 	slog.Info("migrate ok")
 }
