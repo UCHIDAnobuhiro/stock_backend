@@ -143,6 +143,9 @@ func (t *TwelveDataMarket) doRequestWithRetry(ctx context.Context, method, urlSt
 				return nil, ctxErr
 			}
 			lastErr = err
+			if attempt == maxAttempts-1 {
+				break
+			}
 			if !t.sleepBeforeRetry(ctx, attempt, 0) {
 				return nil, ctx.Err()
 			}
@@ -184,12 +187,7 @@ func (t *TwelveDataMarket) doRequestWithRetry(ctx context.Context, method, urlSt
 // それ以外は attempt（0 起算）に応じた指数バックオフ + ジッターで待機します。
 // ctx キャンセル時は false を返し即時に中断します。
 func (t *TwelveDataMarket) sleepBeforeRetry(ctx context.Context, attempt int, retryAfter time.Duration) bool {
-	d := retryAfter
-	if d <= 0 {
-		d = backoffDelay(attempt, t.cfg.RetryBaseBackoff, t.cfg.RetryMaxBackoff, t.cfg.RetryJitterRatio)
-	} else if t.cfg.RetryMaxBackoff > 0 && d > t.cfg.RetryMaxBackoff {
-		d = t.cfg.RetryMaxBackoff
-	}
+	d := computeRetryDelay(attempt, retryAfter, t.cfg)
 	if d <= 0 {
 		return ctx.Err() == nil
 	}
@@ -204,6 +202,23 @@ func (t *TwelveDataMarket) sleepBeforeRetry(ctx context.Context, attempt int, re
 	}
 }
 
+// computeRetryDelay は次のリトライまでの待機時間を決定します。
+// retryAfter > 0 ならそれを優先し、RetryMaxBackoff を上限にクランプします。
+// retryAfter <= 0 の場合は attempt（0 起算）に応じた指数バックオフ + ジッターで決定します。
+// 純粋関数として副作用なく実装され、テストから直接検証可能です。
+func computeRetryDelay(attempt int, retryAfter time.Duration, cfg Config) time.Duration {
+	d := retryAfter
+	if d <= 0 {
+		d = backoffDelay(attempt, cfg.RetryBaseBackoff, cfg.RetryMaxBackoff, cfg.RetryJitterRatio)
+	} else if cfg.RetryMaxBackoff > 0 && d > cfg.RetryMaxBackoff {
+		d = cfg.RetryMaxBackoff
+	}
+	if d < 0 {
+		return 0
+	}
+	return d
+}
+
 // isRetryableStatus はリトライ対象の HTTP ステータスかを判定します。
 // 5xx（500-599）と 429 が対象。401/403/404/422 等の 4xx はリトライ対象外。
 func isRetryableStatus(status int) bool {
@@ -213,16 +228,23 @@ func isRetryableStatus(status int) bool {
 	return status >= 500 && status < 600
 }
 
+// maxRetryAfterSecs は Retry-After で受け入れる秒数の上限（int64 オーバーフロー回避と現実的な上限のため 1 時間）。
+const maxRetryAfterSecs = 3600
+
 // parseRetryAfter は Retry-After ヘッダを time.Duration として解釈します。
 // 数値（秒）と HTTP-date の両方をサポートし、解釈不能な場合は 0 を返します。
+// 秒数は maxRetryAfterSecs（1 時間）でクランプし、time.Duration 変換時の int64 オーバーフローを防ぎます。
 func parseRetryAfter(res *http.Response) time.Duration {
 	v := res.Header.Get("Retry-After")
 	if v == "" {
 		return 0
 	}
 	if secs, err := strconv.Atoi(v); err == nil {
-		if secs < 0 {
+		if secs <= 0 {
 			return 0
+		}
+		if secs > maxRetryAfterSecs {
+			secs = maxRetryAfterSecs
 		}
 		return time.Duration(secs) * time.Second
 	}
@@ -230,6 +252,9 @@ func parseRetryAfter(res *http.Response) time.Duration {
 		d := time.Until(t)
 		if d < 0 {
 			return 0
+		}
+		if d > maxRetryAfterSecs*time.Second {
+			d = maxRetryAfterSecs * time.Second
 		}
 		return d
 	}

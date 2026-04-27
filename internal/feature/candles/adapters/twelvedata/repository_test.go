@@ -523,14 +523,11 @@ func TestTwelveDataMarket_GetTimeSeries_Retry_RespectsRetryAfter(t *testing.T) {
 	cfg.RetryMaxBackoff = 5 * time.Second
 	market := NewTwelveDataMarket(cfg, server.Client())
 
-	start := time.Now()
+	// Retry-After ヘッダ付きでもリトライが行われることを検証する。
+	// Retry-After とバックオフの選択ロジック自体は TestComputeRetryDelay で別途検証する。
 	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
-	elapsed := time.Since(start)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
-	}
-	if elapsed < 900*time.Millisecond {
-		t.Errorf("expected to wait at least ~1s for Retry-After, waited %v", elapsed)
 	}
 	if got := calls.Load(); got != 2 {
 		t.Errorf("expected 2 HTTP calls, got %d", got)
@@ -630,8 +627,11 @@ func TestParseRetryAfter(t *testing.T) {
 	}{
 		{"empty", "", 0, false},
 		{"seconds", "5", 5 * time.Second, false},
+		{"zero seconds", "0", 0, false},
 		{"negative seconds", "-1", 0, false},
 		{"invalid", "not-a-number", 0, false},
+		{"overflow seconds", "99999999999", maxRetryAfterSecs * time.Second, false},
+		{"upper bound seconds", "3600", maxRetryAfterSecs * time.Second, false},
 		{"past http-date", time.Now().Add(-1 * time.Hour).UTC().Format(http.TimeFormat), 0, false},
 		{"future http-date", time.Now().Add(2 * time.Second).UTC().Format(http.TimeFormat), 2 * time.Second, true},
 	}
@@ -672,5 +672,92 @@ func TestIsRetryableStatus(t *testing.T) {
 		if isRetryableStatus(s) {
 			t.Errorf("status %d should not be retryable", s)
 		}
+	}
+}
+
+// TestComputeRetryDelay は待機時間決定ロジックを検証します（実待機なし）。
+func TestComputeRetryDelay(t *testing.T) {
+	t.Parallel()
+
+	cfg := Config{
+		RetryBaseBackoff: 500 * time.Millisecond,
+		RetryMaxBackoff:  8 * time.Second,
+		RetryJitterRatio: 0.0, // 決定的にするためジッター無効
+	}
+
+	tests := []struct {
+		name       string
+		attempt    int
+		retryAfter time.Duration
+		want       time.Duration
+	}{
+		{"retry-after takes precedence", 0, 2 * time.Second, 2 * time.Second},
+		{"retry-after clamped to max", 0, 30 * time.Second, 8 * time.Second},
+		{"retry-after exactly at max", 0, 8 * time.Second, 8 * time.Second},
+		{"backoff attempt 0", 0, 0, 500 * time.Millisecond},
+		{"backoff attempt 1", 1, 0, 2 * time.Second},
+		{"backoff attempt 2", 2, 0, 8 * time.Second},
+		{"backoff attempt 3 clamped", 3, 0, 8 * time.Second},
+		{"negative retry-after falls back to backoff", 0, -1 * time.Second, 500 * time.Millisecond},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := computeRetryDelay(tt.attempt, tt.retryAfter, cfg)
+			if got != tt.want {
+				t.Errorf("computeRetryDelay(%d, %v) = %v, want %v", tt.attempt, tt.retryAfter, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestComputeRetryDelay_NoMaxBackoff は RetryMaxBackoff 未設定時に
+// retryAfter がクランプされず素通しされることを検証します。
+func TestComputeRetryDelay_NoMaxBackoff(t *testing.T) {
+	t.Parallel()
+
+	cfg := Config{
+		RetryBaseBackoff: 500 * time.Millisecond,
+		RetryMaxBackoff:  0, // クランプ無効
+		RetryJitterRatio: 0.0,
+	}
+
+	got := computeRetryDelay(0, 1*time.Hour, cfg)
+	if got != 1*time.Hour {
+		t.Errorf("expected retry-after to pass through when MaxBackoff=0, got %v", got)
+	}
+}
+
+// TestTwelveDataMarket_GetTimeSeries_Retry_NetworkError_NoSleepOnLastAttempt は
+// ネットワークエラーが連続した場合、最終試行後に余分なバックオフ待機が発生しないことを検証します。
+func TestTwelveDataMarket_GetTimeSeries_Retry_NetworkError_NoSleepOnLastAttempt(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	url := server.URL
+	server.Close()
+
+	cfg := Config{
+		TwelveDataAPIKey: "test-key",
+		BaseURL:          url,
+		MaxRetries:       2, // 合計 3 試行
+		RetryBaseBackoff: 100 * time.Millisecond,
+		RetryMaxBackoff:  500 * time.Millisecond,
+		RetryJitterRatio: 0.0,
+	}
+	market := NewTwelveDataMarket(cfg, &http.Client{Timeout: 50 * time.Millisecond})
+
+	start := time.Now()
+	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatal("expected network error, got nil")
+	}
+	// 試行間バックオフは 100ms + 400ms = 500ms。最終試行後の追加待機があると elapsed が
+	// さらに 1600ms 以上増える。最終試行後の待機が無いことを上限で確認する。
+	// 各試行はクライアントタイムアウト 50ms 以下で失敗する想定。
+	maxExpected := 100*time.Millisecond + 400*time.Millisecond + 3*50*time.Millisecond + 200*time.Millisecond
+	if elapsed > maxExpected {
+		t.Errorf("expected total elapsed <= %v (no trailing sleep), got %v", maxExpected, elapsed)
 	}
 }
