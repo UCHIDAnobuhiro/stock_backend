@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"os"
 	"strconv"
@@ -20,10 +19,26 @@ import (
 )
 
 const (
-	rateLimitPerMinute = 7 // TwelveData APIのレートリミット（無料枠上限8/分、固定ウィンドウずれ対策で1つ余裕を持たせる）
+	rateLimitPerMinute    = 7   // TwelveData APIのレートリミット（無料枠上限8/分、固定ウィンドウずれ対策で1つ余裕を持たせる）
+	defaultMaxFailureRate = 0.2 // INGEST_MAX_FAILURE_RATE のデフォルト値
 )
 
+// shouldFailExit は ingest サマリと失敗率しきい値から非ゼロ終了すべきかを判定する。
+// しきい値ちょうど（FailureRate == threshold）は許容し、超過時のみ true を返す。
+func shouldFailExit(result candlesusecase.IngestResult, threshold float64) bool {
+	return result.FailureRate() > threshold
+}
+
+// main は run の戻り値で os.Exit するだけのラッパー。
+// os.Exit は defer を実行しないため、Redis Close 等の後処理が走るよう
+// 実体は run に分離している。
 func main() {
+	os.Exit(run())
+}
+
+// run は ingest 本体のセットアップと実行を行い、終了コード（0 or 1）を返す。
+// 戻り値で main に exit code を伝えるため、defer で登録した後処理が確実に実行される。
+func run() int {
 	db := db.OpenDB()
 	marketRepo := di.NewMarket()
 	candleRepo := candlesadapters.NewCandleRepository(db)
@@ -57,8 +72,38 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutHours)*time.Hour)
 	defer cancel()
 
-	if err := uc.IngestAll(ctx); err != nil {
-		log.Fatal(err)
+	maxFailureRate := defaultMaxFailureRate
+	if v := os.Getenv("INGEST_MAX_FAILURE_RATE"); v != "" {
+		if r, err := strconv.ParseFloat(v, 64); err == nil && r >= 0 && r <= 1 {
+			maxFailureRate = r
+		} else {
+			slog.Warn("invalid INGEST_MAX_FAILURE_RATE, using default", "value", v, "default", defaultMaxFailureRate)
+		}
 	}
-	log.Println("ingest ok")
+
+	start := time.Now()
+	result, err := uc.IngestAll(ctx)
+	duration := time.Since(start)
+
+	slog.Info("ingest summary",
+		"total", result.Total,
+		"succeeded", result.Succeeded,
+		"failed", result.Failed,
+		"failure_rate", result.FailureRate(),
+		"duration", duration.String(),
+	)
+
+	if err != nil {
+		slog.Error("ingest aborted by fatal error", "error", err)
+		return 1
+	}
+	if shouldFailExit(result, maxFailureRate) {
+		slog.Error("ingest failure rate exceeded threshold",
+			"failure_rate", result.FailureRate(),
+			"threshold", maxFailureRate,
+		)
+		return 1
+	}
+	slog.Info("ingest ok")
+	return 0
 }
