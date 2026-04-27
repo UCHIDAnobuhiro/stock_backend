@@ -62,9 +62,10 @@ type mockRateLimiter struct {
 	WaitIfNeededCalls int
 }
 
-func (m *mockRateLimiter) WaitIfNeeded() {
+func (m *mockRateLimiter) WaitIfNeeded(ctx context.Context) error {
 	m.WaitIfNeededCalls++
 	// テスト用に待機せず即座にリターン
+	return nil
 }
 
 // TestDedupCandles は dedupCandles 関数の重複除去ロジックをテストします。

@@ -2,13 +2,14 @@
 package ratelimiter
 
 import (
+	"context"
 	"log/slog"
 	"time"
 )
 
 // RateLimiterInterface はAPI呼び出しなどの操作頻度を制限するインターフェースです。
 type RateLimiterInterface interface {
-	WaitIfNeeded()
+	WaitIfNeeded(ctx context.Context) error
 }
 
 // RateLimiter はAPI呼び出しなどの操作頻度を制限します。
@@ -29,7 +30,8 @@ func NewRateLimiter(limit int, interval time.Duration) *RateLimiter {
 }
 
 // WaitIfNeeded はレートリミットに達しているか確認し、必要に応じて待機します。
-func (rl *RateLimiter) WaitIfNeeded() {
+// ctx がキャンセル/タイムアウトした場合は待機を中断し ctx.Err() を返します。
+func (rl *RateLimiter) WaitIfNeeded(ctx context.Context) error {
 	now := time.Now()
 	// インターバルが経過していればカウンターをリセット
 	if now.Sub(rl.lastReset) >= rl.interval {
@@ -42,10 +44,17 @@ func (rl *RateLimiter) WaitIfNeeded() {
 		sleep := rl.interval - now.Sub(rl.lastReset)
 		if sleep > 0 {
 			slog.Info("rate limit reached, sleeping", "limit", rl.limit, "sleep_duration", sleep)
-			time.Sleep(sleep)
+			timer := time.NewTimer(sleep)
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}
 		// 待機後にリセット
 		rl.count = 1
 		rl.lastReset = time.Now()
 	}
+	return nil
 }

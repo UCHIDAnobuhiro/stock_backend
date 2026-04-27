@@ -113,7 +113,9 @@ func (iu *IngestUsecase) IngestAll(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		iu.rateLimiter.WaitIfNeeded()
+		if err := iu.rateLimiter.WaitIfNeeded(ctx); err != nil {
+			return err
+		}
 		if err := iu.ingestOne(ctx, s, ingestOutputSize); err != nil {
 			// 1銘柄のエラーで処理を停止せず、エラーをログに記録して続行
 			slog.Error("failed to ingest data", "symbol", s, "error", err)
