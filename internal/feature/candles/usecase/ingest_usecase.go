@@ -110,6 +110,8 @@ func (iu *IngestUsecase) IngestAll(ctx context.Context) error {
 	}
 
 	for _, s := range symbols {
+		// WaitIfNeeded は limit 未到達なら cancelled ctx でも nil を返すため、
+		// ループごとに明示的に ctx をチェックして早期離脱する。
 		if err := ctx.Err(); err != nil {
 			return err
 		}
