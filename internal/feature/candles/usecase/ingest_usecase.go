@@ -36,11 +36,12 @@ type SymbolRepository interface {
 
 // IngestResult は IngestAll 実行後の銘柄単位の集計結果を表します。
 // 致命的エラー時も部分集計が返されるため、main 側でサマリログを出力できます。
+// 個別エラーの内容は IngestAll 内で slog.Error として出力されるため、
+// 集約せず件数のみ保持します。
 type IngestResult struct {
-	Total     int     // 取り込み対象銘柄数
-	Succeeded int     // 成功数
-	Failed    int     // 失敗数
-	Errors    []error // 失敗した銘柄のエラー（symbol 情報付きで wrap）
+	Total     int // 取り込み対象銘柄数
+	Succeeded int // 成功数
+	Failed    int // 失敗数
 }
 
 // FailureRate は失敗率を [0.0, 1.0] で返します。Total が 0 の場合は 0 を返します。
@@ -144,7 +145,6 @@ func (iu *IngestUsecase) IngestAll(ctx context.Context) (IngestResult, error) {
 			// 1銘柄のエラーで処理を停止せず、エラーをログに記録して続行
 			slog.Error("failed to ingest data", "symbol", s, "error", err)
 			result.Failed++
-			result.Errors = append(result.Errors, fmt.Errorf("symbol %s: %w", s, err))
 			continue
 		}
 		result.Succeeded++

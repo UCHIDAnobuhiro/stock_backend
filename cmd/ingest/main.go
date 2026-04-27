@@ -29,7 +29,16 @@ func shouldFailExit(result candlesusecase.IngestResult, threshold float64) bool 
 	return result.FailureRate() > threshold
 }
 
+// main は run の戻り値で os.Exit するだけのラッパー。
+// os.Exit は defer を実行しないため、Redis Close 等の後処理が走るよう
+// 実体は run に分離している。
 func main() {
+	os.Exit(run())
+}
+
+// run は ingest 本体のセットアップと実行を行い、終了コード（0 or 1）を返す。
+// 戻り値で main に exit code を伝えるため、defer で登録した後処理が確実に実行される。
+func run() int {
 	db := db.OpenDB()
 	marketRepo := di.NewMarket()
 	candleRepo := candlesadapters.NewCandleRepository(db)
@@ -86,14 +95,15 @@ func main() {
 
 	if err != nil {
 		slog.Error("ingest aborted by fatal error", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	if shouldFailExit(result, maxFailureRate) {
 		slog.Error("ingest failure rate exceeded threshold",
 			"failure_rate", result.FailureRate(),
 			"threshold", maxFailureRate,
 		)
-		os.Exit(1)
+		return 1
 	}
 	slog.Info("ingest ok")
+	return 0
 }

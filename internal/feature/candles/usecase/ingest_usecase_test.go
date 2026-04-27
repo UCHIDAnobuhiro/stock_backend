@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -61,11 +60,15 @@ func (m *mockSymbolRepository) ListActiveCodes(ctx context.Context) ([]string, e
 // mockRateLimiter はRateLimiterInterfaceのモック実装です。
 type mockRateLimiter struct {
 	WaitIfNeededCalls int
+	// WaitIfNeededFunc が設定されていれば呼び出す。nil なら nil を返す（待機なし）。
+	WaitIfNeededFunc func(ctx context.Context, callCount int) error
 }
 
 func (m *mockRateLimiter) WaitIfNeeded(ctx context.Context) error {
 	m.WaitIfNeededCalls++
-	// テスト用に待機せず即座にリターン
+	if m.WaitIfNeededFunc != nil {
+		return m.WaitIfNeededFunc(ctx, m.WaitIfNeededCalls)
+	}
 	return nil
 }
 
@@ -297,10 +300,9 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 		mockGetTimeSeriesFunc      func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 		mockUpsertBatchFunc        func(ctx context.Context, candles []entity.Candle) error
 		expectedErr                error
-		expectedResult             IngestResult // Errors の中身は verifyResult で個別検証
+		expectedResult             IngestResult
 		expectedGetTimeSeriesCalls int
 		verifyCalledIntervals      func(t *testing.T, intervals []string)
-		verifyResult               func(t *testing.T, result IngestResult)
 	}{
 		{
 			name:         "success: fetch all symbols",
@@ -361,17 +363,6 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			expectedResult: IngestResult{Total: 3, Succeeded: 2, Failed: 1},
 			// 3銘柄 × 1回 = 3回呼び出し（エラーが発生しても全銘柄が試行される）
 			expectedGetTimeSeriesCalls: 3,
-			verifyResult: func(t *testing.T, result IngestResult) {
-				if len(result.Errors) != 1 {
-					t.Fatalf("Errors length=%d, want 1", len(result.Errors))
-				}
-				if !errors.Is(result.Errors[0], ErrMarketAPI) {
-					t.Errorf("Errors[0] should wrap ErrMarketAPI, got %v", result.Errors[0])
-				}
-				if msg := result.Errors[0].Error(); !strings.Contains(msg, "INVALID") {
-					t.Errorf("Errors[0] should contain symbol name 'INVALID', got %q", msg)
-				}
-			},
 		},
 		{
 			name:         "partial failure: UpsertBatch failure is aggregated",
@@ -389,14 +380,6 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			expectedResult: IngestResult{Total: 2, Succeeded: 1, Failed: 1},
 			// 2銘柄 × 1回 = 2回呼び出し
 			expectedGetTimeSeriesCalls: 2,
-			verifyResult: func(t *testing.T, result IngestResult) {
-				if len(result.Errors) != 1 {
-					t.Fatalf("Errors length=%d, want 1", len(result.Errors))
-				}
-				if !errors.Is(result.Errors[0], ErrDB) {
-					t.Errorf("Errors[0] should wrap ErrDB, got %v", result.Errors[0])
-				}
-			},
 		},
 		{
 			name:         "success: only fetches 1day interval from API",
@@ -478,11 +461,106 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			if tc.verifyCalledIntervals != nil {
 				tc.verifyCalledIntervals(t, calledIntervals)
 			}
-			if tc.verifyResult != nil {
-				tc.verifyResult(t, result)
-			}
 		})
 	}
+}
+
+// TestIngestUsecase_IngestAll_MidLoopFatal はループ途中で発生する致命的エラー
+// （ctx キャンセル、rateLimiter 失敗）が部分集計と共に error を返すことを検証します。
+func TestIngestUsecase_IngestAll_MidLoopFatal(t *testing.T) {
+	testTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
+	mockCandles := []entity.Candle{
+		{Time: testTime, Open: 100, High: 110, Low: 90, Close: 105},
+	}
+
+	t.Run("ctx cancelled after first symbol succeeds", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+
+		var processedCount int
+		mockMarket := &mockMarketRepository{
+			GetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+				processedCount++
+				if processedCount == 1 {
+					// 1銘柄目の処理完了後に ctx をキャンセルし、2銘柄目のループ先頭で検出させる
+					cancel()
+				}
+				return mockCandles, nil
+			},
+		}
+		mockCandle := &mockCandleWriteRepository{
+			UpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error { return nil },
+		}
+		mockSymbol := &mockSymbolRepository{
+			ListActiveCodesFunc: func(ctx context.Context) ([]string, error) {
+				return []string{"AAPL", "GOOG", "MSFT"}, nil
+			},
+		}
+		mockRL := &mockRateLimiter{}
+
+		uc := NewIngestUsecase(mockMarket, mockCandle, mockSymbol, mockRL)
+		result, err := uc.IngestAll(ctx)
+
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("err=%v, want context.Canceled", err)
+		}
+		// 1銘柄目は成功、2銘柄目で ctx チェックに引っかかり離脱
+		if result.Total != 3 {
+			t.Errorf("result.Total=%d, want 3", result.Total)
+		}
+		if result.Succeeded != 1 {
+			t.Errorf("result.Succeeded=%d, want 1", result.Succeeded)
+		}
+		if result.Failed != 0 {
+			t.Errorf("result.Failed=%d, want 0", result.Failed)
+		}
+		// 部分集計は exit コード判定で問題ないこと（Failed=0 なので失敗率は 0）
+		if rate := result.FailureRate(); rate != 0 {
+			t.Errorf("FailureRate()=%v, want 0 (no symbol-level failures occurred)", rate)
+		}
+	})
+
+	t.Run("rateLimiter fails on second symbol", func(t *testing.T) {
+		ctx := context.Background()
+		errRateLimit := errors.New("rate limit exceeded")
+
+		mockMarket := &mockMarketRepository{
+			GetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+				return mockCandles, nil
+			},
+		}
+		mockCandle := &mockCandleWriteRepository{
+			UpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error { return nil },
+		}
+		mockSymbol := &mockSymbolRepository{
+			ListActiveCodesFunc: func(ctx context.Context) ([]string, error) {
+				return []string{"AAPL", "GOOG", "MSFT"}, nil
+			},
+		}
+		mockRL := &mockRateLimiter{
+			WaitIfNeededFunc: func(ctx context.Context, callCount int) error {
+				if callCount == 2 {
+					return errRateLimit
+				}
+				return nil
+			},
+		}
+
+		uc := NewIngestUsecase(mockMarket, mockCandle, mockSymbol, mockRL)
+		result, err := uc.IngestAll(ctx)
+
+		if !errors.Is(err, errRateLimit) {
+			t.Fatalf("err=%v, want errRateLimit", err)
+		}
+		if result.Total != 3 {
+			t.Errorf("result.Total=%d, want 3", result.Total)
+		}
+		if result.Succeeded != 1 {
+			t.Errorf("result.Succeeded=%d, want 1 (only AAPL processed)", result.Succeeded)
+		}
+		if result.Failed != 0 {
+			t.Errorf("result.Failed=%d, want 0", result.Failed)
+		}
+	})
 }
 
 // TestIngestResult_FailureRate は FailureRate の境界条件を検証します。
