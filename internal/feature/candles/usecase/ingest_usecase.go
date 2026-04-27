@@ -34,6 +34,23 @@ type SymbolRepository interface {
 	ListActiveCodes(ctx context.Context) ([]string, error)
 }
 
+// IngestResult は IngestAll 実行後の銘柄単位の集計結果を表します。
+// 致命的エラー時も部分集計が返されるため、main 側でサマリログを出力できます。
+type IngestResult struct {
+	Total     int     // 取り込み対象銘柄数
+	Succeeded int     // 成功数
+	Failed    int     // 失敗数
+	Errors    []error // 失敗した銘柄のエラー（symbol 情報付きで wrap）
+}
+
+// FailureRate は失敗率を [0.0, 1.0] で返します。Total が 0 の場合は 0 を返します。
+func (r IngestResult) FailureRate() float64 {
+	if r.Total == 0 {
+		return 0
+	}
+	return float64(r.Failed) / float64(r.Total)
+}
+
 // IngestUsecase は外部APIからデータを取得し、データベースに永続化するユースケースを定義します。
 type IngestUsecase struct {
 	market      MarketRepository
@@ -103,25 +120,34 @@ func dedupCandles(candles []entity.Candle) []entity.Candle {
 // IngestAll はアクティブな全銘柄の時系列データを取得し、
 // 日足・週足・月足をデータベースに永続化します。
 // APIレート制限を遵守し、必要に応じてリクエスト間で待機します。
-func (iu *IngestUsecase) IngestAll(ctx context.Context) error {
+//
+// 銘柄単位の失敗は IngestResult に集約され処理は継続します。
+// 致命的エラー（symbol 一覧取得失敗、ctx キャンセル、rateLimiter 失敗）は
+// それまでの部分集計と共に error を返します。
+func (iu *IngestUsecase) IngestAll(ctx context.Context) (IngestResult, error) {
 	symbols, err := iu.symbol.ListActiveCodes(ctx)
 	if err != nil {
-		return err
+		return IngestResult{}, err
 	}
 
+	result := IngestResult{Total: len(symbols)}
 	for _, s := range symbols {
 		// WaitIfNeeded は limit 未到達なら cancelled ctx でも nil を返すため、
 		// ループごとに明示的に ctx をチェックして早期離脱する。
 		if err := ctx.Err(); err != nil {
-			return err
+			return result, err
 		}
 		if err := iu.rateLimiter.WaitIfNeeded(ctx); err != nil {
-			return err
+			return result, err
 		}
 		if err := iu.ingestOne(ctx, s, ingestOutputSize); err != nil {
 			// 1銘柄のエラーで処理を停止せず、エラーをログに記録して続行
 			slog.Error("failed to ingest data", "symbol", s, "error", err)
+			result.Failed++
+			result.Errors = append(result.Errors, fmt.Errorf("symbol %s: %w", s, err))
+			continue
 		}
+		result.Succeeded++
 	}
-	return nil
+	return result, nil
 }

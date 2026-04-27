@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -292,11 +293,14 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 	testCases := []struct {
 		name                       string
 		inputSymbols               []string
+		listActiveCodesErr         error
 		mockGetTimeSeriesFunc      func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
 		mockUpsertBatchFunc        func(ctx context.Context, candles []entity.Candle) error
 		expectedErr                error
+		expectedResult             IngestResult // Errors の中身は verifyResult で個別検証
 		expectedGetTimeSeriesCalls int
 		verifyCalledIntervals      func(t *testing.T, intervals []string)
+		verifyResult               func(t *testing.T, result IngestResult)
 	}{
 		{
 			name:         "success: fetch all symbols",
@@ -307,7 +311,8 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
 				return nil
 			},
-			expectedErr: nil,
+			expectedErr:    nil,
+			expectedResult: IngestResult{Total: 2, Succeeded: 2, Failed: 0},
 			// 2銘柄 × 1回（日足のみ取得）= 2回呼び出し
 			expectedGetTimeSeriesCalls: 2,
 		},
@@ -320,7 +325,8 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
 				return nil
 			},
-			expectedErr: nil,
+			expectedErr:    nil,
+			expectedResult: IngestResult{Total: 1, Succeeded: 1, Failed: 0},
 			// 1銘柄 × 1回 = 1回呼び出し
 			expectedGetTimeSeriesCalls: 1,
 		},
@@ -336,10 +342,11 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 				return nil
 			},
 			expectedErr:                nil,
+			expectedResult:             IngestResult{Total: 0, Succeeded: 0, Failed: 0},
 			expectedGetTimeSeriesCalls: 0,
 		},
 		{
-			name:         "success: continues processing even when some symbols fail",
+			name:         "partial failure: continues processing and aggregates errors",
 			inputSymbols: []string{"AAPL", "INVALID", "GOOG"},
 			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 				if symbol == "INVALID" {
@@ -350,12 +357,24 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
 				return nil
 			},
-			expectedErr: nil, // IngestAllはエラーを返さず処理を続行
+			expectedErr:    nil, // 銘柄単位の失敗は IngestResult に集約され、error は返らない
+			expectedResult: IngestResult{Total: 3, Succeeded: 2, Failed: 1},
 			// 3銘柄 × 1回 = 3回呼び出し（エラーが発生しても全銘柄が試行される）
 			expectedGetTimeSeriesCalls: 3,
+			verifyResult: func(t *testing.T, result IngestResult) {
+				if len(result.Errors) != 1 {
+					t.Fatalf("Errors length=%d, want 1", len(result.Errors))
+				}
+				if !errors.Is(result.Errors[0], ErrMarketAPI) {
+					t.Errorf("Errors[0] should wrap ErrMarketAPI, got %v", result.Errors[0])
+				}
+				if msg := result.Errors[0].Error(); !strings.Contains(msg, "INVALID") {
+					t.Errorf("Errors[0] should contain symbol name 'INVALID', got %q", msg)
+				}
+			},
 		},
 		{
-			name:         "success: continues processing even when UpsertBatch fails",
+			name:         "partial failure: UpsertBatch failure is aggregated",
 			inputSymbols: []string{"AAPL", "GOOG"},
 			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
 				return mockCandles, nil
@@ -366,9 +385,18 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 				}
 				return nil
 			},
-			expectedErr: nil, // IngestAllはエラーを返さず処理を続行
+			expectedErr:    nil,
+			expectedResult: IngestResult{Total: 2, Succeeded: 1, Failed: 1},
 			// 2銘柄 × 1回 = 2回呼び出し
 			expectedGetTimeSeriesCalls: 2,
+			verifyResult: func(t *testing.T, result IngestResult) {
+				if len(result.Errors) != 1 {
+					t.Fatalf("Errors length=%d, want 1", len(result.Errors))
+				}
+				if !errors.Is(result.Errors[0], ErrDB) {
+					t.Errorf("Errors[0] should wrap ErrDB, got %v", result.Errors[0])
+				}
+			},
 		},
 		{
 			name:         "success: only fetches 1day interval from API",
@@ -380,6 +408,7 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 				return nil
 			},
 			expectedErr:                nil,
+			expectedResult:             IngestResult{Total: 2, Succeeded: 2, Failed: 0},
 			expectedGetTimeSeriesCalls: 2,
 			verifyCalledIntervals: func(t *testing.T, intervals []string) {
 				for i, interval := range intervals {
@@ -388,6 +417,14 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 					}
 				}
 			},
+		},
+		{
+			name:                       "fatal: ListActiveCodes returns error",
+			inputSymbols:               nil,
+			listActiveCodesErr:         ErrDB,
+			expectedErr:                ErrDB,
+			expectedResult:             IngestResult{}, // 部分集計なし
+			expectedGetTimeSeriesCalls: 0,
 		},
 	}
 
@@ -405,13 +442,16 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 			}
 			mockSymbol := &mockSymbolRepository{
 				ListActiveCodesFunc: func(ctx context.Context) ([]string, error) {
+					if tc.listActiveCodesErr != nil {
+						return nil, tc.listActiveCodesErr
+					}
 					return tc.inputSymbols, nil
 				},
 			}
 			mockRL := &mockRateLimiter{}
 
 			uc := NewIngestUsecase(mockMarket, mockCandle, mockSymbol, mockRL)
-			err := uc.IngestAll(ctx)
+			result, err := uc.IngestAll(ctx)
 
 			if tc.expectedErr == nil {
 				if err != nil {
@@ -421,12 +461,47 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 				t.Fatalf("expected %v, got %v", tc.expectedErr, err)
 			}
 
+			if result.Total != tc.expectedResult.Total {
+				t.Errorf("result.Total=%d, want %d", result.Total, tc.expectedResult.Total)
+			}
+			if result.Succeeded != tc.expectedResult.Succeeded {
+				t.Errorf("result.Succeeded=%d, want %d", result.Succeeded, tc.expectedResult.Succeeded)
+			}
+			if result.Failed != tc.expectedResult.Failed {
+				t.Errorf("result.Failed=%d, want %d", result.Failed, tc.expectedResult.Failed)
+			}
+
 			if mockMarket.GetTimeSeriesCalls != tc.expectedGetTimeSeriesCalls {
 				t.Errorf("GetTimeSeries was called %d times, expected %d", mockMarket.GetTimeSeriesCalls, tc.expectedGetTimeSeriesCalls)
 			}
 
 			if tc.verifyCalledIntervals != nil {
 				tc.verifyCalledIntervals(t, calledIntervals)
+			}
+			if tc.verifyResult != nil {
+				tc.verifyResult(t, result)
+			}
+		})
+	}
+}
+
+// TestIngestResult_FailureRate は FailureRate の境界条件を検証します。
+func TestIngestResult_FailureRate(t *testing.T) {
+	testCases := []struct {
+		name   string
+		result IngestResult
+		want   float64
+	}{
+		{name: "Total=0 returns 0", result: IngestResult{Total: 0, Failed: 0}, want: 0},
+		{name: "all succeeded", result: IngestResult{Total: 10, Failed: 0}, want: 0},
+		{name: "all failed", result: IngestResult{Total: 10, Failed: 10}, want: 1.0},
+		{name: "20% failure", result: IngestResult{Total: 10, Failed: 2}, want: 0.2},
+		{name: "50% failure", result: IngestResult{Total: 4, Failed: 2}, want: 0.5},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.result.FailureRate(); got != tc.want {
+				t.Errorf("FailureRate()=%v, want %v", got, tc.want)
 			}
 		})
 	}
