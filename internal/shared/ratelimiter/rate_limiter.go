@@ -8,11 +8,13 @@ import (
 )
 
 // RateLimiterInterface はAPI呼び出しなどの操作頻度を制限するインターフェースです。
+// 実装は並行呼び出し非対応である場合があります。詳細は各実装のドキュメントを参照してください。
 type RateLimiterInterface interface {
 	WaitIfNeeded(ctx context.Context) error
 }
 
 // RateLimiter はAPI呼び出しなどの操作頻度を制限します。
+// 並行呼び出し非対応です。複数 goroutine から呼び出す場合は呼び出し側で排他制御してください。
 type RateLimiter struct {
 	limit     int           // インターバルあたりの最大操作回数
 	interval  time.Duration // カウンターをリセットする時間間隔
@@ -49,6 +51,9 @@ func (rl *RateLimiter) WaitIfNeeded(ctx context.Context) error {
 			select {
 			case <-timer.C:
 			case <-ctx.Done():
+				// 待機を完了せず抜けるため、増分済みのカウンタを巻き戻して呼び出しが
+				// 発生しなかった状態に戻す（同一インスタンスを別 ctx で再利用する場合の状態破壊を防ぐ）。
+				rl.count--
 				return ctx.Err()
 			}
 		}

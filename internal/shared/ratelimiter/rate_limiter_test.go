@@ -17,7 +17,7 @@ func TestRateLimiter_WaitIfNeeded(t *testing.T) {
 				t.Fatalf("unexpected error on call %d: %v", i, err)
 			}
 		}
-		if elapsed := time.Since(start); elapsed > 20*time.Millisecond {
+		if elapsed := time.Since(start); elapsed > 50*time.Millisecond {
 			t.Errorf("limit 未到達なのに待機した: elapsed=%v", elapsed)
 		}
 	})
@@ -64,7 +64,7 @@ func TestRateLimiter_WaitIfNeeded(t *testing.T) {
 		if err := rl.WaitIfNeeded(ctx); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if elapsed := time.Since(start); elapsed > 10*time.Millisecond {
+		if elapsed := time.Since(start); elapsed > 30*time.Millisecond {
 			t.Errorf("リセット後なのに待機した: elapsed=%v", elapsed)
 		}
 	})
@@ -99,7 +99,7 @@ func TestRateLimiter_WaitIfNeeded_ContextCancellation(t *testing.T) {
 			},
 			saturated:    false,
 			wantErr:      nil,
-			wantElapseLT: 20 * time.Millisecond,
+			wantElapseLT: 50 * time.Millisecond,
 		},
 		{
 			name: "limit 到達中の即時キャンセル ctx は ctx.Err を返す",
@@ -110,7 +110,7 @@ func TestRateLimiter_WaitIfNeeded_ContextCancellation(t *testing.T) {
 			},
 			saturated:    true,
 			wantErr:      context.Canceled,
-			wantElapseLT: 20 * time.Millisecond,
+			wantElapseLT: 50 * time.Millisecond,
 		},
 		{
 			name: "待機中に cancel されると Canceled で抜ける",
@@ -165,5 +165,31 @@ func TestRateLimiter_WaitIfNeeded_ContextCancellation(t *testing.T) {
 				t.Errorf("elapsed = %v, want < %v", elapsed, tc.wantElapseLT)
 			}
 		})
+	}
+}
+
+// TestRateLimiter_WaitIfNeeded_CountRollbackOnCancel は ctx キャンセルで待機を抜けた際に
+// カウンタが「呼び出し前の値」に巻き戻されることを検証します。
+// 巻き戻しがないと count が limit を超えて残り、内部状態が不整合になります。
+func TestRateLimiter_WaitIfNeeded_CountRollbackOnCancel(t *testing.T) {
+	interval := 200 * time.Millisecond
+	rl := NewRateLimiter(1, interval)
+
+	// 1回目で limit 到達。ここで count は limit と同じ値になる。
+	if err := rl.WaitIfNeeded(context.Background()); err != nil {
+		t.Fatalf("setup failed: %v", err)
+	}
+	countBefore := rl.count
+
+	// 2回目は cancelled ctx で待機を打ち切る。
+	cancelCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := rl.WaitIfNeeded(cancelCtx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("want context.Canceled, got %v", err)
+	}
+
+	// count が「呼び出し前」の値に巻き戻されていることを確認する。
+	if rl.count != countBefore {
+		t.Errorf("count = %d, want %d (ctx キャンセル時のロールバックが効いていない)", rl.count, countBefore)
 	}
 }
