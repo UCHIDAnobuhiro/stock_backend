@@ -12,9 +12,7 @@
       "Bash(go run:*)",
       "Bash(go list:*)",
       "Bash(go env:*)",
-      "Bash(golangci-lint run:*)",
-      "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(golangci-lint run:*)"
     ]
   }
 }
