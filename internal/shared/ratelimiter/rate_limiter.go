@@ -2,16 +2,19 @@
 package ratelimiter
 
 import (
+	"context"
 	"log/slog"
 	"time"
 )
 
 // RateLimiterInterface はAPI呼び出しなどの操作頻度を制限するインターフェースです。
+// 実装は並行呼び出し非対応である場合があります。詳細は各実装のドキュメントを参照してください。
 type RateLimiterInterface interface {
-	WaitIfNeeded()
+	WaitIfNeeded(ctx context.Context) error
 }
 
 // RateLimiter はAPI呼び出しなどの操作頻度を制限します。
+// 並行呼び出し非対応です。複数 goroutine から呼び出す場合は呼び出し側で排他制御してください。
 type RateLimiter struct {
 	limit     int           // インターバルあたりの最大操作回数
 	interval  time.Duration // カウンターをリセットする時間間隔
@@ -29,7 +32,8 @@ func NewRateLimiter(limit int, interval time.Duration) *RateLimiter {
 }
 
 // WaitIfNeeded はレートリミットに達しているか確認し、必要に応じて待機します。
-func (rl *RateLimiter) WaitIfNeeded() {
+// ctx がキャンセル/タイムアウトした場合は待機を中断し ctx.Err() を返します。
+func (rl *RateLimiter) WaitIfNeeded(ctx context.Context) error {
 	now := time.Now()
 	// インターバルが経過していればカウンターをリセット
 	if now.Sub(rl.lastReset) >= rl.interval {
@@ -42,10 +46,20 @@ func (rl *RateLimiter) WaitIfNeeded() {
 		sleep := rl.interval - now.Sub(rl.lastReset)
 		if sleep > 0 {
 			slog.Info("rate limit reached, sleeping", "limit", rl.limit, "sleep_duration", sleep)
-			time.Sleep(sleep)
+			timer := time.NewTimer(sleep)
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+			case <-ctx.Done():
+				// 待機を完了せず抜けるため、増分済みのカウンタを巻き戻して呼び出しが
+				// 発生しなかった状態に戻す（同一インスタンスを別 ctx で再利用する場合の状態破壊を防ぐ）。
+				rl.count--
+				return ctx.Err()
+			}
 		}
 		// 待機後にリセット
 		rl.count = 1
 		rl.lastReset = time.Now()
 	}
+	return nil
 }
