@@ -20,3 +20,6 @@ docker/.env
 
 # tmp
 tmp
+
+# Claude Code のサブエージェント隔離用 worktree
+.claude/worktrees/
