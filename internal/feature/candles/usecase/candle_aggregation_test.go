@@ -114,7 +114,7 @@ func TestAggregateWeekly(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := aggregateWeekly(tc.input)
+			got := aggregateWeekly(tc.input, time.UTC)
 			assertCandlesEqual(t, got, tc.expected)
 		})
 	}
@@ -184,9 +184,70 @@ func TestAggregateMonthly(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := aggregateMonthly(tc.input)
+			got := aggregateMonthly(tc.input, time.UTC)
 			assertCandlesEqual(t, got, tc.expected)
 		})
+	}
+}
+
+// TestAggregateMonthly_LocaleBoundary は loc に取引所ローカル TZ を渡した場合に
+// 月境界判定が UTC ではなくロケーションで行われることを検証します。
+// 米国株: 2024-12-31 21:00 ET (UTC では 2025-01-01 02:00) は ET 12月、2025-01-01 09:30 ET は ET 1月。
+func TestAggregateMonthly_LocaleBoundary(t *testing.T) {
+	ny, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatalf("load NY tz: %v", err)
+	}
+	dec31ET := time.Date(2024, 12, 31, 21, 0, 0, 0, ny)
+	jan1ET := time.Date(2025, 1, 1, 9, 30, 0, 0, ny)
+
+	input := []entity.Candle{
+		{Time: dec31ET, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
+		{Time: jan1ET, Open: 105, High: 115, Low: 100, Close: 112, Volume: 2000},
+	}
+
+	gotLoc := aggregateMonthly(input, ny)
+	if len(gotLoc) != 2 {
+		t.Fatalf("loc=ET: expected 2 monthly buckets, got %d", len(gotLoc))
+	}
+	if !gotLoc[0].Time.Equal(time.Date(2024, 12, 1, 0, 0, 0, 0, ny)) {
+		t.Errorf("loc=ET first bucket: got %v, want 2024-12-01 ET", gotLoc[0].Time)
+	}
+	if !gotLoc[1].Time.Equal(time.Date(2025, 1, 1, 0, 0, 0, 0, ny)) {
+		t.Errorf("loc=ET second bucket: got %v, want 2025-01-01 ET", gotLoc[1].Time)
+	}
+
+	// loc=UTC で集計した場合は dec31ET (UTC では 2025-01-01) と jan1ET (UTC では 2025-01-01) が
+	// 同じ 2025-01 月バケットに合算される。これは TZ を考慮しない既存挙動と一致する。
+	gotUTC := aggregateMonthly(input, time.UTC)
+	if len(gotUTC) != 1 {
+		t.Fatalf("loc=UTC: expected 1 monthly bucket (incorrect aggregation when ignoring TZ), got %d", len(gotUTC))
+	}
+}
+
+// TestAggregateWeekly_LocaleBoundary は loc に取引所ローカル TZ を渡した場合に
+// 週境界判定がロケーションで行われることを検証します。
+func TestAggregateWeekly_LocaleBoundary(t *testing.T) {
+	ny, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatalf("load NY tz: %v", err)
+	}
+	// 2024-03-10 は DST 切替日（米国）。9:30 ET は EDT (UTC-4)。
+	mon := time.Date(2024, 3, 11, 9, 30, 0, 0, ny) // 月曜
+	wed := time.Date(2024, 3, 13, 9, 30, 0, 0, ny) // 水曜（同週）
+
+	input := []entity.Candle{
+		{Time: mon, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
+		{Time: wed, Open: 106, High: 120, Low: 95, Close: 115, Volume: 1500},
+	}
+
+	got := aggregateWeekly(input, ny)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 weekly bucket, got %d", len(got))
+	}
+	want := time.Date(2024, 3, 11, 0, 0, 0, 0, ny)
+	if !got[0].Time.Equal(want) {
+		t.Errorf("week start: got %v, want %v", got[0].Time, want)
 	}
 }
 

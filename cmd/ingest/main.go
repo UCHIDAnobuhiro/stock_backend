@@ -43,6 +43,7 @@ func run() int {
 	marketRepo := di.NewMarket()
 	candleRepo := candlesadapters.NewCandleRepository(db)
 	symbolRepo := symbollistadapters.NewSymbolRepository(db)
+	ingestSymbolRepo := di.NewIngestSymbolAdapter(symbolRepo)
 	rateLimiter := ratelimiter.NewRateLimiter(rateLimitPerMinute, time.Minute)
 
 	// Redis接続（ベストエフォート: 接続失敗時はキャッシュウォームアップなしで続行）
@@ -61,7 +62,7 @@ func run() int {
 	// TTLはingest連続失敗時のセーフティネット、通常は UpsertBatch で日次上書き
 	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, candlesadapters.DefaultCacheTTL, candleRepo, "candles")
 
-	uc := candlesusecase.NewIngestUsecase(marketRepo, cachedCandleRepo, symbolRepo, rateLimiter)
+	uc := candlesusecase.NewIngestUsecase(marketRepo, cachedCandleRepo, ingestSymbolRepo, rateLimiter)
 
 	timeoutHours := 3
 	if v := os.Getenv("INGEST_TIMEOUT_HOURS"); v != "" {

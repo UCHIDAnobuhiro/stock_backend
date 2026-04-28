@@ -55,3 +55,4 @@ Claude Code の `/adr` スキルを使用してください：
 | [ADR-0002](0002-フィーチャーベースのクリーンアーキテクチャ採用.md)                    | フィーチャーベースのクリーンアーキテクチャ採用 | Accepted   |
 | [ADR-0003](0003-postgresql-の採用.md)                                                 | PostgreSQLの採用                         | Accepted   |
 | [ADR-0004](0004-tbls-による-er-図自動生成.md)                                         | tbls による ER 図自動生成                | Accepted   |
+| [ADR-0005](0005-twelvedata-タイムスタンプを市場ローカル時刻として保存する.md)         | TwelveData タイムスタンプを市場ローカル時刻として解釈・集計する | Proposed   |

@@ -2,18 +2,18 @@
 -- ローカル開発環境専用です。本番・staging 環境では絶対に実行しないでください。
 TRUNCATE TABLE symbols CASCADE;
 
-INSERT INTO symbols (code, name, market, created_at, updated_at) VALUES
+INSERT INTO symbols (code, name, market, timezone, created_at, updated_at) VALUES
 -- 時価総額上位（メガキャップ）
-('NVDA', 'NVIDIA Corp', 'NASDAQ', NOW(), NOW()),
-('AAPL', 'Apple Inc.', 'NASDAQ', NOW(), NOW()),
-('GOOGL', 'Alphabet Inc. (Class A)', 'NASDAQ', NOW(), NOW()),
-('MSFT', 'Microsoft Corp.', 'NASDAQ', NOW(), NOW()),
-('AMZN', 'Amazon.com Inc.', 'NASDAQ', NOW(), NOW()),
-('AVGO', 'Broadcom Inc.', 'NASDAQ', NOW(), NOW()),
-('META', 'Meta Platforms, Inc.', 'NASDAQ', NOW(), NOW()),
-('TSLA', 'Tesla, Inc.', 'NASDAQ', NOW(), NOW()),
-('BRK.B', 'Berkshire Hathaway Inc.', 'NYSE', NOW(), NOW()),
-('LLY', 'Eli Lilly and Company', 'NYSE', NOW(), NOW())
+('NVDA', 'NVIDIA Corp', 'NASDAQ', 'America/New_York', NOW(), NOW()),
+('AAPL', 'Apple Inc.', 'NASDAQ', 'America/New_York', NOW(), NOW()),
+('GOOGL', 'Alphabet Inc. (Class A)', 'NASDAQ', 'America/New_York', NOW(), NOW()),
+('MSFT', 'Microsoft Corp.', 'NASDAQ', 'America/New_York', NOW(), NOW()),
+('AMZN', 'Amazon.com Inc.', 'NASDAQ', 'America/New_York', NOW(), NOW()),
+('AVGO', 'Broadcom Inc.', 'NASDAQ', 'America/New_York', NOW(), NOW()),
+('META', 'Meta Platforms, Inc.', 'NASDAQ', 'America/New_York', NOW(), NOW()),
+('TSLA', 'Tesla, Inc.', 'NASDAQ', 'America/New_York', NOW(), NOW()),
+('BRK.B', 'Berkshire Hathaway Inc.', 'NYSE', 'America/New_York', NOW(), NOW()),
+('LLY', 'Eli Lilly and Company', 'NYSE', 'America/New_York', NOW(), NOW())
 -- 情報技術 - 半導体
 -- ('QCOM', 'Qualcomm Inc.', 'NASDAQ', NOW(), NOW()),
 -- ('AMD', 'Advanced Micro Devices Inc.', 'NASDAQ', NOW(), NOW()),
@@ -577,4 +577,5 @@ INSERT INTO symbols (code, name, market, created_at, updated_at) VALUES
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
   market = EXCLUDED.market,
+  timezone = EXCLUDED.timezone,
   updated_at = NOW();
