@@ -149,6 +149,8 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   └── postgres/               # PostgreSQL初期化スクリプト
 │
 ├── docs/
+│   ├── adr/                    # アーキテクチャ決定記録（ADR）
+│   ├── schema/                 # tbls が生成する DB スキーマドキュメント
 │   └── tbls.yml                # tbls（ER 図生成）設定
 ├── go.mod
 ├── go.sum
