@@ -56,6 +56,7 @@ erDiagram
   varchar_20_ code ""
   varchar_255_ name ""
   varchar_100_ market ""
+  varchar_64_ timezone ""
   boolean is_active ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
