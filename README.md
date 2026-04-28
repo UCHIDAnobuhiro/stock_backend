@@ -56,7 +56,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 | AI / ML         | Cloud Vision API / Gemini API（Vertex AI）                          |
 | 認証・セキュリティ | JWT / bcrypt / CSRF（Double Submit Cookie）/ レートリミット       |
 | API仕様         | OpenAPI 3.0.3 / oapi-codegen（型生成）                              |
-| 設定管理        | **.env.docker（ローカル）/ Secret Manager（本番）+ os.Getenv()**    |
+| 設定管理        | **docker/.env.app（ローカル）/ Secret Manager（本番）+ os.Getenv()**|
 | コンテナ        | Docker / Docker Compose                                             |
 | クラウド        | Google Cloud Run / Cloud SQL / Secret Manager / Artifact Registry   |
 | CI/CD           | GitHub Actions                                                      |
@@ -143,10 +143,13 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   ├── Dockerfile.server.dev   # APIサーバー用Dockerfile（ローカル開発）
 │   ├── docker-compose.yml      # Docker共通設定（サービス定義・ネットワーク設定）
 │   ├── docker-compose.dev.yml  # ローカル開発用オーバーライド設定
-│   ├── example.env             # docker-compose変数展開用テンプレート
+│   ├── air.toml                # Air（ホットリロード）設定
+│   ├── example.env.app         # アプリ用環境変数テンプレート（コンテナにロード）
+│   ├── example.env.gcp         # GCP ADC 用テンプレート（compose 変数置換用）
 │   └── postgres/               # PostgreSQL初期化スクリプト
 │
-├── .env.docker                 # ローカル環境変数（.gitignoreに追加推奨）
+├── docs/
+│   └── tbls.yml                # tbls（ER 図生成）設定
 ├── go.mod
 ├── go.sum
 └── .github/
@@ -266,7 +269,7 @@ go generate ./internal/api/...
 - **Redis（Cloud Memorystore）**: キャッシュ管理
 - **Secret Manager**: APIキー・DBパスワード・JWTシークレットキーを安全に管理
 - 起動時に `os.Getenv()` + Secret Manager APIで読み込み
-- **ローカル開発では `.env.docker` から読み込み**
+- **ローカル開発では `docker/.env.app` から読み込み**
 
 ## CI/CD
 
@@ -281,7 +284,7 @@ go generate ./internal/api/...
 
 - Docker / Docker Compose がインストール済みであること
 - Go のインストールは不要（すべてDocker内で実行）
-- `.env.docker` にローカル環境変数を設定
+- `docker/.env.app` にローカル環境変数を設定
 
 ---
 
@@ -293,8 +296,8 @@ git clone https://github.com/UCHIDAnobuhiro/stock_backend.git
 cd stock_backend
 
 # 環境変数ファイルをコピー
-cp example.env.docker .env.docker
-cp docker/example.env docker/.env
+cp docker/example.env.app docker/.env.app
+cp docker/example.env.gcp docker/.env   # compose 変数置換に必要
 ```
 
 ### Twelve Data APIキーの取得
@@ -304,7 +307,7 @@ cp docker/example.env docker/.env
 
 1. Twelve Dataのウェブサイトでアカウントを作成
 2. 「Dashboard > API Keys」からキーを発行
-3. `.env.docker` に `TWELVE_DATA_API_KEY` として設定
+3. `docker/.env.app` に `TWELVE_DATA_API_KEY` として設定
    例: `TWELVE_DATA_API_KEY=your_api_key_here`
 
 ### Twelve Data 無料プランの制限事項
@@ -335,7 +338,7 @@ GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credenti
 HOST_GOOGLE_ADC_PATH=$HOME/.config/gcloud/application_default_credentials.json
 ```
 
-4. `.env.docker` に以下を追加
+4. `docker/.env.app` に以下を追加
 
 ```env
 GOOGLE_GENAI_USE_VERTEXAI=true
@@ -367,10 +370,10 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p 
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock up -d backend-dev
 
 # 2) ER 図・テーブル定義書を再生成（docs/schema/ を上書き）
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock --profile on-demand run --rm tbls doc --config /work/.tbls.yml --force
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock --profile on-demand run --rm tbls doc --config /work/docs/tbls.yml --force
 
 # 3) 差分が残っていないか確認（CI でも同じ内容をチェックしている）
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock --profile on-demand run --rm tbls diff --config /work/.tbls.yml
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock --profile on-demand run --rm tbls diff --config /work/docs/tbls.yml
 ```
 
 GCP 認証情報を持たない環境などで `backend-dev` の起動が難しい場合は、手順 1) を以下の軽量バイナリ (`cmd/migrate`) に置き換えられます。

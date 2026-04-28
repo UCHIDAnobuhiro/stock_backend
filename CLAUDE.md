@@ -35,7 +35,7 @@ go build ./...
 ```
 
 ### 環境セットアップ
-- `example.env.docker` を `.env.docker` にコピーして設定：
+- `docker/example.env.app` を `docker/.env.app` にコピーして設定（GCP ADC を使う場合は `docker/example.env.gcp` を `docker/.env` にコピー）：
   - `TWELVE_DATA_API_KEY`: https://twelvedata.com/ から取得（無料枠: 8リクエスト/分）
   - `JWT_SECRET`: 本番環境では強力なシークレットを設定
   - DB・Redisの設定はローカル開発用
