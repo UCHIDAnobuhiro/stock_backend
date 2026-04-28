@@ -10,14 +10,16 @@ import (
 
 // aggregateWeekly はISO週ごとに日足ローソク足を集計して週足を生成します。
 // 入力は任意の順序でよく、出力は時刻昇順で返されます。
-func aggregateWeekly(daily []entity.Candle) []entity.Candle {
-	return aggregate(daily, weekKey, weekStart)
+// loc は週境界の判定および代表タイムスタンプ生成に使う取引所ローカルのロケーションです。
+func aggregateWeekly(daily []entity.Candle, loc *time.Location) []entity.Candle {
+	return aggregate(daily, weekKeyFn(loc), weekStartFn(loc))
 }
 
 // aggregateMonthly は月ごとに日足ローソク足を集計して月足を生成します。
 // 入力は任意の順序でよく、出力は時刻昇順で返されます。
-func aggregateMonthly(daily []entity.Candle) []entity.Candle {
-	return aggregate(daily, monthKey, monthStart)
+// loc は月境界の判定および代表タイムスタンプ生成に使う取引所ローカルのロケーションです。
+func aggregateMonthly(daily []entity.Candle, loc *time.Location) []entity.Candle {
+	return aggregate(daily, monthKeyFn(loc), monthStartFn(loc))
 }
 
 // trimIncompleteFirstBucket は最古の日足がバケット開始日でない場合、最初の集計バケットを除外します。
@@ -111,28 +113,39 @@ func aggregate(
 	return out
 }
 
-// weekKey は ISO 週番号に基づくバケットキーを返します（例: "2023-W01"）。
-func weekKey(t time.Time) string {
-	year, week := t.ISOWeek()
-	return fmt.Sprintf("%d-W%02d", year, week)
-}
-
-// weekStart はその日が属する ISO 週の月曜日 00:00:00 UTC を返します。
-func weekStart(t time.Time) time.Time {
-	wd := int(t.Weekday())
-	if wd == 0 {
-		wd = 7 // 日曜日を ISO 準拠で 7 に補正
+// weekKeyFn は loc ロケーションでの ISO 週番号に基づくバケットキー関数を返します（例: "2023-W01"）。
+func weekKeyFn(loc *time.Location) func(time.Time) string {
+	return func(t time.Time) string {
+		year, week := t.In(loc).ISOWeek()
+		return fmt.Sprintf("%d-W%02d", year, week)
 	}
-	monday := t.AddDate(0, 0, -(wd - 1))
-	return time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, time.UTC)
 }
 
-// monthKey は年月に基づくバケットキーを返します（例: "2023-01"）。
-func monthKey(t time.Time) string {
-	return fmt.Sprintf("%04d-%02d", t.Year(), int(t.Month()))
+// weekStartFn は loc ロケーションでその日が属する ISO 週の月曜日 00:00:00 を返す関数を返します。
+func weekStartFn(loc *time.Location) func(time.Time) time.Time {
+	return func(t time.Time) time.Time {
+		local := t.In(loc)
+		wd := int(local.Weekday())
+		if wd == 0 {
+			wd = 7 // 日曜日を ISO 準拠で 7 に補正
+		}
+		monday := local.AddDate(0, 0, -(wd - 1))
+		return time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, loc)
+	}
 }
 
-// monthStart はその日が属する月の 1 日 00:00:00 UTC を返します。
-func monthStart(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
+// monthKeyFn は loc ロケーションでの年月に基づくバケットキー関数を返します（例: "2023-01"）。
+func monthKeyFn(loc *time.Location) func(time.Time) string {
+	return func(t time.Time) string {
+		local := t.In(loc)
+		return fmt.Sprintf("%04d-%02d", local.Year(), int(local.Month()))
+	}
+}
+
+// monthStartFn は loc ロケーションでその日が属する月の 1 日 00:00:00 を返す関数を返します。
+func monthStartFn(loc *time.Location) func(time.Time) time.Time {
+	return func(t time.Time) time.Time {
+		local := t.In(loc)
+		return time.Date(local.Year(), local.Month(), 1, 0, 0, 0, 0, loc)
+	}
 }

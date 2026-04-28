@@ -93,7 +93,7 @@ func TestTwelveDataMarket_GetTimeSeries_Success(t *testing.T) {
 	}
 	market := NewTwelveDataMarket(cfg, server.Client())
 
-	candles, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+	candles, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -111,6 +111,100 @@ func TestTwelveDataMarket_GetTimeSeries_Success(t *testing.T) {
 	}
 	if candles[0].Volume != 1000000 {
 		t.Errorf("expected volume 1000000, got %d", candles[0].Volume)
+	}
+}
+
+// TestTwelveDataMarket_GetTimeSeries_ParseInLocation は loc を解釈ロケーションとして
+// 取引所ローカル時刻の datetime が正しく時刻に変換されることを検証します。
+// 米国株（DST 切替前後）と日本株（JST）の代表ケースを含みます。
+func TestTwelveDataMarket_GetTimeSeries_ParseInLocation(t *testing.T) {
+	t.Parallel()
+
+	ny, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatalf("failed to load NY tz: %v", err)
+	}
+	tokyo, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		t.Fatalf("failed to load Tokyo tz: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		datetime string
+		loc      *time.Location
+		wantUTC  time.Time
+	}{
+		{
+			name:     "NY DST off (winter): EST is UTC-5",
+			datetime: "2024-01-15 09:30:00",
+			loc:      ny,
+			wantUTC:  time.Date(2024, 1, 15, 14, 30, 0, 0, time.UTC),
+		},
+		{
+			name:     "NY DST on (summer): EDT is UTC-4",
+			datetime: "2024-07-15 09:30:00",
+			loc:      ny,
+			wantUTC:  time.Date(2024, 7, 15, 13, 30, 0, 0, time.UTC),
+		},
+		{
+			name:     "Tokyo JST is UTC+9",
+			datetime: "2024-04-01 00:00:00",
+			loc:      tokyo,
+			wantUTC:  time.Date(2024, 3, 31, 15, 0, 0, 0, time.UTC),
+		},
+		{
+			name:     "date only (1day) interpreted at midnight in loc",
+			datetime: "2024-04-01",
+			loc:      tokyo,
+			wantUTC:  time.Date(2024, 3, 31, 15, 0, 0, 0, time.UTC),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				body := `{"status":"ok","values":[{"datetime":"` + tt.datetime +
+					`","open":"1","high":"1","low":"1","close":"1","volume":"1"}]}`
+				_, _ = w.Write([]byte(body))
+			}))
+			defer server.Close()
+
+			cfg := Config{
+				TwelveDataAPIKey: "test-key",
+				BaseURL:          server.URL,
+			}
+			market := NewTwelveDataMarket(cfg, server.Client())
+
+			candles, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 1, tt.loc)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(candles) != 1 {
+				t.Fatalf("expected 1 candle, got %d", len(candles))
+			}
+			if !candles[0].Time.Equal(tt.wantUTC) {
+				t.Errorf("expected UTC %v, got %v", tt.wantUTC, candles[0].Time.UTC())
+			}
+			if candles[0].Time.Location() != tt.loc {
+				t.Errorf("expected location %v, got %v", tt.loc, candles[0].Time.Location())
+			}
+		})
+	}
+}
+
+// TestTwelveDataMarket_GetTimeSeries_NilLocation は loc==nil の場合にエラーを返すことを検証します。
+func TestTwelveDataMarket_GetTimeSeries_NilLocation(t *testing.T) {
+	t.Parallel()
+
+	cfg := Config{TwelveDataAPIKey: "test-key", BaseURL: "http://invalid"}
+	market := NewTwelveDataMarket(cfg, &http.Client{})
+	if _, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 1, nil); err == nil {
+		t.Fatal("expected error for nil loc")
 	}
 }
 
@@ -145,7 +239,7 @@ func TestTwelveDataMarket_GetTimeSeries_HTTPError(t *testing.T) {
 			}
 			market := NewTwelveDataMarket(cfg, server.Client())
 
-			_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+			_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -176,7 +270,7 @@ func TestTwelveDataMarket_GetTimeSeries_APIError(t *testing.T) {
 	}
 	market := NewTwelveDataMarket(cfg, server.Client())
 
-	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -202,7 +296,7 @@ func TestTwelveDataMarket_GetTimeSeries_InvalidJSON(t *testing.T) {
 	}
 	market := NewTwelveDataMarket(cfg, server.Client())
 
-	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -237,7 +331,7 @@ func TestTwelveDataMarket_GetTimeSeries_InvalidDateTime(t *testing.T) {
 	}
 	market := NewTwelveDataMarket(cfg, server.Client())
 
-	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -314,7 +408,7 @@ func TestTwelveDataMarket_GetTimeSeries_InvalidNumbers(t *testing.T) {
 			}
 			market := NewTwelveDataMarket(cfg, server.Client())
 
-			_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+			_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -345,7 +439,7 @@ func TestTwelveDataMarket_GetTimeSeries_EmptyValues(t *testing.T) {
 	}
 	market := NewTwelveDataMarket(cfg, server.Client())
 
-	candles, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+	candles, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -373,7 +467,7 @@ func TestTwelveDataMarket_GetTimeSeries_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 
-	_, err := market.GetTimeSeries(ctx, "AAPL", "1day", 100)
+	_, err := market.GetTimeSeries(ctx, "AAPL", "1day", 100, time.UTC)
 	if err == nil {
 		t.Fatal("expected error due to context cancellation, got nil")
 	}
@@ -425,7 +519,7 @@ func TestTwelveDataMarket_GetTimeSeries_Retry_SuccessAfter503(t *testing.T) {
 
 	market := NewTwelveDataMarket(retryTestConfig(server.URL, 3), server.Client())
 
-	candles, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+	candles, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -451,7 +545,7 @@ func TestTwelveDataMarket_GetTimeSeries_Retry_ExhaustedOn503(t *testing.T) {
 
 	market := NewTwelveDataMarket(retryTestConfig(server.URL, 3), server.Client())
 
-	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -488,7 +582,7 @@ func TestTwelveDataMarket_GetTimeSeries_Retry_NoRetryOn4xx(t *testing.T) {
 
 			market := NewTwelveDataMarket(retryTestConfig(server.URL, 3), server.Client())
 
-			_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+			_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -525,7 +619,7 @@ func TestTwelveDataMarket_GetTimeSeries_Retry_RespectsRetryAfter(t *testing.T) {
 
 	// Retry-After ヘッダ付きでもリトライが行われることを検証する。
 	// Retry-After とバックオフの選択ロジック自体は TestComputeRetryDelay で別途検証する。
-	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -556,7 +650,7 @@ func TestTwelveDataMarket_GetTimeSeries_Retry_RetryAfterHTTPDate(t *testing.T) {
 
 	market := NewTwelveDataMarket(retryTestConfig(server.URL, 3), server.Client())
 
-	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -577,7 +671,7 @@ func TestTwelveDataMarket_GetTimeSeries_Retry_NetworkError(t *testing.T) {
 
 	market := NewTwelveDataMarket(retryTestConfig(url, 2), &http.Client{Timeout: 200 * time.Millisecond})
 
-	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 	if err == nil {
 		t.Fatal("expected network error, got nil")
 	}
@@ -604,7 +698,7 @@ func TestTwelveDataMarket_GetTimeSeries_Retry_ContextCanceledMidRetry(t *testing
 	defer cancel()
 
 	start := time.Now()
-	_, err := market.GetTimeSeries(ctx, "AAPL", "1day", 100)
+	_, err := market.GetTimeSeries(ctx, "AAPL", "1day", 100, time.UTC)
 	elapsed := time.Since(start)
 	if err == nil {
 		t.Fatal("expected context error, got nil")
@@ -748,7 +842,7 @@ func TestTwelveDataMarket_GetTimeSeries_Retry_NetworkError_NoSleepOnLastAttempt(
 	market := NewTwelveDataMarket(cfg, &http.Client{Timeout: 50 * time.Millisecond})
 
 	start := time.Now()
-	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100)
+	_, err := market.GetTimeSeries(context.Background(), "AAPL", "1day", 100, time.UTC)
 	elapsed := time.Since(start)
 	if err == nil {
 		t.Fatal("expected network error, got nil")

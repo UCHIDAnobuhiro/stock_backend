@@ -187,6 +187,11 @@
           "nullable": false
         },
         {
+          "name": "timezone",
+          "type": "varchar(64)",
+          "nullable": false
+        },
+        {
           "name": "is_active",
           "type": "boolean",
           "nullable": false,

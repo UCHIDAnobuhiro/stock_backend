@@ -27,6 +27,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 }
 
 // seedSymbol はテスト用の銘柄データをデータベースに作成します。
+// Timezone はテスト便宜上 "Asia/Tokyo" 固定で作成します。
 func seedSymbol(t *testing.T, db *gorm.DB, code, name, market string, isActive bool) *entity.Symbol {
 	t.Helper()
 
@@ -34,6 +35,7 @@ func seedSymbol(t *testing.T, db *gorm.DB, code, name, market string, isActive b
 		Code:     code,
 		Name:     name,
 		Market:   market,
+		Timezone: "Asia/Tokyo",
 		IsActive: isActive,
 	}
 	err := db.Create(symbol).Error
@@ -253,6 +255,7 @@ func TestSymbolRepository_ListActive_FieldValues(t *testing.T) {
 	assert.Equal(t, "7203.T", symbol.Code)
 	assert.Equal(t, "Toyota Motor Corporation", symbol.Name)
 	assert.Equal(t, "Tokyo Stock Exchange", symbol.Market)
+	assert.Equal(t, "Asia/Tokyo", symbol.Timezone)
 	assert.True(t, symbol.IsActive)
 	assert.False(t, symbol.UpdatedAt.IsZero(), "UpdatedAt should be set")
 }

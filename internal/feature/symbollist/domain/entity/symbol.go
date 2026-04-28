@@ -10,6 +10,7 @@ type Symbol struct {
 	Code      string    `gorm:"size:20;not null;uniqueIndex"` // 銘柄コード（例: "AAPL", "7203.T"）
 	Name      string    `gorm:"size:255;not null"`            // 企業名
 	Market    string    `gorm:"size:100;not null"`            // 市場識別子（例: "NASDAQ", "TSE"）
+	Timezone  string    `gorm:"size:64;not null"`             // 取引所の IANA タイムゾーン（例: "America/New_York", "Asia/Tokyo"）
 	IsActive  bool      `gorm:"not null;default:true"`        // トラッキング対象かどうか
 	CreatedAt time.Time `gorm:"autoCreateTime;not null"`      // 登録日時
 	UpdatedAt time.Time `gorm:"autoUpdateTime;not null"`      // 最終更新日時

@@ -34,7 +34,11 @@ func NewTwelveDataMarket(cfg Config, client *http.Client) *TwelveDataMarket {
 
 // GetTimeSeries はTwelve Data APIから時系列株価データを取得し、
 // domain.Candleのスライスとして返します。
-func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+// loc は外部 API レスポンスの datetime（取引所ローカル時刻）を解釈するロケーションです。
+func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+	if loc == nil {
+		return nil, fmt.Errorf("twelvedata: loc must not be nil")
+	}
 	q := url.Values{}
 	// クエリパラメータを追加
 	q.Set("symbol", symbol)
@@ -67,10 +71,10 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 	candles := make([]entity.Candle, 0, len(body.Values))
 	for _, v := range body.Values {
 
-		// タイムスタンプをパース
-		tm, err := time.Parse("2006-01-02 15:04:05", v.Datetime)
+		// タイムスタンプを取引所ローカル時刻として解釈
+		tm, err := time.ParseInLocation("2006-01-02 15:04:05", v.Datetime, loc)
 		if err != nil {
-			tm, err = time.Parse("2006-01-02", v.Datetime)
+			tm, err = time.ParseInLocation("2006-01-02", v.Datetime, loc)
 			if err != nil {
 				return nil, fmt.Errorf("parse time %q: %w", v.Datetime, err)
 			}

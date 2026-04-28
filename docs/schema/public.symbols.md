@@ -8,6 +8,7 @@
 | code | varchar(20) |  | false | [public.candles](public.candles.md) [public.watchlists](public.watchlists.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | market | varchar(100) |  | false |  |  |  |
+| timezone | varchar(64) |  | false |  |  |  |
 | is_active | boolean | true | false |  |  |  |
 | created_at | timestamp with time zone |  | false |  |  |  |
 | updated_at | timestamp with time zone |  | false |  |  |  |
@@ -38,6 +39,7 @@ erDiagram
   varchar_20_ code ""
   varchar_255_ name ""
   varchar_100_ market ""
+  varchar_64_ timezone ""
   boolean is_active ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
