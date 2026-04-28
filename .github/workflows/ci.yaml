@@ -43,7 +43,7 @@ jobs:
             exit 0
           fi
 
-          if echo "${CHANGED_FILES}" | grep -qvE '\.(md|txt)$|^docs/|^LICENSE$|^\.github/PULL_REQUEST_TEMPLATE\.md$'; then
+          if echo "${CHANGED_FILES}" | grep -qvE '\.(md|txt)$|^LICENSE$|^\.github/PULL_REQUEST_TEMPLATE\.md$'; then
             echo "code_changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "code_changed=false" >> "$GITHUB_OUTPUT"
