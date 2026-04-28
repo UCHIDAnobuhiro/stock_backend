@@ -7,7 +7,7 @@ services:
     image: stock-backend
     container_name: stock-backend
     env_file:
-      - ../.env.docker
+      - ./.env.app
     ports:
       - "8080:8080"
     restart: unless-stopped
@@ -19,6 +19,6 @@ services:
     image: stock-ingest
     container_name: stock-ingest
     env_file:
-      - ../.env.docker
+      - ./.env.app
     restart: "no"
     profiles: ["on-demand"]

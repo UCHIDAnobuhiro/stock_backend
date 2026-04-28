@@ -569,7 +569,7 @@ go test ./internal/feature/auth/... -v -race -cover
 | `JWT_SECRET` | JWTトークン署名用の秘密鍵 | ✅ |
 | `PASSWORD_PEPPER` | パスワードハッシュ用ペッパー（HMAC-SHA256のキー） | ✅ |
 
-**設定例**（`.env.docker`）:
+**設定例**（`docker/.env.app`）:
 ```
 JWT_SECRET=your-super-secret-key-change-this-in-production
 PASSWORD_PEPPER=your-password-pepper-change-this-in-production

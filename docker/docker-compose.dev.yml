@@ -40,7 +40,7 @@ services:
       dockerfile: docker/Dockerfile.server.dev
     container_name: stock-backend-dev
     env_file:
-      - ../.env.docker
+      - ./.env.app
     environment:
       APP_ENV: docker-dev
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
@@ -64,7 +64,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.server.dev
     env_file:
-      - ../.env.docker
+      - ./.env.app
     volumes:
       - ..:/app
       - go-mod-cache:/go/pkg/mod

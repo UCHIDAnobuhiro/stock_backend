@@ -43,7 +43,7 @@ jobs:
             exit 0
           fi
 
-          if echo "${CHANGED_FILES}" | grep -qvE '\.(md|txt)$|^docs/|^LICENSE$|^\.github/PULL_REQUEST_TEMPLATE\.md$'; then
+          if echo "${CHANGED_FILES}" | grep -qvE '\.(md|txt)$|^LICENSE$|^\.github/PULL_REQUEST_TEMPLATE\.md$'; then
             echo "code_changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "code_changed=false" >> "$GITHUB_OUTPUT"
@@ -138,7 +138,7 @@ jobs:
       - name: Check schema doc drift
         env:
           TBLS_DSN: postgres://appuser:apppass@localhost:5432/app?sslmode=disable
-        run: tbls diff --config .tbls.yml
+        run: tbls diff --config docs/tbls.yml
 
   # 全CIジョブの結果を集約するゲートジョブ
   # GitHub Branch Protectionではこのジョブだけをrequiredに設定する
