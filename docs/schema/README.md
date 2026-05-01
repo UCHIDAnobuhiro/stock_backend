@@ -8,6 +8,7 @@
 | [public.candles](public.candles.md) | 9 |  | BASE TABLE |
 | [public.symbols](public.symbols.md) | 8 |  | BASE TABLE |
 | [public.watchlists](public.watchlists.md) | 6 |  | BASE TABLE |
+| [public.oauth_accounts](public.oauth_accounts.md) | 5 |  | BASE TABLE |
 
 ## Relations
 
@@ -17,6 +18,7 @@ erDiagram
 "public.candles" }o--|| "public.symbols" : "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
 "public.watchlists" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.watchlists" }o--|| "public.symbols" : "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
+"public.oauth_accounts" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
 "public.users" {
   bigint id ""
@@ -53,6 +55,13 @@ erDiagram
   bigint sort_key ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+}
+"public.oauth_accounts" {
+  bigint id ""
+  bigint user_id FK ""
+  varchar_32_ provider ""
+  varchar_255_ provider_uid ""
+  timestamp_with_time_zone created_at ""
 }
 ```
 

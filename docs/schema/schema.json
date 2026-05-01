@@ -19,7 +19,7 @@
         {
           "name": "password",
           "type": "varchar(255)",
-          "nullable": false
+          "nullable": true
         },
         {
           "name": "created_at",
@@ -350,6 +350,81 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.oauth_accounts",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "nullable": false,
+          "default": "nextval('oauth_accounts_id_seq'::regclass)"
+        },
+        {
+          "name": "user_id",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "provider",
+          "type": "varchar(32)",
+          "nullable": false
+        },
+        {
+          "name": "provider_uid",
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "oauth_accounts_pkey",
+          "def": "CREATE UNIQUE INDEX oauth_accounts_pkey ON public.oauth_accounts USING btree (id)",
+          "table": "public.oauth_accounts",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "idx_oauth_accounts_user_id",
+          "def": "CREATE INDEX idx_oauth_accounts_user_id ON public.oauth_accounts USING btree (user_id)",
+          "table": "public.oauth_accounts",
+          "columns": [
+            "user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "fk_oauth_accounts_user",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+          "table": "public.oauth_accounts",
+          "referenced_table": "public.users",
+          "columns": [
+            "user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "oauth_accounts_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.oauth_accounts",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -391,6 +466,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT"
+    },
+    {
+      "table": "public.oauth_accounts",
+      "columns": [
+        "user_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.users",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
     }
   ],
   "driver": {
