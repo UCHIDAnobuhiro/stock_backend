@@ -69,6 +69,8 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "invalid or expired state"})
 		} else if errors.Is(err, usecase.ErrOAuthEmailUnavailable) {
 			c.JSON(http.StatusBadGateway, api.ErrorResponse{Error: "cannot obtain verified email from provider"})
+		} else if errors.Is(err, usecase.ErrUnknownProvider) {
+			c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "unsupported provider"})
 		} else {
 			slog.Error("oauth callback failed", "provider", provider, "error", err)
 			c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "oauth failed"})

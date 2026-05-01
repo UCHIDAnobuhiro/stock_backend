@@ -177,10 +177,15 @@ func main() {
 				slog.Error("GOOGLE_CLIENT_SECRET is required when GOOGLE_CLIENT_ID is set")
 				os.Exit(1)
 			}
+			googleRedirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
+			if googleRedirectURL == "" {
+				slog.Error("GOOGLE_REDIRECT_URL is required when GOOGLE_CLIENT_ID is set")
+				os.Exit(1)
+			}
 			oauthProviders["google"] = authadapters.NewGoogleProvider(
 				googleClientID,
 				googleClientSecret,
-				os.Getenv("GOOGLE_REDIRECT_URL"),
+				googleRedirectURL,
 				&http.Client{Timeout: 10 * time.Second},
 			)
 		}
@@ -190,10 +195,15 @@ func main() {
 				slog.Error("GITHUB_CLIENT_SECRET is required when GITHUB_CLIENT_ID is set")
 				os.Exit(1)
 			}
+			githubRedirectURL := os.Getenv("GITHUB_REDIRECT_URL")
+			if githubRedirectURL == "" {
+				slog.Error("GITHUB_REDIRECT_URL is required when GITHUB_CLIENT_ID is set")
+				os.Exit(1)
+			}
 			oauthProviders["github"] = authadapters.NewGitHubProvider(
 				githubClientID,
 				githubClientSecret,
-				os.Getenv("GITHUB_REDIRECT_URL"),
+				githubRedirectURL,
 				&http.Client{Timeout: 10 * time.Second},
 			)
 		}
