@@ -135,6 +135,84 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
 
+  /v1/auth/oauth/{provider}:
+    get:
+      summary: OAuthログイン開始
+      description: |
+        指定プロバイダー（google/github）のOAuth2認可画面へリダイレクトします。
+        state + PKCEコードチャレンジを生成しRedisに保存します（TTL: 10分）。
+      operationId: beginOAuth
+      tags:
+        - auth
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, github]
+          description: OAuthプロバイダー名
+      responses:
+        "302":
+          description: プロバイダー認可画面へリダイレクト
+        "400":
+          description: 未サポートのプロバイダー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/auth/oauth/{provider}/callback:
+    get:
+      summary: OAuthコールバック処理
+      description: |
+        プロバイダーから受け取ったcodeとstateを検証し、JWTとCSRFトークンをCookieにセットして
+        フロントエンドURLへリダイレクトします。
+        同メールアドレスが既存ユーザーに存在する場合は自動リンクします。
+      operationId: oauthCallback
+      tags:
+        - auth
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, github]
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "302":
+          description: フロントエンドURLへリダイレクト（auth_token・csrf_token Cookieをセット）
+        "400":
+          description: stateが無効または期限切れ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: プロバイダーAPIエラー（メールアドレス取得失敗等）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: サーバーエラー
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /v1/candles/{code}:
     get:
       summary: ローソク足データ取得

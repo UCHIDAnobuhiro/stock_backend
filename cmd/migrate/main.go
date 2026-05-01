@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 
+	authadapters "stock_backend/internal/feature/auth/adapters"
 	authentity "stock_backend/internal/feature/auth/domain/entity"
 	candlesadapters "stock_backend/internal/feature/candles/adapters"
 	symbolentity "stock_backend/internal/feature/symbollist/domain/entity"
@@ -26,11 +27,20 @@ func main() {
 
 	if err := infradb.RunMigrations(db,
 		&authentity.User{},
+		&authentity.OAuthAccount{},
 		&candlesadapters.CandleModel{},
 		&symbolentity.Symbol{},
 		&watchlistentity.UserSymbol{},
 	); err != nil {
 		slog.Error("failed to migrate", "error", err)
+		os.Exit(1)
+	}
+	if err := authadapters.MakePasswordNullable(db); err != nil {
+		slog.Error("failed to make password nullable", "error", err)
+		os.Exit(1)
+	}
+	if err := authadapters.AddOAuthAccountsFKConstraints(db); err != nil {
+		slog.Error("failed to add oauth_accounts FK constraints", "error", err)
 		os.Exit(1)
 	}
 	if err := watchlistadapters.AddFKConstraints(db); err != nil {

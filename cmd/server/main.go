@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"time"
 
@@ -54,11 +55,20 @@ func main() {
 	if os.Getenv("RUN_MIGRATIONS") == "true" {
 		if err := infradb.RunMigrations(db,
 			&authentity.User{},
+			&authentity.OAuthAccount{},
 			&candlesadapters.CandleModel{},
 			&symbolentity.Symbol{},
 			&watchlistentity.UserSymbol{},
 		); err != nil {
 			slog.Error("failed to migrate", "error", err)
+			os.Exit(1)
+		}
+		if err := authadapters.MakePasswordNullable(db); err != nil {
+			slog.Error("failed to make password nullable", "error", err)
+			os.Exit(1)
+		}
+		if err := authadapters.AddOAuthAccountsFKConstraints(db); err != nil {
+			slog.Error("failed to add oauth_accounts FK constraints", "error", err)
 			os.Exit(1)
 		}
 		if err := watchlistadapters.AddFKConstraints(db); err != nil {
@@ -145,6 +155,70 @@ func main() {
 		slog.Warn("invalid COOKIE_SECURE value, falling back to default", "value", cookieSecureRaw, "default", secureCookie)
 	}
 
+	// OAuth ハンドラー（環境変数が未設定の場合はOAuth機能なしで起動）
+	var oauthH *authhandler.OAuthHandler
+	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
+	githubClientID := os.Getenv("GITHUB_CLIENT_ID")
+	oauthEnabled := googleClientID != "" || githubClientID != ""
+	if oauthEnabled {
+		if rdb == nil {
+			slog.Error("OAuth requires Redis but Redis is unavailable")
+			os.Exit(1)
+		}
+		oauthFrontendURL := os.Getenv("OAUTH_FRONTEND_REDIRECT_URL")
+		if oauthFrontendURL == "" {
+			slog.Error("OAUTH_FRONTEND_REDIRECT_URL is required when OAuth is enabled")
+			os.Exit(1)
+		}
+		oauthProviders := map[string]authusecase.OAuthProvider{}
+		if googleClientID != "" {
+			googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+			if googleClientSecret == "" {
+				slog.Error("GOOGLE_CLIENT_SECRET is required when GOOGLE_CLIENT_ID is set")
+				os.Exit(1)
+			}
+			googleRedirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
+			if googleRedirectURL == "" {
+				slog.Error("GOOGLE_REDIRECT_URL is required when GOOGLE_CLIENT_ID is set")
+				os.Exit(1)
+			}
+			oauthProviders["google"] = authadapters.NewGoogleProvider(
+				googleClientID,
+				googleClientSecret,
+				googleRedirectURL,
+				&http.Client{Timeout: 10 * time.Second},
+			)
+		}
+		if githubClientID != "" {
+			githubClientSecret := os.Getenv("GITHUB_CLIENT_SECRET")
+			if githubClientSecret == "" {
+				slog.Error("GITHUB_CLIENT_SECRET is required when GITHUB_CLIENT_ID is set")
+				os.Exit(1)
+			}
+			githubRedirectURL := os.Getenv("GITHUB_REDIRECT_URL")
+			if githubRedirectURL == "" {
+				slog.Error("GITHUB_REDIRECT_URL is required when GITHUB_CLIENT_ID is set")
+				os.Exit(1)
+			}
+			oauthProviders["github"] = authadapters.NewGitHubProvider(
+				githubClientID,
+				githubClientSecret,
+				githubRedirectURL,
+				&http.Client{Timeout: 10 * time.Second},
+			)
+		}
+		oauthUC := authusecase.NewOAuthUsecase(
+			userRepo,
+			authadapters.NewOAuthAccountRepository(db),
+			userRepo,
+			authadapters.NewRedisOAuthStateStore(rdb),
+			jwtGen,
+			oauthProviders,
+			watchlistUC,
+		)
+		oauthH = authhandler.NewOAuthHandler(oauthUC, secureCookie, oauthFrontendURL)
+	}
+
 	// ハンドラー
 	authH := authhandler.NewAuthHandler(authUC, rateLimiter, secureCookie, watchlistUC)
 	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
@@ -159,7 +233,7 @@ func main() {
 	}
 
 	// ルーター作成
-	r := router.NewRouter(authH, candlesH, symbolH, logoH, watchlistH, rateLimiter, corsOrigins)
+	r := router.NewRouter(authH, oauthH, candlesH, symbolH, logoH, watchlistH, rateLimiter, corsOrigins)
 
 	slog.Info("Starting server", "port", 8080)
 	if err := r.Run(":8080"); err != nil {

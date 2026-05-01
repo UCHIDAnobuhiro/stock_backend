@@ -12,4 +12,13 @@ var (
 
 	// ErrInvalidCredentials はメールアドレスまたはパスワードが正しくない場合に返されます。
 	ErrInvalidCredentials = errors.New("invalid email or password")
+
+	// ErrStateNotFound はOAuthのstateが存在しない・期限切れの場合に返されます。
+	ErrStateNotFound = errors.New("oauth state not found or expired")
+
+	// ErrOAuthEmailUnavailable はOAuthプロバイダーから検証済みメールアドレスが取得できない場合に返されます。
+	ErrOAuthEmailUnavailable = errors.New("verified email not available from oauth provider")
+
+	// ErrUnknownProvider は未対応のOAuthプロバイダーが指定された場合に返されます。
+	ErrUnknownProvider = errors.New("unknown oauth provider")
 )

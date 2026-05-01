@@ -4,9 +4,9 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | bigint | nextval('users_id_seq'::regclass) | false | [public.watchlists](public.watchlists.md) |  |  |
+| id | bigint | nextval('users_id_seq'::regclass) | false | [public.oauth_accounts](public.oauth_accounts.md) [public.watchlists](public.watchlists.md) |  |  |
 | email | varchar(255) |  | false |  |  |  |
-| password | varchar(255) |  | false |  |  |  |
+| password | varchar(255) |  | true |  |  |  |
 | created_at | timestamp with time zone |  | false |  |  |  |
 | updated_at | timestamp with time zone |  | false |  |  |  |
 
@@ -28,6 +28,7 @@
 ```mermaid
 erDiagram
 
+"public.oauth_accounts" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 "public.watchlists" }o--|| "public.users" : "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
 
 "public.users" {
@@ -36,6 +37,13 @@ erDiagram
   varchar_255_ password ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+}
+"public.oauth_accounts" {
+  bigint id ""
+  bigint user_id FK ""
+  varchar_32_ provider ""
+  varchar_255_ provider_uid ""
+  timestamp_with_time_zone created_at ""
 }
 "public.watchlists" {
   bigint id ""

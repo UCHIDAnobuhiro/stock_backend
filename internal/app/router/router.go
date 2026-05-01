@@ -21,7 +21,9 @@ import (
 
 // NewRouter はすべてのアプリケーションルートを設定したGinルーターを生成します。
 // 公開ルート（signup, login）とJWT認証ミドルウェア付きの保護ルート（candles, symbols, logo, watchlist）を設定します。
-func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.CandlesHandler,
+// oauthHandler が nil の場合はOAuthルートを登録しません。
+func NewRouter(authHandler *authhandler.AuthHandler, oauthHandler *authhandler.OAuthHandler,
+	candles *candleshandler.CandlesHandler,
 	symbol *symbollisthandler.SymbolHandler, logo *logohandler.LogoDetectionHandler,
 	watchlist *watchlisthandler.WatchlistHandler,
 	limiter *ratelimit.Limiter,
@@ -70,6 +72,20 @@ func NewRouter(authHandler *authhandler.AuthHandler, candles *candleshandler.Can
 		)
 		// 期限切れトークンでもログアウトできるよう認証不要
 		v1.DELETE("/logout", authHandler.Logout)
+
+		// OAuthルート（環境変数が設定されている場合のみ登録）
+		if oauthHandler != nil {
+			oauthGroup := v1.Group("/auth/oauth")
+			oauthGroup.GET("/:provider", oauthHandler.BeginAuth)
+			oauthGroup.GET("/:provider/callback",
+				ratelimit.ByIP(limiter, ratelimit.IPRateLimitConfig{
+					Prefix: "rl:oauth:callback:ip",
+					Limit:  20,
+					Window: 1 * time.Minute,
+				}),
+				oauthHandler.Callback,
+			)
+		}
 
 		// 保護ルート（認証必須・CSRF保護）
 		auth := v1.Group("/")

@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -20,6 +21,51 @@ const (
 	// EnvKeyPasswordPepper はパスワードペッパーの環境変数キーです。
 	EnvKeyPasswordPepper = "PASSWORD_PEPPER"
 )
+
+// UserCreatedHook はユーザー新規作成後に呼び出されるフックのインターフェースです。
+// usecase層でインターフェースを定義することで、transport層への依存を避けます。
+type UserCreatedHook interface {
+	OnUserCreated(ctx context.Context, userID uint) error
+}
+
+// OAuthUserInfo はOAuth2プロバイダーから取得したユーザー情報です。
+type OAuthUserInfo struct {
+	ProviderUID string // プロバイダー側のユーザー一意ID
+	Email       string // 検証済みメールアドレス
+}
+
+// OAuthProvider はOAuth2プロバイダーの抽象化インターフェースです。
+// インターフェースはコンシューマー（usecase）が定義します。
+type OAuthProvider interface {
+	// AuthorizationURL はPKCEのcodeChallenge付きの認可URLを生成します。
+	AuthorizationURL(state, codeChallenge string) string
+	// ExchangeCode はauthorization codeをユーザー情報に交換します。
+	ExchangeCode(ctx context.Context, code, codeVerifier string) (*OAuthUserInfo, error)
+}
+
+// OAuthStateStore はPKCE stateの一時保存を抽象化します。
+type OAuthStateStore interface {
+	// SaveState はstateとcodeVerifierをTTL付きで保存します。
+	SaveState(ctx context.Context, state, codeVerifier string, ttl time.Duration) error
+	// ConsumeState はstateを検索して削除し、codeVerifierを返します。
+	// stateが存在しない・期限切れの場合はErrStateNotFoundを返します。
+	ConsumeState(ctx context.Context, state string) (codeVerifier string, err error)
+}
+
+// OAuthAccountRepository はoauth_accountsテーブルの永続化を抽象化します。
+type OAuthAccountRepository interface {
+	// FindByProvider はプロバイダー名とプロバイダーUIDでOAuthAccountを検索します。
+	FindByProvider(ctx context.Context, provider, providerUID string) (*entity.OAuthAccount, error)
+	// Create はOAuthAccountを新規作成します。
+	Create(ctx context.Context, account *entity.OAuthAccount) error
+}
+
+// OAuthUserCreator はOAuth新規ユーザー作成時にUserとOAuthAccountを
+// トランザクション内で原子的に作成します。
+// 実装はadapters層がDB固有のトランザクション処理を担います。
+type OAuthUserCreator interface {
+	CreateUserWithOAuthAccount(ctx context.Context, user *entity.User, account *entity.OAuthAccount) error
+}
 
 // UserRepository はユーザーエンティティの永続化層を抽象化します。
 // Goの慣例に従い、インターフェースはプロバイダー（adapters）ではなくコンシューマー（usecase）が定義します。
@@ -98,7 +144,8 @@ func (u *authUsecase) Signup(ctx context.Context, email, password string) (uint,
 	if err != nil {
 		return 0, fmt.Errorf("failed to hash password: %w", err)
 	}
-	user := &entity.User{Email: email, Password: string(hashed)}
+	hashedStr := string(hashed)
+	user := &entity.User{Email: email, Password: &hashedStr}
 	if err := u.users.Create(ctx, user); err != nil {
 		return 0, err
 	}
@@ -115,8 +162,8 @@ func (u *authUsecase) Login(ctx context.Context, email, password string) (string
 	// ユーザーが存在しない場合のタイミング攻撃緩和用ダミーハッシュ
 	// bcrypt.CompareHashAndPasswordが常に呼ばれることを保証する
 	passwordHash := u.dummyHash
-	if err == nil {
-		passwordHash = user.Password
+	if err == nil && user.Password != nil {
+		passwordHash = *user.Password
 	}
 
 	// タイミング攻撃防止のため、常にパスワードを検証
