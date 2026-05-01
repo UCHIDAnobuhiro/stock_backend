@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"stock_backend/internal/feature/auth/domain/entity"
@@ -19,6 +20,7 @@ const oauthStateTTL = 10 * time.Minute
 type oauthUsecase struct {
 	users      UserRepository
 	oauthAccts OAuthAccountRepository
+	creator    OAuthUserCreator
 	stateStore OAuthStateStore
 	jwtGen     JWTGenerator
 	providers  map[string]OAuthProvider
@@ -27,10 +29,12 @@ type oauthUsecase struct {
 
 // NewOAuthUsecase はoauthUsecaseの新しいインスタンスを生成します。
 // providers は map[providerName]OAuthProvider として渡します。
+// creator は新規ユーザーとOAuthAccountをトランザクション内で作成します。
 // hooks にはユーザー新規作成後に呼び出すフックを渡します（例: watchlistUC）。
 func NewOAuthUsecase(
 	users UserRepository,
 	oauthAccts OAuthAccountRepository,
+	creator OAuthUserCreator,
 	stateStore OAuthStateStore,
 	jwtGen JWTGenerator,
 	providers map[string]OAuthProvider,
@@ -39,6 +43,7 @@ func NewOAuthUsecase(
 	return &oauthUsecase{
 		users:      users,
 		oauthAccts: oauthAccts,
+		creator:    creator,
 		stateStore: stateStore,
 		jwtGen:     jwtGen,
 		providers:  providers,
@@ -76,40 +81,39 @@ func (uc *oauthUsecase) BeginAuth(ctx context.Context, providerName string) (str
 }
 
 // HandleCallback はプロバイダーから返却されたcodeとstateを検証し、
-// JWTトークンと認証済みユーザーのメールアドレスを返します。
-// 同メールのユーザーが存在する場合は自動リンクします。
-func (uc *oauthUsecase) HandleCallback(ctx context.Context, providerName, code, state string) (token, email string, err error) {
+// JWTトークンを返します。同メールのユーザーが存在する場合は自動リンクします。
+func (uc *oauthUsecase) HandleCallback(ctx context.Context, providerName, code, state string) (string, error) {
 	provider, ok := uc.providers[providerName]
 	if !ok {
-		return "", "", ErrUnknownProvider
+		return "", ErrUnknownProvider
 	}
 
 	// stateの検証と消費（リプレイ攻撃防止のため atomic に削除）
 	codeVerifier, err := uc.stateStore.ConsumeState(ctx, state)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	// authorization code を ユーザー情報に交換
 	info, err := provider.ExchangeCode(ctx, code, codeVerifier)
 	if err != nil {
-		return "", "", fmt.Errorf("oauth code exchange failed: %w", err)
+		return "", fmt.Errorf("oauth code exchange failed: %w", err)
 	}
 	if info.Email == "" {
-		return "", "", ErrOAuthEmailUnavailable
+		return "", ErrOAuthEmailUnavailable
 	}
 
 	userID, err := uc.findOrCreateUser(ctx, providerName, info)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	tok, err := uc.jwtGen.GenerateToken(userID, info.Email)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to generate token: %w", err)
+		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	return tok, info.Email, nil
+	return tok, nil
 }
 
 // findOrCreateUser は既存OAuthAccountを探し、なければユーザーを作成・リンクします。
@@ -142,22 +146,21 @@ func (uc *oauthUsecase) findOrCreateUser(ctx context.Context, providerName strin
 	}
 
 	// 新規ユーザー作成（OAuth専用: Password = nil）
+	// UserとOAuthAccountをトランザクション内で原子的に作成し、
+	// 片方だけ残る不整合を防ぐ。
 	newUser := &entity.User{Email: info.Email}
-	if err := uc.users.Create(ctx, newUser); err != nil {
-		return 0, fmt.Errorf("failed to create user: %w", err)
-	}
-	if err := uc.oauthAccts.Create(ctx, &entity.OAuthAccount{
-		UserID:      newUser.ID,
+	if err := uc.creator.CreateUserWithOAuthAccount(ctx, newUser, &entity.OAuthAccount{
 		Provider:    providerName,
 		ProviderUID: info.ProviderUID,
 	}); err != nil {
-		return 0, fmt.Errorf("failed to create oauth account: %w", err)
+		return 0, fmt.Errorf("failed to create user with oauth account: %w", err)
 	}
 
 	// 新規作成後フック呼び出し（例: ウォッチリスト初期化）
+	// フック失敗はユーザー作成自体には影響しないため非致命的とし、ログのみ記録する。
 	for _, hook := range uc.hooks {
 		if err := hook.OnUserCreated(ctx, newUser.ID); err != nil {
-			return 0, fmt.Errorf("post-create hook failed: %w", err)
+			slog.Error("post-create hook failed", "user_id", newUser.ID, "error", err)
 		}
 	}
 

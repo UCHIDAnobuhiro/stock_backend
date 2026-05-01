@@ -3,6 +3,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -17,7 +18,7 @@ import (
 // Goの慣例に従い、インターフェースはプロバイダー（usecase）ではなくコンシューマー（handler）が定義します。
 type OAuthUsecase interface {
 	BeginAuth(ctx context.Context, provider string) (authURL string, err error)
-	HandleCallback(ctx context.Context, provider, code, state string) (token, email string, err error)
+	HandleCallback(ctx context.Context, provider, code, state string) (token string, err error)
 }
 
 // OAuthHandler はOAuth2フローのHTTPリクエストを処理します。
@@ -62,14 +63,13 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 		return
 	}
 
-	token, email, err := h.oauth.HandleCallback(c.Request.Context(), provider, code, state)
+	token, err := h.oauth.HandleCallback(c.Request.Context(), provider, code, state)
 	if err != nil {
-		switch err {
-		case usecase.ErrStateNotFound:
+		if errors.Is(err, usecase.ErrStateNotFound) {
 			c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "invalid or expired state"})
-		case usecase.ErrOAuthEmailUnavailable:
+		} else if errors.Is(err, usecase.ErrOAuthEmailUnavailable) {
 			c.JSON(http.StatusBadGateway, api.ErrorResponse{Error: "cannot obtain verified email from provider"})
-		default:
+		} else {
 			slog.Error("oauth callback failed", "provider", provider, "error", err)
 			c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "oauth failed"})
 		}
@@ -84,7 +84,7 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 		return
 	}
 
-	slog.Info("oauth login successful", "provider", provider, "email", email)
+	slog.Info("oauth login successful", "provider", provider)
 
 	// auth_handler.goのLoginと同一パターンでCookieをセット
 	// GinのSetSameSiteは直後のSetCookie1回にのみ適用されるため、Cookieごとに毎回呼ぶ必要がある。

@@ -18,8 +18,9 @@ type userRepository struct {
 	db *gorm.DB
 }
 
-// userRepositoryがUserRepositoryを実装していることをコンパイル時に検証します。
+// userRepositoryがUserRepositoryおよびOAuthUserCreatorを実装していることをコンパイル時に検証します。
 var _ usecase.UserRepository = (*userRepository)(nil)
+var _ usecase.OAuthUserCreator = (*userRepository)(nil)
 
 // NewUserRepository は指定されたgorm.DB接続でuserRepositoryの新しいインスタンスを生成します。
 // 依存性注入用のコンストラクタです。
@@ -52,6 +53,22 @@ func (r *userRepository) FindByEmail(ctx context.Context, email string) (*entity
 		return nil, err
 	}
 	return &u, nil
+}
+
+// CreateUserWithOAuthAccount はUserとOAuthAccountをトランザクション内で原子的に作成します。
+// OAuthUserCreatorインターフェースの実装です。
+func (r *userRepository) CreateUserWithOAuthAccount(ctx context.Context, user *entity.User, account *entity.OAuthAccount) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(user).Error; err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				return usecase.ErrEmailAlreadyExists
+			}
+			return err
+		}
+		account.UserID = user.ID
+		return tx.Create(account).Error
+	})
 }
 
 // FindByID はIDでユーザーを取得します。

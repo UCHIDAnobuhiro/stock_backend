@@ -69,6 +69,10 @@ func (p *GoogleProvider) ExchangeCode(ctx context.Context, code, codeVerifier st
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("google: userinfo API returned %d", resp.StatusCode)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("google: failed to read userinfo response: %w", err)

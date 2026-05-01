@@ -78,6 +78,10 @@ func (p *GitHubProvider) fetchPrimaryEmail(ctx context.Context, token string) (s
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("github: emails API returned %d", resp.StatusCode)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("github: failed to read emails response: %w", err)
@@ -114,11 +118,18 @@ func (p *GitHubProvider) fetchUserID(ctx context.Context, token string) (string,
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("github: user API returned %d", resp.StatusCode)
+	}
+
 	var u struct {
 		ID int64 `json:"id"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&u); err != nil {
 		return "", fmt.Errorf("github: failed to parse user: %w", err)
+	}
+	if u.ID == 0 {
+		return "", fmt.Errorf("github: user API returned invalid ID")
 	}
 	return fmt.Sprintf("%d", u.ID), nil
 }

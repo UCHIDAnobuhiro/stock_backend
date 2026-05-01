@@ -60,6 +60,13 @@ type OAuthAccountRepository interface {
 	Create(ctx context.Context, account *entity.OAuthAccount) error
 }
 
+// OAuthUserCreator はOAuth新規ユーザー作成時にUserとOAuthAccountを
+// トランザクション内で原子的に作成します。
+// 実装はadapters層がDB固有のトランザクション処理を担います。
+type OAuthUserCreator interface {
+	CreateUserWithOAuthAccount(ctx context.Context, user *entity.User, account *entity.OAuthAccount) error
+}
+
 // UserRepository はユーザーエンティティの永続化層を抽象化します。
 // Goの慣例に従い、インターフェースはプロバイダー（adapters）ではなくコンシューマー（usecase）が定義します。
 type UserRepository interface {

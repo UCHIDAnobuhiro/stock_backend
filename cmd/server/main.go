@@ -165,19 +165,34 @@ func main() {
 			slog.Error("OAuth requires Redis but Redis is unavailable")
 			os.Exit(1)
 		}
+		oauthFrontendURL := os.Getenv("OAUTH_FRONTEND_REDIRECT_URL")
+		if oauthFrontendURL == "" {
+			slog.Error("OAUTH_FRONTEND_REDIRECT_URL is required when OAuth is enabled")
+			os.Exit(1)
+		}
 		oauthProviders := map[string]authusecase.OAuthProvider{}
 		if googleClientID != "" {
+			googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+			if googleClientSecret == "" {
+				slog.Error("GOOGLE_CLIENT_SECRET is required when GOOGLE_CLIENT_ID is set")
+				os.Exit(1)
+			}
 			oauthProviders["google"] = authadapters.NewGoogleProvider(
 				googleClientID,
-				os.Getenv("GOOGLE_CLIENT_SECRET"),
+				googleClientSecret,
 				os.Getenv("GOOGLE_REDIRECT_URL"),
 				&http.Client{Timeout: 10 * time.Second},
 			)
 		}
 		if githubClientID != "" {
+			githubClientSecret := os.Getenv("GITHUB_CLIENT_SECRET")
+			if githubClientSecret == "" {
+				slog.Error("GITHUB_CLIENT_SECRET is required when GITHUB_CLIENT_ID is set")
+				os.Exit(1)
+			}
 			oauthProviders["github"] = authadapters.NewGitHubProvider(
 				githubClientID,
-				os.Getenv("GITHUB_CLIENT_SECRET"),
+				githubClientSecret,
 				os.Getenv("GITHUB_REDIRECT_URL"),
 				&http.Client{Timeout: 10 * time.Second},
 			)
@@ -185,12 +200,13 @@ func main() {
 		oauthUC := authusecase.NewOAuthUsecase(
 			userRepo,
 			authadapters.NewOAuthAccountRepository(db),
+			userRepo,
 			authadapters.NewRedisOAuthStateStore(rdb),
 			jwtGen,
 			oauthProviders,
 			watchlistUC,
 		)
-		oauthH = authhandler.NewOAuthHandler(oauthUC, secureCookie, os.Getenv("OAUTH_FRONTEND_REDIRECT_URL"))
+		oauthH = authhandler.NewOAuthHandler(oauthUC, secureCookie, oauthFrontendURL)
 	}
 
 	// ハンドラー
