@@ -22,6 +22,7 @@
 | Name | Definition |
 | ---- | ---------- |
 | oauth_accounts_pkey | CREATE UNIQUE INDEX oauth_accounts_pkey ON public.oauth_accounts USING btree (id) |
+| idx_oauth_provider_uid | CREATE UNIQUE INDEX idx_oauth_provider_uid ON public.oauth_accounts USING btree (provider, provider_uid) |
 | idx_oauth_accounts_user_id | CREATE INDEX idx_oauth_accounts_user_id ON public.oauth_accounts USING btree (user_id) |
 
 ## Relations
