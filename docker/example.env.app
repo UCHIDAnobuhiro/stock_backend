@@ -49,3 +49,17 @@ REDIS_PASSWORD=
 GOOGLE_GENAI_USE_VERTEXAI=true
 GOOGLE_CLOUD_PROJECT=your_gcp_project_id
 GOOGLE_CLOUD_LOCATION=asia-northeast1
+
+# OAuth 2.0（未設定の場合はOAuth機能なしで起動）
+# Google OAuth: https://console.cloud.google.com/apis/credentials で OAuth 2.0 クライアントIDを作成
+# GOOGLE_CLIENT_ID=your_google_client_id
+# GOOGLE_CLIENT_SECRET=your_google_client_secret
+# GOOGLE_REDIRECT_URL=http://localhost:8080/v1/auth/oauth/google/callback
+
+# GitHub OAuth: https://github.com/settings/developers で OAuth App を作成
+# GITHUB_CLIENT_ID=your_github_client_id
+# GITHUB_CLIENT_SECRET=your_github_client_secret
+# GITHUB_REDIRECT_URL=http://localhost:8080/v1/auth/oauth/github/callback
+
+# 認証完了後のリダイレクト先（OAuth有効時は必須）
+# OAUTH_FRONTEND_REDIRECT_URL=http://localhost:3000
