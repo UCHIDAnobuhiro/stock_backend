@@ -34,13 +34,16 @@ func seedUser(t *testing.T, db *gorm.DB, email, password string) *entity.User {
 
 	user := &entity.User{
 		Email:    email,
-		Password: password,
+		Password: &password,
 	}
 	err := db.Create(user).Error
 	require.NoError(t, err, "failed to seed user")
 
 	return user
 }
+
+// ptrStr は文字列のポインタを返すヘルパーです。
+func ptrStr(s string) *string { return &s }
 
 // TestNewUserRepository はNewUserRepositoryコンストラクタが正しくインスタンスを生成することをテストします。
 func TestNewUserRepository(t *testing.T) {
@@ -67,7 +70,7 @@ func TestUserRepository_Create(t *testing.T) {
 			name: "success: user creation",
 			user: &entity.User{
 				Email:    "test@example.com",
-				Password: "hashed_password",
+				Password: ptrStr("hashed_password"),
 			},
 			wantErr: false,
 			validateFunc: func(t *testing.T, user *entity.User) {
@@ -80,7 +83,7 @@ func TestUserRepository_Create(t *testing.T) {
 			name: "failure: duplicate email",
 			user: &entity.User{
 				Email:    "duplicate@example.com",
-				Password: "password2",
+				Password: ptrStr("password2"),
 			},
 			wantErr: true,
 			setupFunc: func(t *testing.T, db *gorm.DB) {
@@ -170,7 +173,7 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 				assert.NotNil(t, found, "user is nil")
 				assert.Equal(t, expected.ID, found.ID, "ID does not match")
 				assert.Equal(t, "user2@example.com", found.Email, "email does not match")
-				assert.Equal(t, "pass2", found.Password, "password does not match")
+				assert.Equal(t, ptrStr("pass2"), found.Password, "password does not match")
 			},
 		},
 	}
@@ -254,7 +257,7 @@ func TestUserRepository_FindByID(t *testing.T) {
 				assert.NotNil(t, found, "user is nil")
 				assert.Equal(t, expected.ID, found.ID, "ID does not match")
 				assert.Equal(t, "user2@example.com", found.Email, "email does not match")
-				assert.Equal(t, "pass2", found.Password, "password does not match")
+				assert.Equal(t, ptrStr("pass2"), found.Password, "password does not match")
 			},
 		},
 	}
@@ -314,7 +317,7 @@ func TestUserRepository_Timestamps(t *testing.T) {
 
 			user := &entity.User{
 				Email:    "timestamp@example.com",
-				Password: "password",
+				Password: ptrStr("password"),
 			}
 
 			err := repo.Create(context.Background(), user)

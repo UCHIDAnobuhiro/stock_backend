@@ -15,7 +15,8 @@ type User struct {
 
 	// Password はユーザーのハッシュ化されたパスワードです。
 	// 平文パスワードを保存してはなりません。
-	Password string `gorm:"size:255;not null"`
+	// OAuth専用ユーザーはパスワードを持たないため nil になります。
+	Password *string `gorm:"size:255"`
 
 	// CreatedAt はユーザーが作成された日時です。
 	CreatedAt time.Time `gorm:"autoCreateTime;not null"`

@@ -88,10 +88,11 @@ func createTestUser(t *testing.T, id uint, email, password string) *entity.User 
 	if err != nil {
 		t.Fatalf("failed to hash password: %v", err)
 	}
+	hashedStr := string(hashedPassword)
 	return &entity.User{
 		ID:       id,
 		Email:    email,
-		Password: string(hashedPassword),
+		Password: &hashedStr,
 	}
 }
 
@@ -190,7 +191,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			mockRepo := &mockUserRepository{
 				CreateFunc: func(ctx context.Context, user *entity.User) error {
 					if tt.verifyBcryptHash {
-						verifyBcryptHash(t, user.Password, tt.password)
+						verifyBcryptHash(t, *user.Password, tt.password)
 					}
 					if tt.repositoryErr != nil {
 						return tt.repositoryErr
@@ -329,13 +330,13 @@ func TestAuthUsecase_PepperApplied(t *testing.T) {
 		mockRepo := &mockUserRepository{
 			CreateFunc: func(ctx context.Context, user *entity.User) error {
 				// 生パスワードではハッシュが一致しないことを確認
-				err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("password123"))
+				err := bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte("password123"))
 				if err == nil {
 					t.Error("hash should not match raw password when pepper is applied")
 				}
 				// ペッパー適用済みパスワードでは一致することを確認
 				peppered := pepperPasswordForTest("password123", testPepper)
-				if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(peppered)); err != nil {
+				if err := bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte(peppered)); err != nil {
 					t.Errorf("hash should match peppered password: %v", err)
 				}
 				return nil
@@ -359,7 +360,7 @@ func TestAuthUsecase_PepperApplied(t *testing.T) {
 
 		mockRepo := &mockUserRepository{
 			CreateFunc: func(ctx context.Context, user *entity.User) error {
-				storedHash = user.Password
+				storedHash = *user.Password
 				return nil
 			},
 		}
