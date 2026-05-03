@@ -9,6 +9,8 @@
 | name | varchar(255) |  | false |  |  |  |
 | market | varchar(100) |  | false |  |  |  |
 | timezone | varchar(64) |  | false |  |  |  |
+| logo_url | text |  | true |  |  |  |
+| logo_updated_at | timestamp with time zone |  | true |  |  |  |
 | is_active | boolean | true | false |  |  |  |
 | created_at | timestamp with time zone |  | false |  |  |  |
 | updated_at | timestamp with time zone |  | false |  |  |  |
@@ -40,6 +42,8 @@ erDiagram
   varchar_255_ name ""
   varchar_100_ market ""
   varchar_64_ timezone ""
+  text logo_url ""
+  timestamp_with_time_zone logo_updated_at ""
   boolean is_active ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""

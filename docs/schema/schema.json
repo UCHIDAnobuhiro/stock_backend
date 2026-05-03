@@ -276,6 +276,16 @@
           "nullable": false
         },
         {
+          "name": "logo_url",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "logo_updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
           "name": "is_active",
           "type": "boolean",
           "nullable": false,

@@ -38,7 +38,7 @@ func (h *SymbolHandler) List(c *gin.Context) {
 	}
 	out := make([]api.SymbolItem, 0, len(symbols))
 	for _, s := range symbols {
-		out = append(out, api.SymbolItem{Code: s.Code, Name: s.Name})
+		out = append(out, api.SymbolItem{Code: s.Code, Name: s.Name, LogoUrl: s.LogoURL})
 	}
 	c.JSON(http.StatusOK, out)
 }

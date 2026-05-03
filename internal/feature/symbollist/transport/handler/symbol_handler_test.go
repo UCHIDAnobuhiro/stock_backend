@@ -14,6 +14,10 @@ import (
 	"stock_backend/internal/feature/symbollist/transport/handler"
 )
 
+func strPtr(s string) *string {
+	return &s
+}
+
 // mockSymbolUsecase はSymbolUsecaseインターフェースのモック実装です。
 type mockSymbolUsecase struct {
 	ListActiveSymbolsFunc func(ctx context.Context) ([]entity.Symbol, error)
@@ -51,12 +55,12 @@ func TestSymbolHandler_List(t *testing.T) {
 			name: "success: returns list of symbols",
 			mockListActiveFunc: func(ctx context.Context) ([]entity.Symbol, error) {
 				return []entity.Symbol{
-					{ID: 1, Code: "7203.T", Name: "Toyota Motor", Market: "TSE", IsActive: true},
+					{ID: 1, Code: "7203.T", Name: "Toyota Motor", Market: "TSE", LogoURL: strPtr("https://api.twelvedata.com/logo/toyota.com"), IsActive: true},
 					{ID: 2, Code: "6758.T", Name: "Sony Group", Market: "TSE", IsActive: true},
 				}, nil
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `[{"code":"7203.T","name":"Toyota Motor"},{"code":"6758.T","name":"Sony Group"}]`,
+			expectedBody:   `[{"code":"7203.T","name":"Toyota Motor","logo_url":"https://api.twelvedata.com/logo/toyota.com"},{"code":"6758.T","name":"Sony Group","logo_url":null}]`,
 		},
 		{
 			name: "success: returns empty list when no symbols",
@@ -74,7 +78,7 @@ func TestSymbolHandler_List(t *testing.T) {
 				}, nil
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   `[{"code":"9984.T","name":"SoftBank Group"}]`,
+			expectedBody:   `[{"code":"9984.T","name":"SoftBank Group","logo_url":null}]`,
 		},
 		{
 			name: "failure: usecase returns error",
@@ -117,12 +121,12 @@ func TestSymbolHandler_List(t *testing.T) {
 	}
 }
 
-// TestSymbolHandler_List_DTOConversion はレスポンスにcodeとnameのみが含まれ、内部フィールドが公開されないことを検証します。
+// TestSymbolHandler_List_DTOConversion はレスポンスに公開DTOフィールドのみが含まれ、内部フィールドが公開されないことを検証します。
 func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
-	// レスポンスにcodeとnameのみが含まれることを検証（ID、Market、IsActiveは含まれない）
+	// レスポンスに公開DTOフィールドのみが含まれることを検証（ID、Market、IsActiveは含まれない）
 	mockUC := &mockSymbolUsecase{
 		ListActiveSymbolsFunc: func(ctx context.Context) ([]entity.Symbol, error) {
 			return []entity.Symbol{
@@ -131,6 +135,7 @@ func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 					Code:     "TEST.T",
 					Name:     "Test Company",
 					Market:   "NYSE",
+					LogoURL:  strPtr("https://api.twelvedata.com/logo/test.com"),
 					IsActive: true,
 				},
 			}, nil
@@ -147,8 +152,7 @@ func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	// レスポンスにはcodeとnameフィールドのみ含まれるべき
-	assert.JSONEq(t, `[{"code":"TEST.T","name":"Test Company"}]`, w.Body.String())
+	assert.JSONEq(t, `[{"code":"TEST.T","name":"Test Company","logo_url":"https://api.twelvedata.com/logo/test.com"}]`, w.Body.String())
 	// 内部フィールドが公開されていないことを検証
 	assert.NotContains(t, w.Body.String(), "999")
 	assert.NotContains(t, w.Body.String(), "NYSE")
