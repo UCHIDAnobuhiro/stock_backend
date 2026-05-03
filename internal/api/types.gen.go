@@ -8,8 +8,19 @@ import (
 )
 
 const (
-	BearerAuthScopes = "bearerAuth.Scopes"
 	CookieAuthScopes = "cookieAuth.Scopes"
+)
+
+// Defines values for BeginOAuthParamsProvider.
+const (
+	BeginOAuthParamsProviderGithub BeginOAuthParamsProvider = "github"
+	BeginOAuthParamsProviderGoogle BeginOAuthParamsProvider = "google"
+)
+
+// Defines values for OauthCallbackParamsProvider.
+const (
+	OauthCallbackParamsProviderGithub OauthCallbackParamsProvider = "github"
+	OauthCallbackParamsProviderGoogle OauthCallbackParamsProvider = "google"
 )
 
 // AddWatchlistRequest defines model for AddWatchlistRequest.
@@ -109,6 +120,9 @@ type SymbolItem struct {
 	// Code 銘柄コード（例: AAPL, 7203.T）
 	Code string `json:"code"`
 
+	// LogoUrl Twelve DataのロゴURL（未取得時はnull）
+	LogoUrl *string `json:"logo_url"`
+
 	// Name 企業名
 	Name string `json:"name"`
 }
@@ -124,6 +138,18 @@ type WatchlistItem struct {
 	// SymbolCode 銘柄コード（例: AAPL, 7203.T）
 	SymbolCode string `json:"symbol_code"`
 }
+
+// BeginOAuthParamsProvider defines parameters for BeginOAuth.
+type BeginOAuthParamsProvider string
+
+// OauthCallbackParams defines parameters for OauthCallback.
+type OauthCallbackParams struct {
+	Code  string `form:"code" json:"code"`
+	State string `form:"state" json:"state"`
+}
+
+// OauthCallbackParamsProvider defines parameters for OauthCallback.
+type OauthCallbackParamsProvider string
 
 // GetCandlesParams defines parameters for GetCandles.
 type GetCandlesParams struct {

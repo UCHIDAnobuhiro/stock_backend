@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -256,8 +257,77 @@ func TestSymbolRepository_ListActive_FieldValues(t *testing.T) {
 	assert.Equal(t, "Toyota Motor Corporation", symbol.Name)
 	assert.Equal(t, "Tokyo Stock Exchange", symbol.Market)
 	assert.Equal(t, "Asia/Tokyo", symbol.Timezone)
+	assert.Nil(t, symbol.LogoURL)
+	assert.Nil(t, symbol.LogoUpdatedAt)
 	assert.True(t, symbol.IsActive)
 	assert.False(t, symbol.UpdatedAt.IsZero(), "UpdatedAt should be set")
+}
+
+func TestSymbolRepository_ListActive_LogoURL(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	repo := NewSymbolRepository(db)
+
+	logoURL := "https://api.twelvedata.com/logo/apple.com"
+	logoUpdatedAt := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	symbol := &entity.Symbol{
+		Code:          "AAPL",
+		Name:          "Apple Inc.",
+		Market:        "NASDAQ",
+		Timezone:      "America/New_York",
+		LogoURL:       &logoURL,
+		LogoUpdatedAt: &logoUpdatedAt,
+		IsActive:      true,
+	}
+	require.NoError(t, db.Create(symbol).Error)
+
+	symbols, err := repo.ListActive(context.Background())
+
+	require.NoError(t, err)
+	require.Len(t, symbols, 1)
+	require.NotNil(t, symbols[0].LogoURL)
+	require.NotNil(t, symbols[0].LogoUpdatedAt)
+	assert.Equal(t, logoURL, *symbols[0].LogoURL)
+	assert.True(t, symbols[0].LogoUpdatedAt.Equal(logoUpdatedAt))
+}
+
+func TestSymbolRepository_UpdateLogoURL(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	repo := NewSymbolRepository(db)
+	symbol := seedSymbol(t, db, "AAPL", "Apple Inc.", "NASDAQ", true)
+	oldLogoURL := "https://api.twelvedata.com/logo/old-apple.com"
+	oldLogoUpdatedAt := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+	require.NoError(t, db.Model(symbol).Updates(map[string]any{
+		"logo_url":        oldLogoURL,
+		"logo_updated_at": oldLogoUpdatedAt,
+	}).Error)
+
+	newLogoURL := "https://api.twelvedata.com/logo/apple.com"
+	newLogoUpdatedAt := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+
+	err := repo.UpdateLogoURL(context.Background(), "AAPL", newLogoURL, newLogoUpdatedAt)
+
+	require.NoError(t, err)
+	var got entity.Symbol
+	require.NoError(t, db.Where("code = ?", "AAPL").First(&got).Error)
+	require.NotNil(t, got.LogoURL)
+	require.NotNil(t, got.LogoUpdatedAt)
+	assert.Equal(t, newLogoURL, *got.LogoURL)
+	assert.True(t, got.LogoUpdatedAt.Equal(newLogoUpdatedAt))
+}
+
+func TestSymbolRepository_UpdateLogoURL_NoMatchingSymbol(t *testing.T) {
+	t.Parallel()
+
+	db := setupTestDB(t)
+	repo := NewSymbolRepository(db)
+
+	err := repo.UpdateLogoURL(context.Background(), "MISSING", "https://api.twelvedata.com/logo/missing.com", time.Now())
+
+	assert.NoError(t, err)
 }
 
 // TestSymbolRepository_Exists はExistsメソッドの各種シナリオをテーブル駆動テストで検証します。

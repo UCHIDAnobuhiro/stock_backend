@@ -3,6 +3,7 @@ package adapters
 
 import (
 	"context"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -32,6 +33,17 @@ func (r *symbolRepository) ListActive(ctx context.Context) ([]entity.Symbol, err
 		return nil, err
 	}
 	return symbols, nil
+}
+
+// UpdateLogoURL は指定された銘柄のロゴURLと取得日時を更新します。
+func (r *symbolRepository) UpdateLogoURL(ctx context.Context, code, logoURL string, updatedAt time.Time) error {
+	return r.db.WithContext(ctx).
+		Model(&entity.Symbol{}).
+		Where("code = ?", code).
+		Updates(map[string]any{
+			"logo_url":        logoURL,
+			"logo_updated_at": updatedAt,
+		}).Error
 }
 
 // ListActiveCodes はコード昇順にアクティブな銘柄のコードのみを返します。

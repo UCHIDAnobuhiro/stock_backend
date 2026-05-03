@@ -623,6 +623,7 @@ components:
       required:
         - code
         - name
+        - logo_url
       properties:
         code:
           type: string
@@ -630,6 +631,10 @@ components:
         name:
           type: string
           description: 企業名
+        logo_url:
+          type: string
+          nullable: true
+          description: Twelve DataのロゴURL（未取得時はnull）
 
     ErrorResponse:
       type: object

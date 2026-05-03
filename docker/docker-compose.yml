@@ -22,3 +22,14 @@ services:
       - ./.env.app
     restart: "no"
     profiles: ["on-demand"]
+
+  logo-ingest:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.logo-ingest
+    image: stock-logo-ingest
+    container_name: stock-logo-ingest
+    env_file:
+      - ./.env.app
+    restart: "no"
+    profiles: ["on-demand"]
