@@ -7,7 +7,7 @@
 | [public.users](public.users.md) | 5 |  | BASE TABLE |
 | [public.oauth_accounts](public.oauth_accounts.md) | 5 |  | BASE TABLE |
 | [public.candles](public.candles.md) | 9 |  | BASE TABLE |
-| [public.symbols](public.symbols.md) | 8 |  | BASE TABLE |
+| [public.symbols](public.symbols.md) | 10 |  | BASE TABLE |
 | [public.watchlists](public.watchlists.md) | 6 |  | BASE TABLE |
 
 ## Relations
@@ -54,6 +54,8 @@ erDiagram
   boolean is_active ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+  text logo_url ""
+  timestamp_with_time_zone logo_updated_at ""
 }
 "public.watchlists" {
   bigint id ""

@@ -360,6 +360,12 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p 
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock run --rm --no-deps ingest
 ```
 
+### バッチプロセスの起動（ロゴURL取得）
+
+```bash
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock --profile on-demand run --rm logo-ingest
+```
+
 ### ER 図・テーブル定義書の生成（tbls）
 
 スキーマは [tbls](https://github.com/k1LoW/tbls) で稼働中の PostgreSQL から自動生成されます。

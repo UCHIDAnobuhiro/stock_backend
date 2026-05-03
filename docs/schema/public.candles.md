@@ -55,6 +55,8 @@ erDiagram
   boolean is_active ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+  text logo_url ""
+  timestamp_with_time_zone logo_updated_at ""
 }
 ```
 
