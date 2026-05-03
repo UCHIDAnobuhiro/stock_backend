@@ -165,6 +165,34 @@ func TestLogoIngestUsecase_IngestAll_ListActiveFatalError(t *testing.T) {
 	assert.Equal(t, LogoIngestResult{}, result)
 }
 
+func TestLogoIngestUsecase_IngestAll_ContextCancelled(t *testing.T) {
+	t.Parallel()
+
+	repo := &mockLogoSymbolRepository{
+		symbols: []entity.Symbol{
+			{Code: "AAPL", IsActive: true},
+			{Code: "MSFT", IsActive: true},
+		},
+	}
+	provider := &mockLogoProvider{
+		getLogoURLFunc: func(ctx context.Context, symbol string) (string, error) {
+			return "https://api.twelvedata.com/logo/" + symbol + ".com", nil
+		},
+	}
+	limiter := &mockRateLimiter{}
+	uc := NewLogoIngestUsecase(provider, repo, limiter)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	result, err := uc.IngestAll(ctx)
+
+	assert.ErrorIs(t, err, context.Canceled)
+	assert.Equal(t, LogoIngestResult{Total: 2, Succeeded: 0, Failed: 0}, result)
+	assert.Equal(t, 0, limiter.calls)
+	assert.Empty(t, repo.updates)
+}
+
 func TestLogoIngestResult_FailureRate(t *testing.T) {
 	t.Parallel()
 
