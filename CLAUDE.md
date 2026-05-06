@@ -169,3 +169,10 @@ feature/<name>/
 コミットメッセージおよびプルリクエストのタイトル・説明はすべて**日本語**で記述してください。
 
 - コミット前のコードレビューは `/code-check` スキル（`.claude/skills/code-check/SKILL.md`）を参照
+
+## Git ブランチ操作のルール
+
+ブランチを切る・切り替える際は `git checkout` ではなく `git switch` を使用してください。
+
+- 新しいブランチを作成して切り替える: `git switch -c <branch-name>`
+- 既存のブランチに切り替える: `git switch <branch-name>`
