@@ -62,49 +62,69 @@ sequenceDiagram
 
 ### バッチ取り込みフロー
 
+外部APIへのリクエスト数を抑えるため、**日足のみを取得し、週足/月足はサーバー内で集計**します。集計ロジックは [usecase/candle_aggregation.go](usecase/candle_aggregation.go) に分離されています。
+
 ```mermaid
 sequenceDiagram
     participant Main as cmd/ingest/main.go
     participant Usecase as IngestUsecase
+    participant SymbolRepo as SymbolRepository
     participant RateLimiter
     participant Market as MarketRepository<br/>(TwelveData API)
+    participant Aggregation as candle_aggregation.go
     participant Cache as CachingCandleRepository
     participant Repository as CandleRepository
     participant Redis
     participant DB as PostgreSQL
 
-    Main->>Usecase: IngestAll(symbols)
+    Main->>Usecase: IngestAll(ctx)
+    Usecase->>SymbolRepo: ListActiveSymbols(ctx)
+    SymbolRepo-->>Usecase: []ActiveSymbol{Code, Timezone}
 
-    loop For each symbol
-        loop For each interval (1day, 1week, 1month)
-            Usecase->>RateLimiter: WaitIfNeeded()
-            RateLimiter-->>Usecase: (waits if rate limit reached)
+    loop For each ActiveSymbol
+        Usecase->>Usecase: Load IANA timezone (loc)
+        Usecase->>RateLimiter: WaitIfNeeded()
+        Usecase->>Market: GetTimeSeries(symbol, "1day", 5000, loc)
+        Market-->>Usecase: []Candle (daily, 取引所ローカル時刻)
 
-            Usecase->>Market: GetTimeSeries(symbol, interval, 200)
-            Market-->>Usecase: []Candle
+        Usecase->>Aggregation: aggregateWeekly(daily, loc)
+        Aggregation-->>Usecase: []Candle (weekly, ISO週単位)
+        Usecase->>Aggregation: trimIncompleteFirstBucket(weekly, daily, isWeekStart)
+        Aggregation-->>Usecase: []Candle (先頭の不完全週を除外)
 
-            Usecase->>Usecase: Set symbol & interval on candles
-            Usecase->>Cache: UpsertBatch(candles)
-            Cache->>Repository: UpsertBatch(candles)
-            Repository->>DB: INSERT ... ON CONFLICT DO UPDATE
-            DB-->>Repository: Success
-            Repository-->>Cache: nil
+        Usecase->>Aggregation: aggregateMonthly(daily, loc)
+        Aggregation-->>Usecase: []Candle (monthly)
+        Usecase->>Aggregation: trimIncompleteFirstBucket(monthly, daily, isMonthStart)
+        Aggregation-->>Usecase: []Candle (先頭の不完全月を除外)
 
-            alt Redis Available
-                Cache->>Redis: SCAN & DEL candles:AAPL:1day:*
-                Note over Cache,Redis: Cache invalidation
-            end
+        Usecase->>Usecase: Set symbol & interval on each batch
+        Usecase->>Usecase: dedupCandles (重複排除)
+        Usecase->>Cache: UpsertBatch(daily + weekly + monthly)
+        Cache->>Repository: UpsertBatch(candles)
+        Repository->>DB: INSERT ... ON CONFLICT DO UPDATE
+        DB-->>Repository: Success
 
-            Cache-->>Usecase: nil
+        alt Redis Available
+            Cache->>Redis: DEL candles:{symbol}:{interval} ※全インターバル分
+            Note over Cache,Redis: Cache invalidation
+        end
 
-            alt Error Occurred
-                Usecase->>Usecase: Log error, continue to next
-            end
+        Cache-->>Usecase: nil
+
+        alt Error Occurred
+            Usecase->>Usecase: Log error, increment Failed, continue
         end
     end
 
-    Usecase-->>Main: nil
+    Usecase-->>Main: IngestResult{Total, Succeeded, Failed}
 ```
+
+**集計ロジックのポイント**:
+- **タイムゾーン考慮**: `ActiveSymbol.Timezone`（IANA タイムゾーン）を `*time.Location` にロードし、週/月の境界判定および代表タイムスタンプ生成に使用
+- **週足の境界**: ISO 週（月曜起点）。バケットキー例 `2024-W03`、代表時刻はその週の月曜 00:00:00
+- **月足の境界**: 暦月の 1 日 00:00:00
+- **不完全バケット除外**: 取得データの先頭が週/月の途中から始まる場合、`trimIncompleteFirstBucket` で先頭バケットを除外し、既存の完全レコードを上書きしないようにする
+- **重複排除**: `dedupCandles` で `(symbol_code, interval, time)` の重複を除去してから Upsert
 
 ## API仕様
 
@@ -272,11 +292,17 @@ graph TB
   - 最大outputsize制限（5000）を適用
   - `CandleRepository`インターフェース（読み取り専用）を定義（Goの「インターフェースは利用者が定義する」慣例に従う）
 - **IngestUsecase**（[usecase/ingest_usecase.go](usecase/ingest_usecase.go)）: 外部APIからのバッチデータ取り込み
-  - アクティブな銘柄コードを取得し、各インターバルごとにイテレーション
+  - アクティブな銘柄（コード + IANA タイムゾーン）を取得
+  - **日足のみ外部APIから取得**し、サーバー内で週足/月足を集計（API リクエスト数の削減）
   - RateLimiterによるレート制限を遵守
   - `CandleWriteRepository`インターフェース（書き込み専用）を定義
   - `MarketRepository`インターフェース（外部API抽象化）を定義
-  - `SymbolRepository`インターフェース（銘柄コード取得）を定義
+  - `SymbolRepository`インターフェース（`ListActiveSymbols(ctx) ([]ActiveSymbol, error)` を返す）を定義
+  - 結果は `IngestResult{Total, Succeeded, Failed}` として返却（部分失敗時の集計）
+- **集計ロジック**（[usecase/candle_aggregation.go](usecase/candle_aggregation.go)）: 日足から週足/月足を生成
+  - `aggregateWeekly` / `aggregateMonthly`: ISO 週・暦月単位で OHLCV を集計（タイムゾーン考慮）
+  - `trimIncompleteFirstBucket`: 先頭の不完全バケットを除外し、既存レコードの上書きを防止
+  - `aggregate`: 共通の集計エンジン（バケット化 + 出現順保持）
 
 #### ドメイン層
 - **Candle Entity**（[domain/entity/candle.go](domain/entity/candle.go)）: OHLCVローソク足データモデル
@@ -324,8 +350,10 @@ candles/
 ├── usecase/
 │   ├── candles_usecase.go             # クエリロジック + CandleRepositoryインターフェース
 │   ├── candles_usecase_test.go        # ユースケーステスト
-│   ├── ingest_usecase.go             # バッチ取り込み + MarketRepository / CandleWriteRepository / SymbolRepositoryインターフェース
-│   └── ingest_usecase_test.go         # 取り込みテスト
+│   ├── ingest_usecase.go              # バッチ取り込み + MarketRepository / CandleWriteRepository / SymbolRepositoryインターフェース
+│   ├── ingest_usecase_test.go         # 取り込みテスト
+│   ├── candle_aggregation.go          # 日足→週足/月足 集計ロジック
+│   └── candle_aggregation_test.go     # 集計テスト
 ├── adapters/
 │   ├── caching_candle_repository.go   # Redisキャッシュデコレータ
 │   ├── caching_candle_repository_test.go
