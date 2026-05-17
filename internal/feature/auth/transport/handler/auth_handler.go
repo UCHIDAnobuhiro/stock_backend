@@ -14,6 +14,7 @@ import (
 
 	"stock_backend/internal/api"
 	"stock_backend/internal/platform/csrf"
+	"stock_backend/internal/platform/logging"
 	"stock_backend/internal/platform/ratelimit"
 )
 
@@ -69,7 +70,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 	userID, err := h.auth.Signup(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		// ユーザー列挙攻撃を防止するため、実際のエラーを公開しない
-		slog.Warn("signup failed", "error", err, "email", req.Email, "remote_addr", c.ClientIP())
+		slog.Warn("signup failed", "error", err, "email_hash", logging.HashedEmail(req.Email), "remote_addr", c.ClientIP())
 		c.JSON(http.StatusConflict, api.ErrorResponse{Error: "signup failed"})
 		return
 	}
@@ -80,7 +81,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 			return
 		}
 	}
-	slog.Info("user signup successful", "email", req.Email, "remote_addr", c.ClientIP())
+	slog.Info("user signup successful", "email_hash", logging.HashedEmail(req.Email), "remote_addr", c.ClientIP())
 	c.JSON(http.StatusCreated, api.MessageResponse{Message: "ok"})
 }
 
@@ -103,7 +104,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if !result.Allowed {
 		slog.Warn("login rate limit exceeded",
 			"type", "email",
-			"email", req.Email,
+			"email_hash", logging.HashedEmail(req.Email),
 			"remote_addr", c.ClientIP(),
 		)
 		c.Header("Retry-After", strconv.Itoa(int(result.RetryAfter.Seconds())))
@@ -114,7 +115,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	token, err := h.auth.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		// ユーザー列挙攻撃を防止するため、実際のエラーを公開しない
-		slog.Warn("login failed", "error", err, "email", req.Email, "remote_addr", c.ClientIP())
+		slog.Warn("login failed", "error", err, "email_hash", logging.HashedEmail(req.Email), "remote_addr", c.ClientIP())
 		c.JSON(http.StatusUnauthorized, api.ErrorResponse{Error: "invalid email or password"})
 		return
 	}
@@ -137,7 +138,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("csrf_token", csrfToken, 3600, "/", "", h.secureCookie, false)
 
-	slog.Info("user login successful", "email", req.Email, "remote_addr", c.ClientIP())
+	slog.Info("user login successful", "email_hash", logging.HashedEmail(req.Email), "remote_addr", c.ClientIP())
 	c.JSON(http.StatusOK, api.MessageResponse{Message: "ok"})
 }
 
