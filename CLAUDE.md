@@ -7,13 +7,13 @@
 ### ローカル開発
 ```bash
 # APIサーバー起動（Airによるホットリロード付き）
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock up backend-dev
+docker compose -f docker/docker-compose.yml -p stock up backend
 
 # バッチデータ取り込み実行（外部APIから株価データを取得）
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml -p stock run --rm --no-deps ingest
+docker compose -f docker/docker-compose.yml -p stock run --rm --no-deps ingest
 
 # ログ確認
-docker logs -f stock-backend-dev
+docker logs -f stock-backend
 ```
 
 ### テスト・リント
