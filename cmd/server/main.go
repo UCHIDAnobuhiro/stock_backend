@@ -31,8 +31,8 @@ import (
 	watchlisthandler "stock_backend/internal/feature/watchlist/transport/handler"
 	watchlistusecase "stock_backend/internal/feature/watchlist/usecase"
 	infradb "stock_backend/internal/platform/db"
+	"stock_backend/internal/platform/httpratelimit"
 	jwtmw "stock_backend/internal/platform/jwt"
-	"stock_backend/internal/platform/ratelimit"
 	infraredis "stock_backend/internal/platform/redis"
 )
 
@@ -138,7 +138,7 @@ func main() {
 	}
 
 	// レートリミッター
-	rateLimiter := ratelimit.NewLimiter(rdb)
+	rateLimiter := httpratelimit.NewLimiter(rdb)
 
 	// ユースケース
 	authUC := authusecase.NewAuthUsecase(userRepo, jwtGen, passwordPepper)

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/shared/ratelimiter"
+	"stock_backend/internal/platform/clientratelimit"
 )
 
 const (
@@ -66,11 +66,11 @@ type IngestUsecase struct {
 	market      MarketRepository
 	candle      CandleWriteRepository
 	symbol      SymbolRepository
-	rateLimiter ratelimiter.RateLimiterInterface
+	rateLimiter clientratelimit.RateLimiterInterface
 }
 
 // NewIngestUsecase はIngestUsecaseの新しいインスタンスを生成します。
-func NewIngestUsecase(market MarketRepository, candle CandleWriteRepository, symbol SymbolRepository, rateLimiter ratelimiter.RateLimiterInterface) *IngestUsecase {
+func NewIngestUsecase(market MarketRepository, candle CandleWriteRepository, symbol SymbolRepository, rateLimiter clientratelimit.RateLimiterInterface) *IngestUsecase {
 	return &IngestUsecase{market: market, candle: candle, symbol: symbol, rateLimiter: rateLimiter}
 }
 

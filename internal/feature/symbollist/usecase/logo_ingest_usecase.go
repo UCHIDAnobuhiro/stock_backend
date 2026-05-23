@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"stock_backend/internal/feature/symbollist/domain/entity"
-	"stock_backend/internal/shared/ratelimiter"
+	"stock_backend/internal/platform/clientratelimit"
 )
 
 // LogoProvider は外部APIからロゴURLを取得するリポジトリを抽象化します。
@@ -39,12 +39,12 @@ func (r LogoIngestResult) FailureRate() float64 {
 type LogoIngestUsecase struct {
 	logoProvider LogoProvider
 	symbolRepo   LogoSymbolRepository
-	rateLimiter  ratelimiter.RateLimiterInterface
+	rateLimiter  clientratelimit.RateLimiterInterface
 	now          func() time.Time
 }
 
 // NewLogoIngestUsecase はLogoIngestUsecaseの新しいインスタンスを生成します。
-func NewLogoIngestUsecase(provider LogoProvider, symbolRepo LogoSymbolRepository, rateLimiter ratelimiter.RateLimiterInterface) *LogoIngestUsecase {
+func NewLogoIngestUsecase(provider LogoProvider, symbolRepo LogoSymbolRepository, rateLimiter clientratelimit.RateLimiterInterface) *LogoIngestUsecase {
 	return &LogoIngestUsecase{
 		logoProvider: provider,
 		symbolRepo:   symbolRepo,

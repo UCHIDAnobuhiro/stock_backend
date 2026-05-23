@@ -237,8 +237,8 @@ graph TB
         TwelveData[TwelveDataMarket<br/>adapters/twelvedata]
     end
 
-    subgraph "Shared"
-        RateLimiter[RateLimiter<br/>shared/ratelimiter]
+    subgraph "Platform"
+        RateLimiter[RateLimiter<br/>platform/clientratelimit]
     end
 
     subgraph "External Dependencies"
@@ -362,7 +362,7 @@ candles/
 │   └── twelvedata/                    # TwelveData APIクライアント
 │       ├── config.go                  # API設定
 │       ├── dto/
-│       │   └── time_series_reponse.go # APIレスポンスDTO
+│       │   └── time_series_response.go # APIレスポンスDTO
 │       ├── repository.go             # MarketRepository実装
 │       └── repository_test.go
 └── transport/

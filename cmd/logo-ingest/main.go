@@ -10,8 +10,8 @@ import (
 	"stock_backend/internal/app/di"
 	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
 	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
+	"stock_backend/internal/platform/clientratelimit"
 	"stock_backend/internal/platform/db"
-	"stock_backend/internal/shared/ratelimiter"
 )
 
 const (
@@ -31,7 +31,7 @@ func run() int {
 	db := db.OpenDB()
 	logoProvider := di.NewMarket()
 	symbolRepo := symbollistadapters.NewSymbolRepository(db)
-	rateLimiter := ratelimiter.NewRateLimiter(logoRateLimitPerMinute, time.Minute)
+	rateLimiter := clientratelimit.NewRateLimiter(logoRateLimitPerMinute, time.Minute)
 	uc := symbollistusecase.NewLogoIngestUsecase(logoProvider, symbolRepo, rateLimiter)
 
 	timeoutHours := 3

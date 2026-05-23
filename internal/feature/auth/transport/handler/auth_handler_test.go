@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"stock_backend/internal/feature/auth/transport/handler"
-	"stock_backend/internal/platform/ratelimit"
+	"stock_backend/internal/platform/httpratelimit"
 )
 
 // mockAuthUsecase はAuthUsecaseインターフェースのモック実装です。
@@ -183,11 +183,11 @@ func TestAuthHandler_Login_RateLimited(t *testing.T) {
 		return nil
 	})
 	key := "rl:login:email:test@example.com"
-	match.ExpectEvalSha(ratelimit.ScriptHash(), []string{key},
+	match.ExpectEvalSha(httpratelimit.ScriptHash(), []string{key},
 		"_", "_", "_", "_", "_").
 		SetVal([]interface{}{int64(0), int64(5)})
 
-	limiter := ratelimit.NewLimiter(rdb)
+	limiter := httpratelimit.NewLimiter(rdb)
 	loginCalled := false
 	mockUC := &mockAuthUsecase{
 		LoginFunc: func(ctx context.Context, email, password string) (string, error) {

@@ -14,8 +14,8 @@ import (
 
 	"stock_backend/internal/api"
 	"stock_backend/internal/platform/csrf"
+	"stock_backend/internal/platform/httpratelimit"
 	"stock_backend/internal/platform/logging"
-	"stock_backend/internal/platform/ratelimit"
 )
 
 // AuthUsecase は認証操作のユースケースを定義します。
@@ -42,7 +42,7 @@ const (
 // AuthUsecaseインターフェースに依存し、JSONリクエスト/レスポンスを処理します。
 type AuthHandler struct {
 	auth         AuthUsecase
-	limiter      *ratelimit.Limiter
+	limiter      *httpratelimit.Limiter
 	secureCookie bool
 	postHooks    []PostSignupHook
 }
@@ -51,7 +51,7 @@ type AuthHandler struct {
 // 依存性注入用のコンストラクタで、外部からAuthUsecaseとレートリミッターを注入します。
 // secureCookie が true の場合、Secure属性付きのCookieを設定します（本番環境用）。
 // postHooks にはサインアップ後に実行するフックを任意で渡せます。
-func NewAuthHandler(auth AuthUsecase, limiter *ratelimit.Limiter, secureCookie bool, postHooks ...PostSignupHook) *AuthHandler {
+func NewAuthHandler(auth AuthUsecase, limiter *httpratelimit.Limiter, secureCookie bool, postHooks ...PostSignupHook) *AuthHandler {
 	return &AuthHandler{auth: auth, limiter: limiter, secureCookie: secureCookie, postHooks: postHooks}
 }
 

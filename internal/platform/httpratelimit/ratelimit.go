@@ -1,5 +1,5 @@
-// Package ratelimit はRedisベースのスライディングウィンドウレートリミッターを提供します。
-package ratelimit
+// Package httpratelimit はRedisベースのスライディングウィンドウレートリミッターを提供します。
+package httpratelimit
 
 import (
 	"context"

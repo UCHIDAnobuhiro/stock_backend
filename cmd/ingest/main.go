@@ -13,9 +13,9 @@ import (
 	candlesadapters "stock_backend/internal/feature/candles/adapters"
 	candlesusecase "stock_backend/internal/feature/candles/usecase"
 	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
+	"stock_backend/internal/platform/clientratelimit"
 	"stock_backend/internal/platform/db"
 	infraredis "stock_backend/internal/platform/redis"
-	"stock_backend/internal/shared/ratelimiter"
 )
 
 const (
@@ -44,7 +44,7 @@ func run() int {
 	candleRepo := candlesadapters.NewCandleRepository(db)
 	symbolRepo := symbollistadapters.NewSymbolRepository(db)
 	ingestSymbolRepo := di.NewIngestSymbolAdapter(symbolRepo)
-	rateLimiter := ratelimiter.NewRateLimiter(rateLimitPerMinute, time.Minute)
+	rateLimiter := clientratelimit.NewRateLimiter(rateLimitPerMinute, time.Minute)
 
 	// Redis接続（ベストエフォート: 接続失敗時はキャッシュウォームアップなしで続行）
 	var rdb *redisv9.Client

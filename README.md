@@ -131,11 +131,9 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │   │   ├── handler/        # ヘルスチェックハンドラー
 │   │   │   └── middleware/     # セキュリティヘッダーミドルウェア
 │   │   ├── jwt/                # JWT生成/検証/ミドルウェア
-│   │   ├── ratelimit/          # Redisベースのスライディングウィンドウレートリミッター
+│   │   ├── httpratelimit/      # Redisベースのスライディングウィンドウレートリミッター（HTTPミドルウェア）
+│   │   ├── clientratelimit/    # 外部API呼び出し用 in-memory レートリミッター
 │   │   └── redis/              # Redisクライアント実装
-│   │
-│   └── shared/                 # 共有ユーティリティ
-│       └── ratelimiter/        # レートリミット（旧実装・互換維持）
 │
 ├── docker/                     # Docker関連ファイル
 │   ├── Dockerfile.ingest       # ingest用Dockerfile（本番）
