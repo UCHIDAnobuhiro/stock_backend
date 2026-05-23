@@ -51,7 +51,7 @@ linters:
               desc: "domain/usecase must not depend on platform packages"
             - pkg: "stock_backend/internal/platform/redis"
               desc: "domain/usecase must not depend on platform packages"
-            - pkg: "stock_backend/internal/platform/ratelimit"
+            - pkg: "stock_backend/internal/platform/httpratelimit"
               desc: "domain/usecase must not depend on platform packages"
 
         # feature同士の依存禁止

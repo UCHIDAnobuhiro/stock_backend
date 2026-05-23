@@ -1,5 +1,5 @@
-// Package ratelimiter はAPI呼び出しなどの操作頻度を制限するレートリミッターを提供します。
-package ratelimiter
+// Package clientratelimit はAPI呼び出しなどの操作頻度を制限するクライアント側レートリミッターを提供します。
+package clientratelimit
 
 import (
 	"context"

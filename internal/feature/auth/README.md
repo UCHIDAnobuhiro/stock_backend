@@ -451,7 +451,7 @@ graph TB
 
     subgraph "Platform Layer"
         JWTImpl[JWTGenerator<br/>platform/jwt]
-        RateLimiter[Limiter<br/>platform/ratelimit]
+        RateLimiter[Limiter<br/>platform/httpratelimit]
     end
 
     subgraph "External Dependencies"

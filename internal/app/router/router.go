@@ -15,8 +15,8 @@ import (
 	csrfmw "stock_backend/internal/platform/csrf"
 	handler "stock_backend/internal/platform/http/handler"
 	httpmw "stock_backend/internal/platform/http/middleware"
+	"stock_backend/internal/platform/httpratelimit"
 	jwtmw "stock_backend/internal/platform/jwt"
-	"stock_backend/internal/platform/ratelimit"
 )
 
 // NewRouter はすべてのアプリケーションルートを設定したGinルーターを生成します。
@@ -26,7 +26,7 @@ func NewRouter(authHandler *authhandler.AuthHandler, oauthHandler *authhandler.O
 	candles *candleshandler.CandlesHandler,
 	symbol *symbollisthandler.SymbolHandler, logo *logohandler.LogoDetectionHandler,
 	watchlist *watchlisthandler.WatchlistHandler,
-	limiter *ratelimit.Limiter,
+	limiter *httpratelimit.Limiter,
 	allowedOrigins []string,
 ) *gin.Engine {
 	r := gin.Default()
@@ -55,7 +55,7 @@ func NewRouter(authHandler *authhandler.AuthHandler, oauthHandler *authhandler.O
 	{
 		// 公開ルート（認証不要）+ レートリミット
 		v1.POST("/signup",
-			ratelimit.ByIP(limiter, ratelimit.IPRateLimitConfig{
+			httpratelimit.ByIP(limiter, httpratelimit.IPRateLimitConfig{
 				Prefix: "rl:signup:ip",
 				Limit:  5,
 				Window: 1 * time.Hour,
@@ -63,7 +63,7 @@ func NewRouter(authHandler *authhandler.AuthHandler, oauthHandler *authhandler.O
 			authHandler.Signup,
 		)
 		v1.POST("/login",
-			ratelimit.ByIP(limiter, ratelimit.IPRateLimitConfig{
+			httpratelimit.ByIP(limiter, httpratelimit.IPRateLimitConfig{
 				Prefix: "rl:login:ip",
 				Limit:  10,
 				Window: 1 * time.Minute,
@@ -78,7 +78,7 @@ func NewRouter(authHandler *authhandler.AuthHandler, oauthHandler *authhandler.O
 			oauthGroup := v1.Group("/auth/oauth")
 			oauthGroup.GET("/:provider", oauthHandler.BeginAuth)
 			oauthGroup.GET("/:provider/callback",
-				ratelimit.ByIP(limiter, ratelimit.IPRateLimitConfig{
+				httpratelimit.ByIP(limiter, httpratelimit.IPRateLimitConfig{
 					Prefix: "rl:oauth:callback:ip",
 					Limit:  20,
 					Window: 1 * time.Minute,

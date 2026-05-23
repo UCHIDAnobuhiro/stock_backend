@@ -1,4 +1,4 @@
-package ratelimiter
+package clientratelimit
 
 import (
 	"context"
