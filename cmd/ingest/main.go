@@ -13,9 +13,9 @@ import (
 	candlesadapters "stock_backend/internal/feature/candles/adapters"
 	candlesusecase "stock_backend/internal/feature/candles/usecase"
 	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
-	"stock_backend/internal/platform/clientratelimit"
 	"stock_backend/internal/platform/db"
 	infraredis "stock_backend/internal/platform/redis"
+	"stock_backend/internal/shared/clientratelimit"
 )
 
 const (

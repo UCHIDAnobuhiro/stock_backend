@@ -7,12 +7,6 @@ import (
 	"time"
 )
 
-// RateLimiterInterface はAPI呼び出しなどの操作頻度を制限するインターフェースです。
-// 実装は並行呼び出し非対応である場合があります。詳細は各実装のドキュメントを参照してください。
-type RateLimiterInterface interface {
-	WaitIfNeeded(ctx context.Context) error
-}
-
 // RateLimiter はAPI呼び出しなどの操作頻度を制限します。
 // 並行呼び出し非対応です。複数 goroutine から呼び出す場合は呼び出し側で排他制御してください。
 type RateLimiter struct {

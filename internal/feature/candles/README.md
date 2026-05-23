@@ -237,8 +237,8 @@ graph TB
         TwelveData[TwelveDataMarket<br/>adapters/twelvedata]
     end
 
-    subgraph "Platform"
-        RateLimiter[RateLimiter<br/>platform/clientratelimit]
+    subgraph "Shared"
+        RateLimiter[RateLimiter<br/>shared/clientratelimit]
     end
 
     subgraph "External Dependencies"

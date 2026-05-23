@@ -66,7 +66,7 @@ func activeSymbolsFromCodes(codes []string) []ActiveSymbol {
 	return out
 }
 
-// mockRateLimiter はRateLimiterInterfaceのモック実装です。
+// mockRateLimiter はRateLimiterのモック実装です。
 type mockRateLimiter struct {
 	WaitIfNeededCalls int
 	// WaitIfNeededFunc が設定されていれば呼び出す。nil なら nil を返す（待機なし）。

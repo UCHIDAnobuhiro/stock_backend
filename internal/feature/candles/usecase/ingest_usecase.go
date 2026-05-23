@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/platform/clientratelimit"
 )
 
 const (
@@ -43,6 +42,12 @@ type SymbolRepository interface {
 	ListActiveSymbols(ctx context.Context) ([]ActiveSymbol, error)
 }
 
+// RateLimiter は外部 API 呼び出しの待機を抽象化します。
+// Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
+type RateLimiter interface {
+	WaitIfNeeded(ctx context.Context) error
+}
+
 // IngestResult は IngestAll 実行後の銘柄単位の集計結果を表します。
 // 致命的エラー時も部分集計が返されるため、main 側でサマリログを出力できます。
 // 個別エラーの内容は IngestAll 内で slog.Error として出力されるため、
@@ -66,11 +71,11 @@ type IngestUsecase struct {
 	market      MarketRepository
 	candle      CandleWriteRepository
 	symbol      SymbolRepository
-	rateLimiter clientratelimit.RateLimiterInterface
+	rateLimiter RateLimiter
 }
 
 // NewIngestUsecase はIngestUsecaseの新しいインスタンスを生成します。
-func NewIngestUsecase(market MarketRepository, candle CandleWriteRepository, symbol SymbolRepository, rateLimiter clientratelimit.RateLimiterInterface) *IngestUsecase {
+func NewIngestUsecase(market MarketRepository, candle CandleWriteRepository, symbol SymbolRepository, rateLimiter RateLimiter) *IngestUsecase {
 	return &IngestUsecase{market: market, candle: candle, symbol: symbol, rateLimiter: rateLimiter}
 }
 
