@@ -183,7 +183,7 @@ func TestAuthHandler_Login_RateLimited(t *testing.T) {
 		return nil
 	})
 	key := "rl:login:email:test@example.com"
-	httpratelimit.ExpectAllow(match, key, 0, 5)
+	httpratelimit.ExpectAllow(match, key, false, 5)
 
 	limiter := httpratelimit.NewLimiter(rdb)
 	loginCalled := false
