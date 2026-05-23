@@ -3,12 +3,12 @@ package di
 
 import (
 	"stock_backend/internal/feature/candles/adapters/twelvedata"
-	infrahttp "stock_backend/internal/platform/http"
+	"stock_backend/internal/platform/httpclient"
 )
 
 // NewMarket はHTTPクライアント付きの完全に設定されたTwelveDataMarketを生成します。
 func NewMarket() *twelvedata.TwelveDataMarket {
 	cfg := twelvedata.LoadConfig()
-	httpClient := infrahttp.NewHTTPClient(cfg.Timeout)
+	httpClient := httpclient.NewHTTPClient(cfg.Timeout)
 	return twelvedata.NewTwelveDataMarket(cfg, httpClient)
 }

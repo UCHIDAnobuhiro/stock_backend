@@ -139,7 +139,7 @@ graph TB
 #### Usecase層
 - **SymbolUsecase**（[usecase/symbol_usecase.go](usecase/symbol_usecase.go)）: 銘柄一覧取得のビジネスロジックを実装
   - `SymbolRepository` インターフェースを定義（`ListActive(ctx) ([]entity.Symbol, error)`）
-- **LogoIngestUsecase**（[usecase/logo_ingest_usecase.go](usecase/logo_ingest_usecase.go)）: ロゴ URL バッチ取り込みのビジネスロジック
+- **LogoIngestUsecase**（[usecase/logo_url_ingest_usecase.go](usecase/logo_url_ingest_usecase.go)）: ロゴ URL バッチ取り込みのビジネスロジック
   - active 銘柄に対し外部 API でロゴ URL を取得し、`symbols.logo_url` / `logo_updated_at` を更新
   - 銘柄単位の失敗では処理を止めず、既存 `logo_url` も保持
   - レートリミッターで外部 API 呼び出しを制御
@@ -188,8 +188,8 @@ symbollist/
 ├── usecase/
 │   ├── symbol_usecase.go             # 一覧取得ロジック + SymbolRepositoryインターフェース
 │   ├── symbol_usecase_test.go        # Usecaseテスト
-│   ├── logo_ingest_usecase.go        # ロゴURLバッチ取り込み + LogoProvider/LogoSymbolRepositoryインターフェース
-│   └── logo_ingest_usecase_test.go   # Logo Ingest Usecaseテスト
+│   ├── logo_url_ingest_usecase.go        # ロゴURLバッチ取り込み + LogoProvider/LogoSymbolRepositoryインターフェース
+│   └── logo_url_ingest_usecase_test.go   # Logo Ingest Usecaseテスト
 ├── adapters/
 │   ├── symbol_repository.go          # リポジトリ実装（SymbolRepository / LogoSymbolRepository）
 │   └── symbol_repository_test.go     # リポジトリテスト
@@ -258,7 +258,7 @@ go test ./internal/feature/symbollist/... -v -race -cover
 candles フィーチャーの `IngestUsecase` が定義する `SymbolRepository` インターフェースは以下のとおり、コード + タイムゾーンを返す形になっています:
 
 ```go
-// candles/usecase/ingest_usecase.go で定義
+// candles/usecase/candle_ingest_usecase.go で定義
 type SymbolRepository interface {
     ListActiveSymbols(ctx context.Context) ([]ActiveSymbol, error)
 }

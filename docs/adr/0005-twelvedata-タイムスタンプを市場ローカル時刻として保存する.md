@@ -14,7 +14,7 @@
 これにより以下の不整合が発生していた:
 
 - DB 上の `time` 値が「市場ローカル日時を UTC とラベル付けした値」となり、市場ローカルの暦日と DB 上の暦日がずれる
-- `internal/feature/candles/usecase/candle_aggregation.go` の `weekStart` / `monthStart` および `internal/feature/candles/usecase/ingest_usecase.go` の境界判定（`Weekday()`, `Day()`）が `time.UTC` 前提で動作しており、月初・年末・夏時間切替日付近で週足・月足の集計が市場時間基準と一致しない
+- `internal/feature/candles/usecase/candle_aggregation.go` の `weekStart` / `monthStart` および `internal/feature/candles/usecase/candle_ingest_usecase.go` の境界判定（`Weekday()`, `Day()`）が `time.UTC` 前提で動作しており、月初・年末・夏時間切替日付近で週足・月足の集計が市場時間基準と一致しない
 
 `symbols` テーブルには市場識別子（`market`）はあるが、IANA タイムゾーンを直接保持するカラムがなかった。
 

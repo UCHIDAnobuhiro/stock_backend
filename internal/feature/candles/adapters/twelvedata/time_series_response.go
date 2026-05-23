@@ -1,5 +1,4 @@
-// Package dto はTwelve Data APIレスポンスのデータ転送オブジェクトを定義します。
-package dto
+package twelvedata
 
 // TimeSeriesResponse はTwelve Data time_seriesエンドポイントからのJSONレスポンスを表します。
 type TimeSeriesResponse struct {

@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"time"
 
-	"stock_backend/internal/feature/candles/adapters/twelvedata/dto"
 	"stock_backend/internal/feature/candles/domain/entity"
 	"stock_backend/internal/feature/candles/usecase"
 )
@@ -60,7 +59,7 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 	}()
 
 	// JSONレスポンスをDTOにデコード
-	var body dto.TimeSeriesResponse
+	var body TimeSeriesResponse
 	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
 		return nil, err
 	}
