@@ -183,9 +183,7 @@ func TestAuthHandler_Login_RateLimited(t *testing.T) {
 		return nil
 	})
 	key := "rl:login:email:test@example.com"
-	match.ExpectEvalSha(httpratelimit.ScriptHash(), []string{key},
-		"_", "_", "_", "_", "_").
-		SetVal([]interface{}{int64(0), int64(5)})
+	httpratelimit.ExpectAllow(match, key, 0, 5)
 
 	limiter := httpratelimit.NewLimiter(rdb)
 	loginCalled := false

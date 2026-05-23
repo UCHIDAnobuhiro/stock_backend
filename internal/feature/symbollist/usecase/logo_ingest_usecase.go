@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"stock_backend/internal/feature/symbollist/domain/entity"
-	"stock_backend/internal/platform/clientratelimit"
 )
 
 // LogoProvider は外部APIからロゴURLを取得するリポジトリを抽象化します。
@@ -18,6 +17,12 @@ type LogoProvider interface {
 type LogoSymbolRepository interface {
 	ListActive(ctx context.Context) ([]entity.Symbol, error)
 	UpdateLogoURL(ctx context.Context, code, logoURL string, updatedAt time.Time) error
+}
+
+// RateLimiter は外部 API 呼び出しの待機を抽象化します。
+// Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
+type RateLimiter interface {
+	WaitIfNeeded(ctx context.Context) error
 }
 
 // LogoIngestResult はロゴURL取得バッチの銘柄単位の集計結果を表します。
@@ -39,12 +44,12 @@ func (r LogoIngestResult) FailureRate() float64 {
 type LogoIngestUsecase struct {
 	logoProvider LogoProvider
 	symbolRepo   LogoSymbolRepository
-	rateLimiter  clientratelimit.RateLimiterInterface
+	rateLimiter  RateLimiter
 	now          func() time.Time
 }
 
 // NewLogoIngestUsecase はLogoIngestUsecaseの新しいインスタンスを生成します。
-func NewLogoIngestUsecase(provider LogoProvider, symbolRepo LogoSymbolRepository, rateLimiter clientratelimit.RateLimiterInterface) *LogoIngestUsecase {
+func NewLogoIngestUsecase(provider LogoProvider, symbolRepo LogoSymbolRepository, rateLimiter RateLimiter) *LogoIngestUsecase {
 	return &LogoIngestUsecase{
 		logoProvider: provider,
 		symbolRepo:   symbolRepo,

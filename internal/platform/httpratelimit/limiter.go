@@ -94,8 +94,8 @@ func (l *Limiter) Allow(ctx context.Context, key string, limit int, window time.
 	}
 }
 
-// ScriptHash はテスト用にLuaスクリプトのSHA1ハッシュを返します。
-func ScriptHash() string {
+// scriptHash はLuaスクリプトのSHA1ハッシュを返します（テストヘルパー ExpectAllow から利用）。
+func scriptHash() string {
 	return rateLimitScript.Hash()
 }
 

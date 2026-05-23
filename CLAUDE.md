@@ -70,8 +70,9 @@ internal/
 │   │   └── middleware/ # セキュリティヘッダーミドルウェア
 │   ├── jwt/          # JWT生成・ミドルウェア
 │   ├── httpratelimit/   # Redisベースのスライディングウィンドウレートリミッター（HTTPミドルウェア）
-│   ├── clientratelimit/ # 外部API呼び出し用 in-memory レートリミッター
 │   └── redis/        # Redisクライアントセットアップ
+└── shared/           # 共有ユーティリティ（ドメイン横断、usecase からも利用可）
+    └── clientratelimit/ # 外部API呼び出し用 in-memory レートリミッター
 ```
 
 ### フィーチャーモジュール構成
