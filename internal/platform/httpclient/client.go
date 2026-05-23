@@ -1,5 +1,5 @@
-// Package http は外部API呼び出し用のHTTPクライアント設定を提供します。
-package http
+// Package httpclient は外部API呼び出し用のHTTPクライアント設定を提供します。
+package httpclient
 
 import (
 	"net"

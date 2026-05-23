@@ -221,10 +221,10 @@ graph TB
     subgraph "Usecase Layer"
         CandlesUC[CandlesUsecase<br/>usecase]
         IngestUC[IngestUsecase<br/>usecase]
-        ReadInterface[CandleRepository Interface<br/>usecase/candles_usecase.go]
-        WriteInterface[CandleWriteRepository Interface<br/>usecase/ingest_usecase.go]
-        MarketInterface[MarketRepository Interface<br/>usecase/ingest_usecase.go]
-        SymbolInterface[SymbolRepository Interface<br/>usecase/ingest_usecase.go]
+        ReadInterface[CandleRepository Interface<br/>usecase/candle_usecase.go]
+        WriteInterface[CandleWriteRepository Interface<br/>usecase/candle_ingest_usecase.go]
+        MarketInterface[MarketRepository Interface<br/>usecase/candle_ingest_usecase.go]
+        SymbolInterface[SymbolRepository Interface<br/>usecase/candle_ingest_usecase.go]
     end
 
     subgraph "Domain Layer"
@@ -287,11 +287,11 @@ graph TB
 - **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成された `api.CandleResponse` を使用
 
 #### ユースケース層
-- **CandlesUsecase**（[usecase/candles_usecase.go](usecase/candles_usecase.go)）: パラメータバリデーション付きのローソク足データ取得
+- **CandlesUsecase**（[usecase/candle_usecase.go](usecase/candle_usecase.go)）: パラメータバリデーション付きのローソク足データ取得
   - インターバルとoutputsizeのデフォルト値を適用
   - 最大outputsize制限（5000）を適用
   - `CandleRepository`インターフェース（読み取り専用）を定義（Goの「インターフェースは利用者が定義する」慣例に従う）
-- **IngestUsecase**（[usecase/ingest_usecase.go](usecase/ingest_usecase.go)）: 外部APIからのバッチデータ取り込み
+- **IngestUsecase**（[usecase/candle_ingest_usecase.go](usecase/candle_ingest_usecase.go)）: 外部APIからのバッチデータ取り込み
   - アクティブな銘柄（コード + IANA タイムゾーン）を取得
   - **日足のみ外部APIから取得**し、サーバー内で週足/月足を集計（API リクエスト数の削減）
   - RateLimiterによるレート制限を遵守
@@ -348,10 +348,10 @@ candles/
 │   └── entity/
 │       └── candle.go                  # Candleエンティティ（OHLCVデータ）
 ├── usecase/
-│   ├── candles_usecase.go             # クエリロジック + CandleRepositoryインターフェース
-│   ├── candles_usecase_test.go        # ユースケーステスト
-│   ├── ingest_usecase.go              # バッチ取り込み + MarketRepository / CandleWriteRepository / SymbolRepositoryインターフェース
-│   ├── ingest_usecase_test.go         # 取り込みテスト
+│   ├── candle_usecase.go              # クエリロジック + CandleRepositoryインターフェース
+│   ├── candle_usecase_test.go         # ユースケーステスト
+│   ├── candle_ingest_usecase.go       # バッチ取り込み + MarketRepository / CandleWriteRepository / SymbolRepositoryインターフェース
+│   ├── candle_ingest_usecase_test.go  # 取り込みテスト
 │   ├── candle_aggregation.go          # 日足→週足/月足 集計ロジック
 │   └── candle_aggregation_test.go     # 集計テスト
 ├── adapters/
@@ -402,7 +402,7 @@ Candlesフィーチャーの全テストは、一貫性と保守性のために*
    - リポジトリ: `setupTestDB()`, `seedCandle()`
    - ハンドラー: HTTPテスト用に`httptest.NewRecorder()`を使用
 
-#### ユースケーステスト（[usecase/candles_usecase_test.go](usecase/candles_usecase_test.go)）
+#### ユースケーステスト（[usecase/candle_usecase_test.go](usecase/candle_usecase_test.go)）
 
 ビジネスロジックを分離してテストするために**モックリポジトリ**を使用します。
 
