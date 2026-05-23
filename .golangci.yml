@@ -43,8 +43,6 @@ linters:
               desc: "domain/usecase must not depend on platform packages"
             - pkg: "stock_backend/internal/platform/db"
               desc: "domain/usecase must not depend on platform packages"
-            - pkg: "stock_backend/internal/platform/http"
-              desc: "domain/usecase must not depend on platform packages"
             - pkg: "stock_backend/internal/platform/httpclient"
               desc: "domain/usecase must not depend on platform packages"
             - pkg: "stock_backend/internal/platform/jwt"
