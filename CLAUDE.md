@@ -65,12 +65,11 @@ internal/
 ├── platform/         # インフラストラクチャ層（旧 "infrastructure"）
 │   ├── csrf/         # CSRF保護（Double Submit Cookieパターン）
 │   ├── db/           # データベース初期化
-│   ├── http/         # サーバーサイドHTTP（ヘルスチェック・セキュリティヘッダー）
-│   │   ├── handler/  # ヘルスチェックハンドラー
-│   │   └── middleware/ # セキュリティヘッダーミドルウェア
+│   ├── handler/      # プラットフォームレベルのHTTPハンドラー（ヘルスチェック等）
 │   ├── httpclient/   # 外部API呼び出し用HTTPクライアント設定
+│   ├── httpratelimit/ # Redisベースのスライディングウィンドウレートリミッター（HTTPミドルウェア）
 │   ├── jwt/          # JWT生成・ミドルウェア
-│   ├── httpratelimit/   # Redisベースのスライディングウィンドウレートリミッター（HTTPミドルウェア）
+│   ├── middleware/   # プラットフォーム共通のHTTPミドルウェア（セキュリティヘッダー等）
 │   └── redis/        # Redisクライアントセットアップ
 └── shared/           # 共有ユーティリティ（ドメイン横断、usecase からも利用可）
     └── clientratelimit/ # 外部API呼び出し用 in-memory レートリミッター

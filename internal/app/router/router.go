@@ -13,10 +13,10 @@ import (
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	watchlisthandler "stock_backend/internal/feature/watchlist/transport/handler"
 	csrfmw "stock_backend/internal/platform/csrf"
-	handler "stock_backend/internal/platform/http/handler"
-	httpmw "stock_backend/internal/platform/http/middleware"
+	handler "stock_backend/internal/platform/handler"
 	"stock_backend/internal/platform/httpratelimit"
 	jwtmw "stock_backend/internal/platform/jwt"
+	httpmw "stock_backend/internal/platform/middleware"
 )
 
 // NewRouter はすべてのアプリケーションルートを設定したGinルーターを生成します。

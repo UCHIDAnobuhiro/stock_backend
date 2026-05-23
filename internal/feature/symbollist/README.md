@@ -181,22 +181,22 @@ graph TB
 
 ```
 symbollist/
-├── README.md                          # このファイル
+├── README.md                              # このファイル
 ├── domain/
 │   └── entity/
-│       └── symbol.go                 # Symbolエンティティ定義
+│       └── symbol.go                     # Symbolエンティティ定義
 ├── usecase/
-│   ├── symbol_usecase.go             # 一覧取得ロジック + SymbolRepositoryインターフェース
-│   ├── symbol_usecase_test.go        # Usecaseテスト
+│   ├── symbol_usecase.go                 # 一覧取得ロジック + SymbolRepositoryインターフェース
+│   ├── symbol_usecase_test.go            # Usecaseテスト
 │   ├── logo_url_ingest_usecase.go        # ロゴURLバッチ取り込み + LogoProvider/LogoSymbolRepositoryインターフェース
 │   └── logo_url_ingest_usecase_test.go   # Logo Ingest Usecaseテスト
 ├── adapters/
-│   ├── symbol_repository.go          # リポジトリ実装（SymbolRepository / LogoSymbolRepository）
-│   └── symbol_repository_test.go     # リポジトリテスト
+│   ├── symbol_repository.go              # リポジトリ実装（SymbolRepository / LogoSymbolRepository）
+│   └── symbol_repository_test.go         # リポジトリテスト
 └── transport/
     └── handler/
-        ├── symbol_handler.go         # HTTPハンドラー
-        └── symbol_handler_test.go    # ハンドラーテスト
+        ├── symbol_handler.go             # HTTPハンドラー
+        └── symbol_handler_test.go        # ハンドラーテスト
 ```
 
 ## テスト
