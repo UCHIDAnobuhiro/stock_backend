@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// NewHTTPClient は外部API呼び出し用に設定されたHTTPクライアントを作成します。
+// New は外部API呼び出し用に設定されたHTTPクライアントを作成します。
 //
 // 設定:
 //   - Proxy: 環境変数（HTTP_PROXYなど）が設定されている場合に使用
@@ -21,7 +21,7 @@ import (
 // 注意:
 //   - http.DefaultClientにはタイムアウトがないため、常にカスタムクライアントを使用すること
 //   - Transportは接続の安定性とリソース管理のために明示的に設定
-func NewHTTPClient(timeout time.Duration) *http.Client {
+func New(timeout time.Duration) *http.Client {
 	t := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
