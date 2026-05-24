@@ -2,60 +2,57 @@ package adapters
 
 import (
 	"context"
+	"database/sql"
+	"log"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 
 	"stock_backend/internal/feature/auth/domain/entity"
 	"stock_backend/internal/feature/auth/usecase"
+	"stock_backend/internal/platform/db/dbtest"
 )
 
-// setupTestDB はテスト用のインメモリSQLiteデータベースを準備します。
-func setupTestDB(t *testing.T) *gorm.DB {
+func TestMain(m *testing.M) {
+	code, err := dbtest.RunMainWithPostgres(m)
+	if err != nil {
+		log.Fatalf("dbtest setup: %v", err)
+	}
+	os.Exit(code)
+}
+
+// setupTestDB はテスト用の独立した PostgreSQL データベースを準備します。
+// 各テストごとに新しい DB が払い出され、t.Cleanup で破棄されます。
+func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err, "failed to initialize test database")
-
-	// Userテーブルを作成
-	err = db.AutoMigrate(&entity.User{})
-	require.NoError(t, err, "failed to migrate table")
-
-	return db
+	return dbtest.OpenIsolatedDB(t)
 }
 
 // seedUser はテスト用のユーザーをデータベースに作成します。
-// このヘルパーはコードの重複を削減し、テストの保守性を向上させます。
-func seedUser(t *testing.T, db *gorm.DB, email, password string) *entity.User {
+func seedUser(t *testing.T, db *sql.DB, email, password string) *entity.User {
 	t.Helper()
-
+	repo := NewUserRepository(db)
 	user := &entity.User{
 		Email:    email,
 		Password: &password,
 	}
-	err := db.Create(user).Error
+	err := repo.Create(context.Background(), user)
 	require.NoError(t, err, "failed to seed user")
-
 	return user
 }
 
 // ptrStr は文字列のポインタを返すヘルパーです。
 func ptrStr(s string) *string { return &s }
 
-// TestNewUserRepository はNewUserRepositoryコンストラクタが正しくインスタンスを生成することをテストします。
 func TestNewUserRepository(t *testing.T) {
 	db := setupTestDB(t)
-
 	repo := NewUserRepository(db)
-
 	assert.NotNil(t, repo, "repository is nil")
 	assert.NotNil(t, repo.db, "database connection is nil")
 }
 
-// TestUserRepository_Create はユーザー作成処理（成功、メール重複、nilユーザー）をテストします。
 func TestUserRepository_Create(t *testing.T) {
 	t.Parallel()
 
@@ -63,7 +60,8 @@ func TestUserRepository_Create(t *testing.T) {
 		name         string
 		user         *entity.User
 		wantErr      bool
-		setupFunc    func(t *testing.T, db *gorm.DB)
+		expectedErr  error
+		setupFunc    func(t *testing.T, db *sql.DB)
 		validateFunc func(t *testing.T, user *entity.User)
 	}{
 		{
@@ -80,13 +78,14 @@ func TestUserRepository_Create(t *testing.T) {
 			},
 		},
 		{
-			name: "failure: duplicate email",
+			name: "failure: duplicate email returns ErrEmailAlreadyExists",
 			user: &entity.User{
 				Email:    "duplicate@example.com",
 				Password: ptrStr("password2"),
 			},
-			wantErr: true,
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			wantErr:     true,
+			expectedErr: usecase.ErrEmailAlreadyExists,
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedUser(t, db, "duplicate@example.com", "password1")
 			},
 		},
@@ -100,18 +99,17 @@ func TestUserRepository_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			db := setupTestDB(t)
 			repo := NewUserRepository(db)
-
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, db)
 			}
-
 			err := repo.Create(context.Background(), tt.user)
-
 			if tt.wantErr {
 				assert.Error(t, err)
+				if tt.expectedErr != nil {
+					assert.ErrorIs(t, err, tt.expectedErr)
+				}
 			} else {
 				assert.NoError(t, err)
 				if tt.validateFunc != nil {
@@ -122,7 +120,6 @@ func TestUserRepository_Create(t *testing.T) {
 	}
 }
 
-// TestUserRepository_FindByEmail はメールアドレスによるユーザー検索をテストします。
 func TestUserRepository_FindByEmail(t *testing.T) {
 	t.Parallel()
 
@@ -131,21 +128,21 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 		email        string
 		wantErr      bool
 		expectedErr  error
-		setupFunc    func(t *testing.T, db *gorm.DB) *entity.User
+		setupFunc    func(t *testing.T, db *sql.DB) *entity.User
 		validateFunc func(t *testing.T, expected, found *entity.User)
 	}{
 		{
 			name:    "success: find user by email",
 			email:   "find@example.com",
 			wantErr: false,
-			setupFunc: func(t *testing.T, db *gorm.DB) *entity.User {
+			setupFunc: func(t *testing.T, db *sql.DB) *entity.User {
 				return seedUser(t, db, "find@example.com", "hashed_password")
 			},
 			validateFunc: func(t *testing.T, expected, found *entity.User) {
 				assert.NotNil(t, found, "user is nil")
-				assert.Equal(t, expected.ID, found.ID, "ID does not match")
-				assert.Equal(t, expected.Email, found.Email, "email does not match")
-				assert.Equal(t, expected.Password, found.Password, "password does not match")
+				assert.Equal(t, expected.ID, found.ID)
+				assert.Equal(t, expected.Email, found.Email)
+				assert.Equal(t, expected.Password, found.Password)
 			},
 		},
 		{
@@ -155,15 +152,16 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 			expectedErr: usecase.ErrUserNotFound,
 		},
 		{
-			name:    "failure: empty email",
-			email:   "",
-			wantErr: true,
+			name:        "failure: empty email",
+			email:       "",
+			wantErr:     true,
+			expectedErr: usecase.ErrUserNotFound,
 		},
 		{
 			name:    "success: find correct user when multiple users exist",
 			email:   "user2@example.com",
 			wantErr: false,
-			setupFunc: func(t *testing.T, db *gorm.DB) *entity.User {
+			setupFunc: func(t *testing.T, db *sql.DB) *entity.User {
 				seedUser(t, db, "user1@example.com", "pass1")
 				user2 := seedUser(t, db, "user2@example.com", "pass2")
 				seedUser(t, db, "user3@example.com", "pass3")
@@ -171,9 +169,9 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 			},
 			validateFunc: func(t *testing.T, expected, found *entity.User) {
 				assert.NotNil(t, found, "user is nil")
-				assert.Equal(t, expected.ID, found.ID, "ID does not match")
-				assert.Equal(t, "user2@example.com", found.Email, "email does not match")
-				assert.Equal(t, ptrStr("pass2"), found.Password, "password does not match")
+				assert.Equal(t, expected.ID, found.ID)
+				assert.Equal(t, "user2@example.com", found.Email)
+				assert.Equal(t, ptrStr("pass2"), found.Password)
 			},
 		},
 	}
@@ -181,17 +179,13 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			db := setupTestDB(t)
 			repo := NewUserRepository(db)
-
 			var expected *entity.User
 			if tt.setupFunc != nil {
 				expected = tt.setupFunc(t, db)
 			}
-
 			found, err := repo.FindByEmail(context.Background(), tt.email)
-
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Nil(t, found, "user should be nil")
@@ -208,7 +202,6 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 	}
 }
 
-// TestUserRepository_FindByID はIDによるユーザー検索をテストします。
 func TestUserRepository_FindByID(t *testing.T) {
 	t.Parallel()
 
@@ -217,20 +210,20 @@ func TestUserRepository_FindByID(t *testing.T) {
 		userID       uint
 		wantErr      bool
 		expectedErr  error
-		setupFunc    func(t *testing.T, db *gorm.DB) *entity.User
+		setupFunc    func(t *testing.T, db *sql.DB) *entity.User
 		validateFunc func(t *testing.T, expected, found *entity.User)
 	}{
 		{
 			name:    "success: find user by ID",
 			wantErr: false,
-			setupFunc: func(t *testing.T, db *gorm.DB) *entity.User {
+			setupFunc: func(t *testing.T, db *sql.DB) *entity.User {
 				return seedUser(t, db, "findbyid@example.com", "hashed_password")
 			},
 			validateFunc: func(t *testing.T, expected, found *entity.User) {
 				assert.NotNil(t, found, "user is nil")
-				assert.Equal(t, expected.ID, found.ID, "ID does not match")
-				assert.Equal(t, expected.Email, found.Email, "email does not match")
-				assert.Equal(t, expected.Password, found.Password, "password does not match")
+				assert.Equal(t, expected.ID, found.ID)
+				assert.Equal(t, expected.Email, found.Email)
+				assert.Equal(t, expected.Password, found.Password)
 			},
 		},
 		{
@@ -240,14 +233,15 @@ func TestUserRepository_FindByID(t *testing.T) {
 			expectedErr: usecase.ErrUserNotFound,
 		},
 		{
-			name:    "failure: ID 0",
-			userID:  0,
-			wantErr: true,
+			name:        "failure: ID 0",
+			userID:      0,
+			wantErr:     true,
+			expectedErr: usecase.ErrUserNotFound,
 		},
 		{
 			name:    "success: find correct user when multiple users exist",
 			wantErr: false,
-			setupFunc: func(t *testing.T, db *gorm.DB) *entity.User {
+			setupFunc: func(t *testing.T, db *sql.DB) *entity.User {
 				seedUser(t, db, "user1@example.com", "pass1")
 				user2 := seedUser(t, db, "user2@example.com", "pass2")
 				seedUser(t, db, "user3@example.com", "pass3")
@@ -255,9 +249,9 @@ func TestUserRepository_FindByID(t *testing.T) {
 			},
 			validateFunc: func(t *testing.T, expected, found *entity.User) {
 				assert.NotNil(t, found, "user is nil")
-				assert.Equal(t, expected.ID, found.ID, "ID does not match")
-				assert.Equal(t, "user2@example.com", found.Email, "email does not match")
-				assert.Equal(t, ptrStr("pass2"), found.Password, "password does not match")
+				assert.Equal(t, expected.ID, found.ID)
+				assert.Equal(t, "user2@example.com", found.Email)
+				assert.Equal(t, ptrStr("pass2"), found.Password)
 			},
 		},
 	}
@@ -265,10 +259,8 @@ func TestUserRepository_FindByID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			db := setupTestDB(t)
 			repo := NewUserRepository(db)
-
 			var expected *entity.User
 			var targetID uint
 			if tt.setupFunc != nil {
@@ -277,9 +269,7 @@ func TestUserRepository_FindByID(t *testing.T) {
 			} else {
 				targetID = tt.userID
 			}
-
 			found, err := repo.FindByID(context.Background(), targetID)
-
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Nil(t, found, "user should be nil")
@@ -296,42 +286,58 @@ func TestUserRepository_FindByID(t *testing.T) {
 	}
 }
 
-// TestUserRepository_Timestamps はCreatedAtとUpdatedAtが自動設定され、取得後も保持されることをテストします。
 func TestUserRepository_Timestamps(t *testing.T) {
 	t.Parallel()
+	db := setupTestDB(t)
+	repo := NewUserRepository(db)
 
-	tests := []struct {
-		name string
-	}{
-		{
-			name: "success: CreatedAt and UpdatedAt are automatically set and preserved",
-		},
+	user := &entity.User{
+		Email:    "timestamp@example.com",
+		Password: ptrStr("password"),
 	}
+	err := repo.Create(context.Background(), user)
+	require.NoError(t, err)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+	assert.False(t, user.CreatedAt.IsZero(), "CreatedAt is not set")
+	assert.False(t, user.UpdatedAt.IsZero(), "UpdatedAt is not set")
 
-			db := setupTestDB(t)
-			repo := NewUserRepository(db)
+	found, err := repo.FindByID(context.Background(), user.ID)
+	require.NoError(t, err)
 
-			user := &entity.User{
-				Email:    "timestamp@example.com",
-				Password: ptrStr("password"),
-			}
+	assert.Equal(t, user.CreatedAt.Unix(), found.CreatedAt.Unix())
+	assert.Equal(t, user.UpdatedAt.Unix(), found.UpdatedAt.Unix())
+}
 
-			err := repo.Create(context.Background(), user)
-			require.NoError(t, err, "failed to create user")
+// TestUserRepository_CreateUserWithOAuthAccount は OAuth 新規ユーザー作成の
+// トランザクション動作（成功・User 重複時のロールバック）を検証します。
+func TestUserRepository_CreateUserWithOAuthAccount(t *testing.T) {
+	t.Parallel()
 
-			assert.False(t, user.CreatedAt.IsZero(), "CreatedAt is not set")
-			assert.False(t, user.UpdatedAt.IsZero(), "UpdatedAt is not set")
+	t.Run("success: create user and oauth account atomically", func(t *testing.T) {
+		t.Parallel()
+		db := setupTestDB(t)
+		repo := NewUserRepository(db)
 
-			// 取得後もタイムスタンプが保持されていることを確認
-			found, err := repo.FindByID(context.Background(), user.ID)
-			require.NoError(t, err, "failed to find user")
+		user := &entity.User{Email: "oauth-new@example.com"}
+		acct := &entity.OAuthAccount{Provider: "google", ProviderUID: "sub-123"}
+		err := repo.CreateUserWithOAuthAccount(context.Background(), user, acct)
+		require.NoError(t, err)
+		assert.NotZero(t, user.ID)
+		assert.NotZero(t, acct.ID)
+		assert.Equal(t, user.ID, acct.UserID)
+	})
 
-			assert.Equal(t, user.CreatedAt.Unix(), found.CreatedAt.Unix(), "CreatedAt does not match")
-			assert.Equal(t, user.UpdatedAt.Unix(), found.UpdatedAt.Unix(), "UpdatedAt does not match")
-		})
-	}
+	t.Run("failure: duplicate email rolls back oauth account", func(t *testing.T) {
+		t.Parallel()
+		db := setupTestDB(t)
+		repo := NewUserRepository(db)
+
+		seedUser(t, db, "dup-oauth@example.com", "p")
+		user := &entity.User{Email: "dup-oauth@example.com"}
+		acct := &entity.OAuthAccount{Provider: "google", ProviderUID: "sub-xyz"}
+		err := repo.CreateUserWithOAuthAccount(context.Background(), user, acct)
+		assert.ErrorIs(t, err, usecase.ErrEmailAlreadyExists)
+		assert.Zero(t, user.ID, "user should not be persisted")
+		assert.Zero(t, acct.ID, "account should not be persisted")
+	})
 }

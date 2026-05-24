@@ -3,43 +3,56 @@ package adapters
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 
-	"gorm.io/gorm"
-
+	"stock_backend/internal/feature/auth/adapters/sqlc"
 	"stock_backend/internal/feature/auth/domain/entity"
 	"stock_backend/internal/feature/auth/usecase"
 )
 
-// oauthAccountRepository はOAuthAccountRepositoryインターフェースのGORM実装です。
+// oauthAccountRepository は OAuthAccountRepository の sqlc ベース実装です。
 type oauthAccountRepository struct {
-	db *gorm.DB
+	q *authsqlc.Queries
 }
 
 var _ usecase.OAuthAccountRepository = (*oauthAccountRepository)(nil)
 
-// NewOAuthAccountRepository は指定されたgorm.DB接続でoauthAccountRepositoryの新しいインスタンスを生成します。
-func NewOAuthAccountRepository(db *gorm.DB) *oauthAccountRepository {
-	return &oauthAccountRepository{db: db}
+// NewOAuthAccountRepository は指定された *sql.DB で oauthAccountRepository の新しいインスタンスを生成します。
+func NewOAuthAccountRepository(db *sql.DB) *oauthAccountRepository {
+	return &oauthAccountRepository{q: authsqlc.New(db)}
 }
 
-// FindByProvider はプロバイダー名とプロバイダーUIDでOAuthAccountを検索します。
-// 存在しない場合はusecase.ErrUserNotFoundを返します。
+// FindByProvider はプロバイダー名とプロバイダー UID で OAuthAccount を検索します。
+// 存在しない場合は usecase.ErrUserNotFound を返します。
 func (r *oauthAccountRepository) FindByProvider(ctx context.Context, provider, providerUID string) (*entity.OAuthAccount, error) {
-	var acct entity.OAuthAccount
-	err := r.db.WithContext(ctx).
-		Where("provider = ? AND provider_uid = ?", provider, providerUID).
-		First(&acct).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, usecase.ErrUserNotFound
-	}
+	row, err := r.q.FindOAuthAccountByProvider(ctx, authsqlc.FindOAuthAccountByProviderParams{
+		Provider:    provider,
+		ProviderUid: providerUID,
+	})
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, usecase.ErrUserNotFound
+		}
 		return nil, err
 	}
+	acct := oauthAccountFromSQLC(row)
 	return &acct, nil
 }
 
-// Create はOAuthAccountを新規作成します。
+// Create は OAuthAccount を新規作成します。
 func (r *oauthAccountRepository) Create(ctx context.Context, acct *entity.OAuthAccount) error {
-	return r.db.WithContext(ctx).Create(acct).Error
+	if acct == nil {
+		return errors.New("account is nil")
+	}
+	row, err := r.q.CreateOAuthAccount(ctx, authsqlc.CreateOAuthAccountParams{
+		UserID:      int64(acct.UserID),
+		Provider:    acct.Provider,
+		ProviderUid: acct.ProviderUID,
+	})
+	if err != nil {
+		return err
+	}
+	*acct = oauthAccountFromSQLC(row)
+	return nil
 }

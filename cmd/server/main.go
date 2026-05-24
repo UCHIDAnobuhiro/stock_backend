@@ -46,7 +46,18 @@ func main() {
 	slog.SetDefault(logger)
 
 	// データベース接続。スキーマ適用は cmd/migrate バイナリ（goose）で別途実施する。
-	db := infradb.OpenDB()
+	// 移行期間中は *sql.DB を主とし、未移行 feature 用に *gorm.DB を同プールから派生させる。
+	sqlDB := infradb.OpenSQL()
+	defer func() {
+		if err := sqlDB.Close(); err != nil {
+			slog.Warn("failed to close sqlDB", "error", err)
+		}
+	}()
+	db, err := infradb.NewGORMFromSQL(sqlDB)
+	if err != nil {
+		slog.Error("failed to bridge GORM on *sql.DB", "error", err)
+		os.Exit(1)
+	}
 
 	// Redis接続
 	var rdb *redisv9.Client
@@ -62,8 +73,8 @@ func main() {
 		}()
 	}
 
-	// リポジトリ
-	userRepo := authadapters.NewUserRepository(db)
+	// リポジトリ。auth は sqlc 化済み (*sql.DB)、他は GORM (*gorm.DB) のまま。
+	userRepo := authadapters.NewUserRepository(sqlDB)
 	symbolRepo := symbollistadapters.NewSymbolRepository(db)
 	candleRepo := candlesadapters.NewCandleRepository(db)
 	watchlistRepo := watchlistadapters.NewWatchlistRepository(db)
@@ -176,7 +187,7 @@ func main() {
 		}
 		oauthUC := authusecase.NewOAuthUsecase(
 			userRepo,
-			authadapters.NewOAuthAccountRepository(db),
+			authadapters.NewOAuthAccountRepository(sqlDB),
 			userRepo,
 			authadapters.NewRedisOAuthStateStore(rdb),
 			jwtGen,
