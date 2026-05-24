@@ -12,7 +12,6 @@ import (
 	"stock_backend/internal/app/config"
 	"stock_backend/internal/app/router"
 	authadapters "stock_backend/internal/feature/auth/adapters"
-	authentity "stock_backend/internal/feature/auth/domain/entity"
 	authhandler "stock_backend/internal/feature/auth/transport/handler"
 	authusecase "stock_backend/internal/feature/auth/usecase"
 	candlesadapters "stock_backend/internal/feature/candles/adapters"
@@ -23,11 +22,9 @@ import (
 	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
 	logousecase "stock_backend/internal/feature/logodetection/usecase"
 	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
-	symbolentity "stock_backend/internal/feature/symbollist/domain/entity"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
 	watchlistadapters "stock_backend/internal/feature/watchlist/adapters"
-	watchlistentity "stock_backend/internal/feature/watchlist/domain/entity"
 	watchlisthandler "stock_backend/internal/feature/watchlist/transport/handler"
 	watchlistusecase "stock_backend/internal/feature/watchlist/usecase"
 	infradb "stock_backend/internal/platform/db"
@@ -48,38 +45,8 @@ func main() {
 	}))
 	slog.SetDefault(logger)
 
-	// データベース接続
+	// データベース接続。スキーマ適用は cmd/migrate バイナリ（goose）で別途実施する。
 	db := infradb.OpenDB()
-
-	// マイグレーション
-	if os.Getenv("RUN_MIGRATIONS") == "true" {
-		if err := infradb.RunMigrations(db,
-			&authentity.User{},
-			&authentity.OAuthAccount{},
-			&candlesadapters.CandleModel{},
-			&symbolentity.Symbol{},
-			&watchlistentity.UserSymbol{},
-		); err != nil {
-			slog.Error("failed to migrate", "error", err)
-			os.Exit(1)
-		}
-		if err := authadapters.MakePasswordNullable(db); err != nil {
-			slog.Error("failed to make password nullable", "error", err)
-			os.Exit(1)
-		}
-		if err := authadapters.AddOAuthAccountsFKConstraints(db); err != nil {
-			slog.Error("failed to add oauth_accounts FK constraints", "error", err)
-			os.Exit(1)
-		}
-		if err := watchlistadapters.AddFKConstraints(db); err != nil {
-			slog.Error("failed to add watchlist FK constraints", "error", err)
-			os.Exit(1)
-		}
-		if err := candlesadapters.AddFKConstraints(db); err != nil {
-			slog.Error("failed to add candles FK constraints", "error", err)
-			os.Exit(1)
-		}
-	}
 
 	// Redis接続
 	var rdb *redisv9.Client
