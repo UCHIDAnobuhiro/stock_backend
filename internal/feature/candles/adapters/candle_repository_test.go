@@ -2,199 +2,137 @@ package adapters
 
 import (
 	"context"
+	"database/sql"
+	"log"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 
 	"stock_backend/internal/feature/candles/domain/entity"
+	"stock_backend/internal/platform/db/dbtest"
 )
 
-// setupTestDB はテスト用のインメモリSQLiteデータベースを準備します。
-func setupTestDB(t *testing.T) *gorm.DB {
+func TestMain(m *testing.M) {
+	code, err := dbtest.RunMainWithPostgres(m)
+	if err != nil {
+		log.Fatalf("dbtest setup: %v", err)
+	}
+	os.Exit(code)
+}
+
+func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err, "failed to initialize test database")
-
-	err = db.AutoMigrate(&CandleModel{})
-	require.NoError(t, err, "failed to migrate table")
-
+	db := dbtest.OpenIsolatedDB(t)
+	// candles は symbols.code への FK 制約があるため、テスト用に必要な銘柄をあらかじめ作成する。
+	_, err := db.ExecContext(context.Background(),
+		`INSERT INTO symbols (code, name, market, timezone) VALUES
+		   ('AAPL', 'Apple Inc.', 'NASDAQ', 'America/New_York'),
+		   ('GOOGL', 'Alphabet Inc.', 'NASDAQ', 'America/New_York'),
+		   ('NOTFOUND', 'Placeholder', 'TEST', 'UTC')
+		 ON CONFLICT (code) DO NOTHING`)
+	require.NoError(t, err)
 	return db
 }
 
 // seedCandle はテスト用のローソク足データをデータベースに作成します。
-func seedCandle(t *testing.T, db *gorm.DB, symbol, interval string, time time.Time) *CandleModel {
+func seedCandle(t *testing.T, db *sql.DB, symbol, interval string, ts time.Time) {
 	t.Helper()
-
-	candle := &CandleModel{
-		SymbolCode: symbol,
-		Interval:   interval,
-		Time:       time,
-		Open:       100.0,
-		High:       110.0,
-		Low:        90.0,
-		Close:      105.0,
-		Volume:     1000,
-	}
-	err := db.Create(candle).Error
+	_, err := db.ExecContext(context.Background(),
+		`INSERT INTO candles (symbol_code, "interval", "time", open, high, low, close, volume)
+		 VALUES ($1, $2, $3, 100.0, 110.0, 90.0, 105.0, 1000)`,
+		symbol, interval, ts,
+	)
 	require.NoError(t, err, "failed to seed candle")
-
-	return candle
 }
 
-// TestNewCandleRepository はNewCandleRepositoryコンストラクタが正しくインスタンスを生成することをテストします。
+// candleCount は candles テーブルの行数を返します。
+func candleCount(t *testing.T, db *sql.DB) int64 {
+	t.Helper()
+	var n int64
+	require.NoError(t, db.QueryRowContext(context.Background(),
+		`SELECT COUNT(*) FROM candles`).Scan(&n))
+	return n
+}
+
 func TestNewCandleRepository(t *testing.T) {
+	t.Parallel()
 	db := setupTestDB(t)
-
 	repo := NewCandleRepository(db)
-
-	assert.NotNil(t, repo, "repository is nil")
-	assert.NotNil(t, repo.db, "database connection is nil")
+	assert.NotNil(t, repo)
+	assert.NotNil(t, repo.db)
 }
 
-// TestCandleRepository_UpsertBatch はローソク足データのバッチUpsert処理（挿入、更新、空スライス）をテストします。
 func TestCandleRepository_UpsertBatch(t *testing.T) {
 	t.Parallel()
-
 	baseTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	tests := []struct {
 		name         string
 		candles      []entity.Candle
-		wantErr      bool
-		setupFunc    func(t *testing.T, db *gorm.DB)
-		validateFunc func(t *testing.T, db *gorm.DB)
+		setupFunc    func(t *testing.T, db *sql.DB)
+		validateFunc func(t *testing.T, db *sql.DB)
 	}{
 		{
 			name: "success: insert single candle",
 			candles: []entity.Candle{
-				{
-					SymbolCode: "AAPL",
-					Interval:   "1day",
-					Time:       baseTime,
-					Open:       100.0,
-					High:       110.0,
-					Low:        90.0,
-					Close:      105.0,
-					Volume:     1000,
-				},
+				{SymbolCode: "AAPL", Interval: "1day", Time: baseTime, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 			},
-			wantErr: false,
-			validateFunc: func(t *testing.T, db *gorm.DB) {
-				var count int64
-				db.Model(&CandleModel{}).Count(&count)
-				assert.Equal(t, int64(1), count, "candle count does not match")
+			validateFunc: func(t *testing.T, db *sql.DB) {
+				assert.Equal(t, int64(1), candleCount(t, db))
 			},
 		},
 		{
 			name: "success: insert multiple candles",
 			candles: []entity.Candle{
-				{
-					SymbolCode: "AAPL",
-					Interval:   "1day",
-					Time:       baseTime,
-					Open:       100.0,
-					High:       110.0,
-					Low:        90.0,
-					Close:      105.0,
-					Volume:     1000,
-				},
-				{
-					SymbolCode: "AAPL",
-					Interval:   "1day",
-					Time:       baseTime.AddDate(0, 0, 1),
-					Open:       105.0,
-					High:       115.0,
-					Low:        95.0,
-					Close:      110.0,
-					Volume:     1500,
-				},
+				{SymbolCode: "AAPL", Interval: "1day", Time: baseTime, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
+				{SymbolCode: "AAPL", Interval: "1day", Time: baseTime.AddDate(0, 0, 1), Open: 105, High: 115, Low: 95, Close: 110, Volume: 1500},
 			},
-			wantErr: false,
-			validateFunc: func(t *testing.T, db *gorm.DB) {
-				var count int64
-				db.Model(&CandleModel{}).Count(&count)
-				assert.Equal(t, int64(2), count, "candle count does not match")
+			validateFunc: func(t *testing.T, db *sql.DB) {
+				assert.Equal(t, int64(2), candleCount(t, db))
 			},
 		},
 		{
 			name:    "success: empty slice",
 			candles: []entity.Candle{},
-			wantErr: false,
-			validateFunc: func(t *testing.T, db *gorm.DB) {
-				var count int64
-				db.Model(&CandleModel{}).Count(&count)
-				assert.Equal(t, int64(0), count, "candle count should be 0")
+			validateFunc: func(t *testing.T, db *sql.DB) {
+				assert.Equal(t, int64(0), candleCount(t, db))
 			},
 		},
 		{
 			name: "success: upsert updates existing candle",
 			candles: []entity.Candle{
-				{
-					SymbolCode: "AAPL",
-					Interval:   "1day",
-					Time:       baseTime,
-					Open:       200.0,
-					High:       220.0,
-					Low:        180.0,
-					Close:      210.0,
-					Volume:     2000,
-				},
+				{SymbolCode: "AAPL", Interval: "1day", Time: baseTime, Open: 200, High: 220, Low: 180, Close: 210, Volume: 2000},
 			},
-			wantErr: false,
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedCandle(t, db, "AAPL", "1day", baseTime)
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB) {
-				var count int64
-				db.Model(&CandleModel{}).Count(&count)
-				assert.Equal(t, int64(1), count, "candle count should remain 1 after upsert")
-
-				var candle CandleModel
-				db.First(&candle)
-				assert.Equal(t, 200.0, candle.Open, "Open should be updated")
-				assert.Equal(t, 220.0, candle.High, "High should be updated")
-				assert.Equal(t, 180.0, candle.Low, "Low should be updated")
-				assert.Equal(t, 210.0, candle.Close, "Close should be updated")
-				assert.Equal(t, int64(2000), candle.Volume, "Volume should be updated")
+			validateFunc: func(t *testing.T, db *sql.DB) {
+				assert.Equal(t, int64(1), candleCount(t, db))
+				var o, h, l, c float64
+				var v int64
+				require.NoError(t, db.QueryRowContext(context.Background(),
+					`SELECT open, high, low, close, volume FROM candles LIMIT 1`).Scan(&o, &h, &l, &c, &v))
+				assert.Equal(t, 200.0, o)
+				assert.Equal(t, 220.0, h)
+				assert.Equal(t, 180.0, l)
+				assert.Equal(t, 210.0, c)
+				assert.Equal(t, int64(2000), v)
 			},
 		},
 		{
 			name: "success: upsert with mixed insert and update",
 			candles: []entity.Candle{
-				{
-					SymbolCode: "AAPL",
-					Interval:   "1day",
-					Time:       baseTime,
-					Open:       200.0,
-					High:       220.0,
-					Low:        180.0,
-					Close:      210.0,
-					Volume:     2000,
-				},
-				{
-					SymbolCode: "AAPL",
-					Interval:   "1day",
-					Time:       baseTime.AddDate(0, 0, 1),
-					Open:       210.0,
-					High:       230.0,
-					Low:        190.0,
-					Close:      220.0,
-					Volume:     2500,
-				},
+				{SymbolCode: "AAPL", Interval: "1day", Time: baseTime, Open: 200, High: 220, Low: 180, Close: 210, Volume: 2000},
+				{SymbolCode: "AAPL", Interval: "1day", Time: baseTime.AddDate(0, 0, 1), Open: 210, High: 230, Low: 190, Close: 220, Volume: 2500},
 			},
-			wantErr: false,
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedCandle(t, db, "AAPL", "1day", baseTime)
 			},
-			validateFunc: func(t *testing.T, db *gorm.DB) {
-				var count int64
-				db.Model(&CandleModel{}).Count(&count)
-				assert.Equal(t, int64(2), count, "candle count should be 2")
+			validateFunc: func(t *testing.T, db *sql.DB) {
+				assert.Equal(t, int64(2), candleCount(t, db))
 			},
 		},
 	}
@@ -202,32 +140,21 @@ func TestCandleRepository_UpsertBatch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			db := setupTestDB(t)
 			repo := NewCandleRepository(db)
-
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, db)
 			}
-
-			err := repo.UpsertBatch(context.Background(), tt.candles)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				if tt.validateFunc != nil {
-					tt.validateFunc(t, db)
-				}
+			require.NoError(t, repo.UpsertBatch(context.Background(), tt.candles))
+			if tt.validateFunc != nil {
+				tt.validateFunc(t, db)
 			}
 		})
 	}
 }
 
-// TestCandleRepository_Find は銘柄・インターバルによるローソク足データの検索をテストします。
 func TestCandleRepository_Find(t *testing.T) {
 	t.Parallel()
-
 	baseTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	tests := []struct {
@@ -235,109 +162,80 @@ func TestCandleRepository_Find(t *testing.T) {
 		symbol       string
 		interval     string
 		outputsize   int
-		wantErr      bool
-		setupFunc    func(t *testing.T, db *gorm.DB)
+		setupFunc    func(t *testing.T, db *sql.DB)
 		validateFunc func(t *testing.T, candles []entity.Candle)
 	}{
 		{
-			name:       "success: find candles by symbol and interval",
-			symbol:     "AAPL",
-			interval:   "1day",
-			outputsize: 10,
-			wantErr:    false,
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			name: "success: find candles by symbol and interval", symbol: "AAPL", interval: "1day", outputsize: 10,
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedCandle(t, db, "AAPL", "1day", baseTime)
 				seedCandle(t, db, "AAPL", "1day", baseTime.AddDate(0, 0, 1))
 			},
 			validateFunc: func(t *testing.T, candles []entity.Candle) {
-				assert.Len(t, candles, 2, "should return 2 candles")
+				assert.Len(t, candles, 2)
 			},
 		},
 		{
-			name:       "success: empty result when no matching candles",
-			symbol:     "NOTFOUND",
-			interval:   "1day",
-			outputsize: 10,
-			wantErr:    false,
+			name: "success: empty result when no matching candles", symbol: "NOTFOUND", interval: "1day", outputsize: 10,
 			validateFunc: func(t *testing.T, candles []entity.Candle) {
-				assert.Empty(t, candles, "should return empty slice")
+				assert.Empty(t, candles)
 			},
 		},
 		{
-			name:       "success: filter by symbol only",
-			symbol:     "AAPL",
-			interval:   "1day",
-			outputsize: 10,
-			wantErr:    false,
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			name: "success: filter by symbol only", symbol: "AAPL", interval: "1day", outputsize: 10,
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedCandle(t, db, "AAPL", "1day", baseTime)
 				seedCandle(t, db, "GOOGL", "1day", baseTime)
 			},
 			validateFunc: func(t *testing.T, candles []entity.Candle) {
-				assert.Len(t, candles, 1, "should return only AAPL candle")
+				assert.Len(t, candles, 1)
 				assert.Equal(t, "AAPL", candles[0].SymbolCode)
 			},
 		},
 		{
-			name:       "success: filter by interval",
-			symbol:     "AAPL",
-			interval:   "1day",
-			outputsize: 10,
-			wantErr:    false,
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			name: "success: filter by interval", symbol: "AAPL", interval: "1day", outputsize: 10,
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedCandle(t, db, "AAPL", "1day", baseTime)
 				seedCandle(t, db, "AAPL", "1week", baseTime)
 			},
 			validateFunc: func(t *testing.T, candles []entity.Candle) {
-				assert.Len(t, candles, 1, "should return only 1day interval")
+				assert.Len(t, candles, 1)
 				assert.Equal(t, "1day", candles[0].Interval)
 			},
 		},
 		{
-			name:       "success: respect outputsize limit",
-			symbol:     "AAPL",
-			interval:   "1day",
-			outputsize: 2,
-			wantErr:    false,
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			name: "success: respect outputsize limit", symbol: "AAPL", interval: "1day", outputsize: 2,
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				for i := 0; i < 5; i++ {
 					seedCandle(t, db, "AAPL", "1day", baseTime.AddDate(0, 0, i))
 				}
 			},
 			validateFunc: func(t *testing.T, candles []entity.Candle) {
-				assert.Len(t, candles, 2, "should return only 2 candles")
+				assert.Len(t, candles, 2)
 			},
 		},
 		{
-			name:       "success: outputsize 0 returns all",
-			symbol:     "AAPL",
-			interval:   "1day",
-			outputsize: 0,
-			wantErr:    false,
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			name: "success: outputsize 0 returns all", symbol: "AAPL", interval: "1day", outputsize: 0,
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				for i := 0; i < 5; i++ {
 					seedCandle(t, db, "AAPL", "1day", baseTime.AddDate(0, 0, i))
 				}
 			},
 			validateFunc: func(t *testing.T, candles []entity.Candle) {
-				assert.Len(t, candles, 5, "should return all candles")
+				assert.Len(t, candles, 5)
 			},
 		},
 		{
-			name:       "success: results ordered by time descending",
-			symbol:     "AAPL",
-			interval:   "1day",
-			outputsize: 10,
-			wantErr:    false,
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			name: "success: results ordered by time descending", symbol: "AAPL", interval: "1day", outputsize: 10,
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedCandle(t, db, "AAPL", "1day", baseTime)
 				seedCandle(t, db, "AAPL", "1day", baseTime.AddDate(0, 0, 2))
 				seedCandle(t, db, "AAPL", "1day", baseTime.AddDate(0, 0, 1))
 			},
 			validateFunc: func(t *testing.T, candles []entity.Candle) {
-				assert.Len(t, candles, 3, "should return 3 candles")
-				assert.True(t, candles[0].Time.After(candles[1].Time), "first should be newer than second")
-				assert.True(t, candles[1].Time.After(candles[2].Time), "second should be newer than third")
+				assert.Len(t, candles, 3)
+				assert.True(t, candles[0].Time.After(candles[1].Time))
+				assert.True(t, candles[1].Time.After(candles[2].Time))
 			},
 		},
 	}
@@ -345,59 +243,41 @@ func TestCandleRepository_Find(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			db := setupTestDB(t)
 			repo := NewCandleRepository(db)
-
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, db)
 			}
-
 			candles, err := repo.Find(context.Background(), tt.symbol, tt.interval, tt.outputsize)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				if tt.validateFunc != nil {
-					tt.validateFunc(t, candles)
-				}
+			require.NoError(t, err)
+			if tt.validateFunc != nil {
+				tt.validateFunc(t, candles)
 			}
 		})
 	}
 }
 
-// TestCandleRepository_Find_EntityMapping はデータベースモデルからドメインエンティティへの変換が正しいことをテストします。
 func TestCandleRepository_Find_EntityMapping(t *testing.T) {
 	t.Parallel()
-
 	db := setupTestDB(t)
 	repo := NewCandleRepository(db)
 
 	testTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
-	candle := &CandleModel{
-		SymbolCode: "AAPL",
-		Interval:   "1day",
-		Time:       testTime,
-		Open:       150.5,
-		High:       155.75,
-		Low:        149.25,
-		Close:      154.0,
-		Volume:     5000000,
-	}
-	err := db.Create(candle).Error
+	_, err := db.ExecContext(context.Background(),
+		`INSERT INTO candles (symbol_code, "interval", "time", open, high, low, close, volume)
+		 VALUES ('AAPL', '1day', $1, 150.5, 155.75, 149.25, 154.0, 5000000)`, testTime)
 	require.NoError(t, err)
 
 	result, err := repo.Find(context.Background(), "AAPL", "1day", 1)
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 
-	assert.Equal(t, "AAPL", result[0].SymbolCode, "SymbolCode does not match")
-	assert.Equal(t, "1day", result[0].Interval, "Interval does not match")
-	assert.Equal(t, testTime.Unix(), result[0].Time.Unix(), "Time does not match")
-	assert.Equal(t, 150.5, result[0].Open, "Open does not match")
-	assert.Equal(t, 155.75, result[0].High, "High does not match")
-	assert.Equal(t, 149.25, result[0].Low, "Low does not match")
-	assert.Equal(t, 154.0, result[0].Close, "Close does not match")
-	assert.Equal(t, int64(5000000), result[0].Volume, "Volume does not match")
+	assert.Equal(t, "AAPL", result[0].SymbolCode)
+	assert.Equal(t, "1day", result[0].Interval)
+	assert.Equal(t, testTime.Unix(), result[0].Time.Unix())
+	assert.Equal(t, 150.5, result[0].Open)
+	assert.Equal(t, 155.75, result[0].High)
+	assert.Equal(t, 149.25, result[0].Low)
+	assert.Equal(t, 154.0, result[0].Close)
+	assert.Equal(t, int64(5000000), result[0].Volume)
 }
