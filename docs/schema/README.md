@@ -6,8 +6,8 @@
 | ---- | ------- | ------- | ---- |
 | [public.users](public.users.md) | 5 |  | BASE TABLE |
 | [public.oauth_accounts](public.oauth_accounts.md) | 5 |  | BASE TABLE |
-| [public.candles](public.candles.md) | 9 |  | BASE TABLE |
 | [public.symbols](public.symbols.md) | 10 |  | BASE TABLE |
+| [public.candles](public.candles.md) | 9 |  | BASE TABLE |
 | [public.watchlists](public.watchlists.md) | 6 |  | BASE TABLE |
 
 ## Relations
@@ -34,17 +34,6 @@ erDiagram
   varchar_255_ provider_uid ""
   timestamp_with_time_zone created_at ""
 }
-"public.candles" {
-  bigint id ""
-  varchar_20_ symbol_code FK ""
-  varchar_16_ interval ""
-  timestamp_with_time_zone time ""
-  numeric_15_4_ open ""
-  numeric_15_4_ high ""
-  numeric_15_4_ low ""
-  numeric_15_4_ close ""
-  bigint volume ""
-}
 "public.symbols" {
   bigint id ""
   varchar_20_ code ""
@@ -56,6 +45,17 @@ erDiagram
   boolean is_active ""
   timestamp_with_time_zone created_at ""
   timestamp_with_time_zone updated_at ""
+}
+"public.candles" {
+  bigint id ""
+  varchar_20_ symbol_code FK ""
+  varchar_16_ interval ""
+  timestamp_with_time_zone time ""
+  numeric_15_4_ open ""
+  numeric_15_4_ high ""
+  numeric_15_4_ low ""
+  numeric_15_4_ close ""
+  bigint volume ""
 }
 "public.watchlists" {
   bigint id ""

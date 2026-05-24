@@ -7,8 +7,8 @@
 | id | bigint | nextval('users_id_seq'::regclass) | false | [public.oauth_accounts](public.oauth_accounts.md) [public.watchlists](public.watchlists.md) |  |  |
 | email | varchar(255) |  | false |  |  |  |
 | password | varchar(255) |  | true |  |  |  |
-| created_at | timestamp with time zone |  | false |  |  |  |
-| updated_at | timestamp with time zone |  | false |  |  |  |
+| created_at | timestamp with time zone | now() | false |  |  |  |
+| updated_at | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
 
