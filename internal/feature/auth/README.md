@@ -533,8 +533,8 @@ graph TB
 - **UserCreatedHook**: ユーザー新規作成後のフック（例: ウォッチリスト初期化）
 
 #### Adapters層
-- **userRepository**（[adapters/user_repository.go](adapters/user_repository.go)）: UserRepository の GORM 実装
-- **oauthAccountRepository**（[adapters/oauth_account_repository.go](adapters/oauth_account_repository.go)）: OAuthAccountRepository の GORM 実装
+- **userRepository**（[adapters/user_repository.go](adapters/user_repository.go)）: UserRepository / OAuthUserCreator の sqlc + database/sql 実装
+- **oauthAccountRepository**（[adapters/oauth_account_repository.go](adapters/oauth_account_repository.go)）: OAuthAccountRepository の sqlc + database/sql 実装
 - **redisOAuthStateStore**（[adapters/oauth_state_store.go](adapters/oauth_state_store.go)）: OAuthStateStore の Redis 実装（`GETDEL` で atomic に消費）
 - **GoogleProvider**（[adapters/google_provider.go](adapters/google_provider.go)）: Google OAuth2 実装（PKCE S256 対応、`/oauth2/v3/userinfo` でメール取得）
 - **GitHubProvider**（[adapters/github_provider.go](adapters/github_provider.go)）: GitHub OAuth2 実装（GitHub は PKCE 非対応、state による CSRF 保護のみ）
@@ -571,13 +571,15 @@ auth/
 │   ├── oauth_usecase.go              # OAuth2ビジネスロジック + OAuth関連インターフェース
 │   └── errors.go                     # ドメインエラー定義
 ├── adapters/
-│   ├── user_repository.go            # UserRepositoryリポジトリ実装
+│   ├── sqlc/                         # sqlc 生成コード（編集禁止）
+│   │   ├── queries.sql               # クエリ定義
+│   │   └── *.go                      # 型安全な生成コード
+│   ├── user_repository.go            # UserRepository/OAuthUserCreator 実装
 │   ├── user_repository_test.go       # リポジトリテスト
-│   ├── oauth_account_repository.go   # OAuthAccountRepository実装（GORM）
+│   ├── oauth_account_repository.go   # OAuthAccountRepository 実装
 │   ├── oauth_state_store.go          # OAuthStateStoreのRedis実装
 │   ├── google_provider.go            # Google OAuth2プロバイダー実装
-│   ├── github_provider.go            # GitHub OAuth2プロバイダー実装
-│   └── migration.go                  # NULL許容化・FK制約追加（冪等）
+│   └── github_provider.go            # GitHub OAuth2プロバイダー実装
 └── transport/
     └── handler/
         ├── auth_handler.go           # 認証HTTPハンドラー（signup/login/logout）
@@ -683,13 +685,13 @@ tests := []struct {
     email        string          // （テストによってはuser, userIDなど）
     wantErr      bool
     expectedErr  error           // 特定のエラー型（例: usecase.ErrUserNotFound）
-    setupFunc    func(t *testing.T, db *gorm.DB) *entity.User  // テストデータの準備
+    setupFunc    func(t *testing.T, db *sql.DB) *entity.User  // テストデータの準備
     validateFunc func(t *testing.T, expected, found *entity.User)  // 結果の検証
 }{/* ... */}
 ```
 
 **主な特徴:**
-- 各テストが新しいインメモリSQLiteデータベースを使用
+- 各テストが testcontainers-go (`dbtest.OpenIsolatedDB`) で独立した PostgreSQL DB を取得
 - `setupFunc`: 実行前にテストデータを準備
 - `validateFunc`: 成功ケースのカスタム検証ロジック
 - データベース制約のテスト（ユニークメール、タイムスタンプなど）

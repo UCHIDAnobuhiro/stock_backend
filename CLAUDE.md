@@ -16,10 +16,44 @@ docker compose -f docker/docker-compose.yml -p stock run --rm --no-deps ingest
 docker logs -f stock-backend
 ```
 
-### テスト・リント
+### マイグレーション（goose）
+スキーマは `db/migrations/*.sql` で管理し、`cmd/migrate` バイナリで適用します。
+詳細は `db/README.md` を参照。
+
 ```bash
-# 全テスト実行（レースコンディション検出・カバレッジ付き）
+# ローカル PostgreSQL に最新スキーマを適用
+DB_USER=appuser DB_PASSWORD=apppass DB_NAME=app DB_HOST=localhost DB_PORT=5432 \
+  go run ./cmd/migrate up
+# または Docker
+docker compose -f docker/docker-compose.yml -p stock run --rm migrate
+
+# 新規マイグレーションファイル作成
+GOOSE_DRIVER=postgres GOOSE_MIGRATION_DIR=db/migrations \
+  go tool goose create <snake_case_name> sql
+```
+
+### sqlc コード生成
+クエリ追加・変更時に再生成します。
+
+```bash
+go tool sqlc generate
+```
+
+各 feature の `internal/feature/<name>/adapters/sqlc/queries.sql` を編集 →
+同ディレクトリに型安全コードが生成されます。
+
+### テスト・リント
+リポジトリテストは [testcontainers-go](https://golang.testcontainers.org/) で実 PostgreSQL を
+立ち上げます。Docker daemon が利用できない環境では、ホストの PostgreSQL を `TEST_DB_DSN` で
+指定すると testcontainers をスキップできます（DB ユーザーには `CREATEDB` 権限が必要）。
+
+```bash
+# 全テスト実行（レースコンディション検出・カバレッジ付き、Docker が必要）
 go test ./... -v -race -cover
+
+# ホストの PostgreSQL を使う場合
+TEST_DB_DSN="postgres://appuser:apppass@localhost:5432/postgres?sslmode=disable" \
+  go test ./... -race
 
 # 特定パッケージのテスト実行
 go test ./internal/feature/candles/usecase/... -v
@@ -86,6 +120,7 @@ feature/<name>/
 │   └── entity/       # ドメインモデル（例: Candle, Symbol, User）
 ├── usecase/          # アプリケーションロジック（リポジトリインターフェース定義、ビジネスロジック統合）
 ├── adapters/         # リポジトリ実装（PostgreSQL、キャッシュデコレータ、外部APIクライアント等）
+│   └── sqlc/         # sqlc で生成された型安全な DB クエリコード（手動編集禁止）
 └── transport/
     └── handler/      # HTTPハンドラー（Gin）
 ```
@@ -108,21 +143,23 @@ feature/<name>/
 ### 主要なアーキテクチャパターン
 
 1. **リポジトリパターン**: すべてのデータアクセスは `usecase/` レイヤーで定義されたリポジトリインターフェースを経由します（Goの「インターフェースは利用者が定義する」慣例に従う）
-2. **キャッシュ用デコレータパターン**: `feature/candles/adapters/CachingCandleRepository` がベースリポジトリをラップ
+2. **sqlc によるクエリ実装**: 各 feature の `adapters/sqlc/queries.sql` を `go tool sqlc generate` で生成し、`adapters/<name>_repository.go` が `*sql.DB`（pgx stdlib driver）から呼び出します。GORM は採用していません（ADR-0006 参照）。
+3. **キャッシュ用デコレータパターン**: `feature/candles/adapters/CachingCandleRepository` がベースリポジトリをラップ
    - `CandleRepository`（読み取り）と `CandleWriteRepository`（書き込み）の両インターフェースを実装
    - usecaseコードを変更せずにRedisキャッシュを透過的に追加
    - Redisが利用できない場合はグレースフルデグレード（警告ログを出力し、キャッシュなしで動作）
-3. **依存性注入**: `cmd/server/main.go` で手動DI
+4. **依存性注入**: `cmd/server/main.go` で手動DI
    - Repositories → Usecases → Handlers のワイヤリングは主に main.go で直接実施
    - `internal/app/di/` には一部のファクトリ関数を配置（例: MarketRepositoryの生成）
-4. **2つのエントリーポイント**:
+5. **3つのエントリーポイント**:
    - `cmd/server/main.go`: REST APIサーバー（ポート8080）の起動・DIワイヤリング
      - 環境変数パースの純粋関数ヘルパーは `internal/app/config/`（`CORS_ALLOWED_ORIGINS` / `COOKIE_SECURE` 等）
-     - `AutoMigrate` 後のFK制約追加など feature 固有のスキーマ補助は各 feature の `adapters/` に配置（例: `internal/feature/watchlist/adapters/migration.go`）
    - `cmd/ingest/main.go`: TwelveData APIから株価データを取得するバッチジョブ
+   - `cmd/migrate/main.go`: goose 埋め込みマイグレーションを適用する専用バイナリ（Cloud Run Job 等で起動）
 
 ### 外部依存
-- TwelveData API（株価データ、8リクエスト/分制限） / PostgreSQL（GORM） / Redis（キャッシュ）
+- TwelveData API（株価データ、8リクエスト/分制限） / PostgreSQL（database/sql + pgx/v5/stdlib） / Redis（キャッシュ）
+- スキーマは `db/migrations/*.sql`、クエリは各 feature の `adapters/sqlc/queries.sql`
 - 詳細なデータフローは各フィーチャーの README.md を参照
 
 ### 認証
@@ -144,12 +181,17 @@ feature/<name>/
    - ここでリポジトリインターフェースを定義（Goの慣例:「インターフェースは利用者が定義する」）
    - リポジトリを統合するビジネスロジックを実装
 4. **adaptersを実装**: `adapters/` - usecaseで定義されたインターフェースを実装するリポジトリ実装（PostgreSQL等）
+   - SQL を `adapters/sqlc/queries.sql` に書き、`sqlc.yaml` の `sql:` リストに新 feature を追加
+   - `go tool sqlc generate` で型安全コードを生成
+   - リポジトリ実装は `*sql.DB` を受け取り、生成された `Queries` を呼ぶ
 5. **transport層を追加**:
    - `transport/handler/` - HTTPハンドラー（必要に応じてusecaseインターフェースもここで定義可）
    - リクエスト/レスポンス型は `api/openapi.yaml` に定義し、`go generate ./internal/api/...` で生成
-6. **依存関係をワイヤリング**: `cmd/server/main.go` または `cmd/ingest/main.go` にて
-7. **ルートを登録**: `internal/app/router/router.go` にて
-8. **depguardルールを追加**: `.golangci.yml` に以下を追加：
+6. **DBスキーマの変更が必要なら**: `go tool goose create <name> sql` で
+   `db/migrations/NNNNN_<name>.sql` を作成し、Up/Down 両方を必ず実装
+7. **依存関係をワイヤリング**: `cmd/server/main.go` または `cmd/ingest/main.go` にて
+8. **ルートを登録**: `internal/app/router/router.go` にて
+9. **depguardルールを追加**: `.golangci.yml` に以下を追加：
    - `layer-isolation` ルールに新フィーチャーの `adapters` と `transport` パッケージのdenyエントリ
    - 新フィーチャー用の `<name>-isolation` ルール（他フィーチャーへの依存禁止）
    - 既存フィーチャーの isolation ルールに新フィーチャーのdenyエントリ

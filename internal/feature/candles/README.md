@@ -313,7 +313,7 @@ graph TB
   - `Volume`: 出来高
 
 #### アダプター層（[adapters/candle_repository.go](adapters/candle_repository.go)）
-- **candleDBRepository**: CandleRepositoryのリポジトリ実装（GORMを使用）
+- **candleDBRepository**: CandleRepository/CandleWriteRepository のリポジトリ実装（sqlc + database/sql、UpsertBatch は raw 多値 INSERT ON CONFLICT）
   - `Find`: 時間の降順でローソク足を取得
   - `UpsertBatch`: `ON CONFLICT DO UPDATE`によるバッチ挿入/更新
   - （symbol_code, interval, time）の複合ユニークインデックス
@@ -469,7 +469,7 @@ tests := []struct {
     interval     string
     outputsize   int
     wantErr      bool
-    setupFunc    func(t *testing.T, db *gorm.DB)
+    setupFunc    func(t *testing.T, db *sql.DB)
     validateFunc func(t *testing.T, candles []entity.Candle)
 }{/* ... */}
 ```

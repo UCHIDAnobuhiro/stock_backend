@@ -9,6 +9,10 @@
 
 ## コンテキスト
 
+> **注記 (2026-05-24)**: 本 ADR 制定時のスキーマ生成方法（GORM `AutoMigrate`）は
+> [ADR-0006](0006-db操作をgormからsqlcとgooseへ移行.md) で `db/migrations/*.sql` の
+> goose マイグレーションに置き換えられた。tbls 採用の決定自体は維持されている。
+
 stock_backend のスキーマは GORM の `AutoMigrate` により、アプリケーション起動時にエンティティ（`internal/feature/**/domain/entity/`）と一部アダプタ内のモデル（例: `CandleModel`）から生成される。
 SQL マイグレーションファイルのような「スキーマの単一ソース」が存在せず、以下の課題があった：
 
