@@ -28,9 +28,14 @@ func main() {
 }
 
 func run() int {
-	db := db.OpenDB()
+	sqlDB := db.OpenSQL()
+	defer func() {
+		if err := sqlDB.Close(); err != nil {
+			slog.Warn("failed to close sqlDB", "error", err)
+		}
+	}()
 	logoProvider := di.NewMarket()
-	symbolRepo := symbollistadapters.NewSymbolRepository(db)
+	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
 	rateLimiter := clientratelimit.NewRateLimiter(logoRateLimitPerMinute, time.Minute)
 	uc := symbollistusecase.NewLogoIngestUsecase(logoProvider, symbolRepo, rateLimiter)
 

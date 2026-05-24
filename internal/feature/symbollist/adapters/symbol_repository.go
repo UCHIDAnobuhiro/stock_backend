@@ -3,18 +3,19 @@ package adapters
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"time"
 
-	"gorm.io/gorm"
-
+	"stock_backend/internal/feature/symbollist/adapters/sqlc"
 	"stock_backend/internal/feature/symbollist/domain/entity"
 	"stock_backend/internal/feature/symbollist/usecase"
 )
 
-// symbolRepository はSymbolRepositoryインターフェースのリポジトリ実装です。
+// symbolRepository は SymbolRepository / LogoSymbolRepository の sqlc ベース実装です。
 type symbolRepository struct {
-	db *gorm.DB
+	db *sql.DB
+	q  *symbollistsqlc.Queries
 }
 
 var (
@@ -22,63 +23,73 @@ var (
 	_ usecase.LogoSymbolRepository = (*symbolRepository)(nil)
 )
 
-// NewSymbolRepository は指定されたDB接続でsymbolRepositoryの新しいインスタンスを生成します。
-func NewSymbolRepository(db *gorm.DB) *symbolRepository {
-	return &symbolRepository{db: db}
+// NewSymbolRepository は指定された *sql.DB で symbolRepository の新しいインスタンスを生成します。
+func NewSymbolRepository(db *sql.DB) *symbolRepository {
+	return &symbolRepository{db: db, q: symbollistsqlc.New(db)}
 }
 
 // ListActive はコード昇順にすべてのアクティブな銘柄を返します。
 func (r *symbolRepository) ListActive(ctx context.Context) ([]entity.Symbol, error) {
-	var symbols []entity.Symbol
-	if err := r.db.WithContext(ctx).
-		Where("is_active = ?", true).
-		Order("code ASC").
-		Find(&symbols).Error; err != nil {
+	rows, err := r.q.ListActiveSymbols(ctx)
+	if err != nil {
 		return nil, err
 	}
-	return symbols, nil
+	out := make([]entity.Symbol, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, symbolFromSQLC(row))
+	}
+	return out, nil
+}
+
+// ListActiveCodes はコード昇順にアクティブな銘柄のコードのみを返します。
+func (r *symbolRepository) ListActiveCodes(ctx context.Context) ([]string, error) {
+	return r.q.ListActiveSymbolCodes(ctx)
+}
+
+// Exists は指定されたコードの銘柄が存在するかを返します。
+func (r *symbolRepository) Exists(ctx context.Context, code string) (bool, error) {
+	return r.q.SymbolExists(ctx, code)
 }
 
 // UpdateLogoURL は指定された銘柄のロゴURLと取得日時を更新します。
 // 対象行が存在しない場合はエラーとせず警告ログを出力します（バッチの続行を優先するため）。
 func (r *symbolRepository) UpdateLogoURL(ctx context.Context, code, logoURL string, updatedAt time.Time) error {
-	result := r.db.WithContext(ctx).
-		Model(&entity.Symbol{}).
-		Where("code = ?", code).
-		Updates(map[string]any{
-			"logo_url":        logoURL,
-			"logo_updated_at": updatedAt,
-		})
-	if result.Error != nil {
-		return result.Error
+	rowsAffected, err := r.q.UpdateSymbolLogoURL(ctx, symbollistsqlc.UpdateSymbolLogoURLParams{
+		Code:          code,
+		LogoUrl:       sql.NullString{String: logoURL, Valid: true},
+		LogoUpdatedAt: sql.NullTime{Time: updatedAt, Valid: true},
+	})
+	if err != nil {
+		return err
 	}
-	if result.RowsAffected == 0 {
+	if rowsAffected == 0 {
 		slog.Warn("UpdateLogoURL: no matching symbol found", "code", code)
 	}
 	return nil
 }
 
-// ListActiveCodes はコード昇順にアクティブな銘柄のコードのみを返します。
-func (r *symbolRepository) ListActiveCodes(ctx context.Context) ([]string, error) {
-	var codes []string
-	if err := r.db.WithContext(ctx).
-		Model(&entity.Symbol{}).
-		Where("is_active = ?", true).
-		Order("code ASC").
-		Pluck("code", &codes).Error; err != nil {
-		return nil, err
+// symbolFromSQLC は sqlc 生成モデルをドメインエンティティに変換します。
+func symbolFromSQLC(m symbollistsqlc.Symbol) entity.Symbol {
+	var logoURL *string
+	if m.LogoUrl.Valid {
+		s := m.LogoUrl.String
+		logoURL = &s
 	}
-	return codes, nil
-}
-
-// Exists は指定されたコードの銘柄が存在するかを返します。
-func (r *symbolRepository) Exists(ctx context.Context, code string) (bool, error) {
-	var count int64
-	if err := r.db.WithContext(ctx).
-		Model(&entity.Symbol{}).
-		Where("code = ?", code).
-		Count(&count).Error; err != nil {
-		return false, err
+	var logoUpdatedAt *time.Time
+	if m.LogoUpdatedAt.Valid {
+		t := m.LogoUpdatedAt.Time
+		logoUpdatedAt = &t
 	}
-	return count > 0, nil
+	return entity.Symbol{
+		ID:            uint(m.ID),
+		Code:          m.Code,
+		Name:          m.Name,
+		Market:        m.Market,
+		Timezone:      m.Timezone,
+		LogoURL:       logoURL,
+		LogoUpdatedAt: logoUpdatedAt,
+		IsActive:      m.IsActive,
+		CreatedAt:     m.CreatedAt,
+		UpdatedAt:     m.UpdatedAt,
+	}
 }
