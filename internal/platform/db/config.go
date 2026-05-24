@@ -2,16 +2,10 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
 	"strings"
-	"time"
-
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 // Password はログ出力・文字列化・JSONシリアライズ時に値をマスクする機密文字列型です。
@@ -112,84 +106,4 @@ func BuildDSN(cfg Config) string {
 		quotePGValue(cfg.User),
 		quotePGValue(string(cfg.Password)),
 		quotePGValue(cfg.Name))
-}
-
-// Opener はデータベース接続を開くための関数型です。
-type Opener func(dsn string) (*gorm.DB, error)
-
-// DefaultOpener はGORMを使用してPostgreSQLデータベースを開きます。
-func DefaultOpener(dsn string) (*gorm.DB, error) {
-	return gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(gormLogLevel()),
-	})
-}
-
-// gormLogLevel は環境変数 DB_LOG_LEVEL からGORMのログレベルを返します。
-// 未設定または不明な値の場合は Silent を返します。
-func gormLogLevel() logger.LogLevel {
-	switch os.Getenv("DB_LOG_LEVEL") {
-	case "info":
-		return logger.Info
-	case "warn":
-		return logger.Warn
-	case "error":
-		return logger.Error
-	default:
-		return logger.Silent
-	}
-}
-
-// ConnectWithRetry はリトライロジック付きでデータベース接続を試みます。
-// 指定されたタイムアウト期間中、3秒間隔でリトライします。
-// データベース接続を返すか、すべてのリトライが失敗した場合はエラーを返します。
-func ConnectWithRetry(dsn string, timeout time.Duration, opener Opener) (*gorm.DB, error) {
-	deadline := time.Now().Add(timeout)
-	for {
-		db, err := opener(dsn)
-		if err == nil {
-			return db, nil
-		}
-		if time.Now().After(deadline) {
-			return nil, fmt.Errorf("DB connect failed after %v: %w", timeout, err)
-		}
-		slog.Warn("DB connect failed, retrying", "error", err)
-		time.Sleep(3 * time.Second)
-	}
-}
-
-// RunMigrations は指定されたモデルのデータベースマイグレーションを実行します。
-func RunMigrations(db *gorm.DB, models ...any) error {
-	return db.AutoMigrate(models...)
-}
-
-// OpenDB は環境設定を使用してデータベース接続を開きます。
-// リトライロジックを含み、失敗時はプロセスを終了します（本番環境用）。
-func OpenDB() *gorm.DB {
-	cfg := LoadConfigFromEnv()
-	if err := cfg.Validate(); err != nil {
-		slog.Error("invalid DB config", "error", err)
-		os.Exit(1)
-	}
-	if cfg.InstanceName != "" && (cfg.Host != "" || cfg.Port != "") {
-		slog.Warn("DB_HOST and DB_PORT are ignored when INSTANCE_CONNECTION_NAME is set",
-			"host", cfg.Host, "port", cfg.Port, "instance", cfg.InstanceName)
-	}
-	dsn := BuildDSN(cfg)
-
-	db, err := ConnectWithRetry(dsn, 60*time.Second, DefaultOpener)
-	if err != nil {
-		slog.Error("DB connect failed", "error", err)
-		os.Exit(1)
-	}
-
-	return db
-}
-
-// NewGORMFromSQL は既存の *sql.DB をベースに *gorm.DB を生成します。
-// 既存の GORM ベース feature と新しい sqlc ベース feature を同一の接続プールで
-// 共存させるためのブリッジで、全 feature が sqlc 化されたら本関数ごと削除します。
-func NewGORMFromSQL(sqlDB *sql.DB) (*gorm.DB, error) {
-	return gorm.Open(postgres.New(postgres.Config{Conn: sqlDB}), &gorm.Config{
-		Logger: logger.Default.LogMode(gormLogLevel()),
-	})
 }
