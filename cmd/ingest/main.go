@@ -45,13 +45,8 @@ func run() int {
 			slog.Warn("failed to close sqlDB", "error", err)
 		}
 	}()
-	gormDB, err := db.NewGORMFromSQL(sqlDB)
-	if err != nil {
-		slog.Error("failed to bridge GORM on *sql.DB", "error", err)
-		return 1
-	}
 	marketRepo := di.NewMarket()
-	candleRepo := candlesadapters.NewCandleRepository(gormDB)
+	candleRepo := candlesadapters.NewCandleRepository(sqlDB)
 	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
 	ingestSymbolRepo := di.NewIngestSymbolAdapter(symbolRepo)
 	rateLimiter := clientratelimit.NewRateLimiter(rateLimitPerMinute, time.Minute)
