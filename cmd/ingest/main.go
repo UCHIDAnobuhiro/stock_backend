@@ -39,10 +39,20 @@ func main() {
 // run は ingest 本体のセットアップと実行を行い、終了コード（0 or 1）を返す。
 // 戻り値で main に exit code を伝えるため、defer で登録した後処理が確実に実行される。
 func run() int {
-	db := db.OpenDB()
+	sqlDB := db.OpenSQL()
+	defer func() {
+		if err := sqlDB.Close(); err != nil {
+			slog.Warn("failed to close sqlDB", "error", err)
+		}
+	}()
+	gormDB, err := db.NewGORMFromSQL(sqlDB)
+	if err != nil {
+		slog.Error("failed to bridge GORM on *sql.DB", "error", err)
+		return 1
+	}
 	marketRepo := di.NewMarket()
-	candleRepo := candlesadapters.NewCandleRepository(db)
-	symbolRepo := symbollistadapters.NewSymbolRepository(db)
+	candleRepo := candlesadapters.NewCandleRepository(gormDB)
+	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
 	ingestSymbolRepo := di.NewIngestSymbolAdapter(symbolRepo)
 	rateLimiter := clientratelimit.NewRateLimiter(rateLimitPerMinute, time.Minute)
 
