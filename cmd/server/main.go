@@ -46,18 +46,12 @@ func main() {
 	slog.SetDefault(logger)
 
 	// データベース接続。スキーマ適用は cmd/migrate バイナリ（goose）で別途実施する。
-	// 移行期間中は *sql.DB を主とし、未移行 feature 用に *gorm.DB を同プールから派生させる。
 	sqlDB := infradb.OpenSQL()
 	defer func() {
 		if err := sqlDB.Close(); err != nil {
 			slog.Warn("failed to close sqlDB", "error", err)
 		}
 	}()
-	db, err := infradb.NewGORMFromSQL(sqlDB)
-	if err != nil {
-		slog.Error("failed to bridge GORM on *sql.DB", "error", err)
-		os.Exit(1)
-	}
 
 	// Redis接続
 	var rdb *redisv9.Client
@@ -73,11 +67,11 @@ func main() {
 		}()
 	}
 
-	// リポジトリ。auth/symbollist/candles は sqlc 化済み (*sql.DB)、watchlist は GORM のまま。
+	// 全 feature が sqlc 化済み。
 	userRepo := authadapters.NewUserRepository(sqlDB)
 	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
 	candleRepo := candlesadapters.NewCandleRepository(sqlDB)
-	watchlistRepo := watchlistadapters.NewWatchlistRepository(db)
+	watchlistRepo := watchlistadapters.NewWatchlistRepository(sqlDB)
 
 	// Redisキャッシュでラップ（TTLはingest連続失敗時のセーフティネット、通常は日次ingestで上書き）
 	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, candlesadapters.DefaultCacheTTL, candleRepo, "candles")

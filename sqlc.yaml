@@ -49,4 +49,18 @@ sql:
           # NUMERIC(15,4) は OHLC 値で使用しており、ドメイン側は float64 で扱うため float64 にマッピング。
           - db_type: "pg_catalog.numeric"
             go_type: "float64"
-  # Phase 4d で watchlist を追加。
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "internal/feature/watchlist/adapters/sqlc/queries.sql"
+    gen:
+      go:
+        package: "watchlistsqlc"
+        out: "internal/feature/watchlist/adapters/sqlc"
+        sql_package: "database/sql"
+        emit_json_tags: false
+        emit_db_tags: false
+        emit_prepared_queries: false
+        emit_interface: true
+        emit_exact_table_names: false
+        emit_empty_slices: true
+        emit_pointers_for_null_types: false

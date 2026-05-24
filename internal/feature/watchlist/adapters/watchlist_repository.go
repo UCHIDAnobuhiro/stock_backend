@@ -3,131 +3,172 @@ package adapters
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"gorm.io/gorm"
 
+	"stock_backend/internal/feature/watchlist/adapters/sqlc"
 	"stock_backend/internal/feature/watchlist/domain/entity"
 	"stock_backend/internal/feature/watchlist/usecase"
 )
 
-// watchlistRepository はWatchlistRepositoryインターフェースのリポジトリ実装です。
+const (
+	pgUniqueViolation     = "23505"
+	pgForeignKeyViolation = "23503"
+)
+
+// watchlistRepository は WatchlistRepository の sqlc ベース実装です。
 type watchlistRepository struct {
-	db *gorm.DB
+	db *sql.DB
+	q  *watchlistsqlc.Queries
 }
 
 var _ usecase.WatchlistRepository = (*watchlistRepository)(nil)
 
-// NewWatchlistRepository は指定されたDB接続でwatchlistRepositoryの新しいインスタンスを生成します。
-func NewWatchlistRepository(db *gorm.DB) *watchlistRepository {
-	return &watchlistRepository{db: db}
+// NewWatchlistRepository は指定された *sql.DB で watchlistRepository の新しいインスタンスを生成します。
+func NewWatchlistRepository(db *sql.DB) *watchlistRepository {
+	return &watchlistRepository{db: db, q: watchlistsqlc.New(db)}
 }
 
-// ListByUser はユーザーのウォッチリストをsort_key昇順で返します。
+// ListByUser はユーザーのウォッチリストを sort_key 昇順で返します。
 func (r *watchlistRepository) ListByUser(ctx context.Context, userID uint) ([]entity.UserSymbol, error) {
-	var entries []entity.UserSymbol
-	if err := r.db.WithContext(ctx).
-		Where("user_id = ?", userID).
-		Order("sort_key ASC").
-		Find(&entries).Error; err != nil {
+	rows, err := r.q.ListWatchlistByUser(ctx, int64(userID))
+	if err != nil {
 		return nil, err
 	}
-	return entries, nil
+	out := make([]entity.UserSymbol, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, entity.UserSymbol{
+			ID:         uint(row.ID),
+			UserID:     uint(row.UserID),
+			SymbolCode: row.SymbolCode,
+			SortKey:    int(row.SortKey),
+			CreatedAt:  row.CreatedAt,
+			UpdatedAt:  row.UpdatedAt,
+		})
+	}
+	return out, nil
 }
 
 // Add はウォッチリストに銘柄を追加します。
 // 重複エントリは ErrAlreadyInWatchlist、FK 違反は ErrSymbolNotFound を返します。
 func (r *watchlistRepository) Add(ctx context.Context, entry entity.UserSymbol) error {
-	if err := r.db.WithContext(ctx).Create(&entry).Error; err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			switch pgErr.Code {
-			case "23505": // unique_violation: 重複エントリ
-				return usecase.ErrAlreadyInWatchlist
-			case "23503": // foreign_key_violation: 銘柄が存在しない
-				return usecase.ErrSymbolNotFound
-			}
-		}
-		return err
-	}
-	return nil
+	err := r.q.InsertWatchlist(ctx, watchlistsqlc.InsertWatchlistParams{
+		UserID:     int64(entry.UserID),
+		SymbolCode: entry.SymbolCode,
+		SortKey:    int64(entry.SortKey),
+	})
+	return mapWatchlistPGErr(err)
 }
 
 // Remove はウォッチリストから銘柄を削除します。
 // 対象が存在しない場合は ErrNotInWatchlist を返します。
 func (r *watchlistRepository) Remove(ctx context.Context, userID uint, symbolCode string) error {
-	result := r.db.WithContext(ctx).
-		Where("user_id = ? AND symbol_code = ?", userID, symbolCode).
-		Delete(&entity.UserSymbol{})
-	if result.Error != nil {
-		return result.Error
+	rowsAffected, err := r.q.DeleteWatchlist(ctx, watchlistsqlc.DeleteWatchlistParams{
+		UserID:     int64(userID),
+		SymbolCode: symbolCode,
+	})
+	if err != nil {
+		return err
 	}
-	if result.RowsAffected == 0 {
+	if rowsAffected == 0 {
 		return usecase.ErrNotInWatchlist
 	}
 	return nil
 }
 
-// UpdateSortKeys はウォッチリストのsort_keyをトランザクション内で一括更新します。
-// (user_id, sort_key) のユニーク制約が一時的に違反しないよう、
-// まず全レコードを負値（-(i+1)）にシフトしてから最終値に更新します。
+// UpdateSortKeys はウォッチリストの sort_key をトランザクション内で一括更新します。
+// (user_id, sort_key) のユニーク制約が一時的に違反しないよう、まず全レコードを
+// 負値（-(i+1)）にシフトしてから最終値に更新します。
 func (r *watchlistRepository) UpdateSortKeys(ctx context.Context, userID uint, entries []entity.UserSymbol) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Phase 1: 負値にシフトして既存の正値との衝突を回避
-		for i, e := range entries {
-			if err := tx.Model(&entity.UserSymbol{}).
-				Where("user_id = ? AND symbol_code = ?", userID, e.SymbolCode).
-				Update("sort_key", -(i + 1)).Error; err != nil {
-				return err
-			}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
 		}
-		// Phase 2: 最終的な sort_key に更新
-		for _, e := range entries {
-			if err := tx.Model(&entity.UserSymbol{}).
-				Where("user_id = ? AND symbol_code = ?", userID, e.SymbolCode).
-				Update("sort_key", e.SortKey).Error; err != nil {
-				return err
-			}
+	}()
+	qtx := r.q.WithTx(tx)
+
+	// Phase 1: 負値にシフト
+	for i, e := range entries {
+		if _, err := qtx.UpdateWatchlistSortKey(ctx, watchlistsqlc.UpdateWatchlistSortKeyParams{
+			UserID:     int64(userID),
+			SymbolCode: e.SymbolCode,
+			SortKey:    int64(-(i + 1)),
+		}); err != nil {
+			return err
 		}
-		return nil
-	})
+	}
+	// Phase 2: 最終値に更新
+	for _, e := range entries {
+		if _, err := qtx.UpdateWatchlistSortKey(ctx, watchlistsqlc.UpdateWatchlistSortKeyParams{
+			UserID:     int64(userID),
+			SymbolCode: e.SymbolCode,
+			SortKey:    int64(e.SortKey),
+		}); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	committed = true
+	return nil
 }
 
-// AddWithNextSortKey はsort_keyをトランザクション内でMAX+1採番して銘柄を追加します。
-// SELECT MAX(sort_key) FOR UPDATE と INSERT を同一トランザクションで実行することで、
-// 並行追加時の重複順位を防ぎます。
+// AddWithNextSortKey は sort_key をトランザクション内で MAX+1 採番して銘柄を追加します。
+// MAX(sort_key) 取得と INSERT を同一トランザクションで実行し、(user_id, sort_key) ユニーク制約で
+// 並行追加の二重登録を最終的にブロックします。
 func (r *watchlistRepository) AddWithNextSortKey(ctx context.Context, userID uint, symbolCode string) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var maxKey *int
-		if err := tx.Model(&entity.UserSymbol{}).
-			Where("user_id = ?", userID).
-			Select("MAX(sort_key)").
-			Set("gorm:query_option", "FOR UPDATE").
-			Scan(&maxKey).Error; err != nil {
-			return err
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
 		}
-		nextKey := 0
-		if maxKey != nil {
-			nextKey = *maxKey + 1
-		}
-		entry := entity.UserSymbol{
-			UserID:     userID,
-			SymbolCode: symbolCode,
-			SortKey:    nextKey,
-		}
-		if err := tx.Create(&entry).Error; err != nil {
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) {
-				switch pgErr.Code {
-				case "23505": // unique_violation: 重複エントリ
-					return usecase.ErrAlreadyInWatchlist
-				case "23503": // foreign_key_violation: 銘柄が存在しない
-					return usecase.ErrSymbolNotFound
-				}
-			}
-			return err
-		}
+	}()
+	qtx := r.q.WithTx(tx)
+
+	maxKey, err := qtx.MaxWatchlistSortKey(ctx, int64(userID))
+	if err != nil {
+		return err
+	}
+	if err := qtx.InsertWatchlist(ctx, watchlistsqlc.InsertWatchlistParams{
+		UserID:     int64(userID),
+		SymbolCode: symbolCode,
+		SortKey:    maxKey + 1,
+	}); err != nil {
+		return mapWatchlistPGErr(err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	committed = true
+	return nil
+}
+
+// mapWatchlistPGErr は PostgreSQL 制約違反をドメインエラーに変換します。
+func mapWatchlistPGErr(err error) error {
+	if err == nil {
 		return nil
-	})
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case pgUniqueViolation:
+			return usecase.ErrAlreadyInWatchlist
+		case pgForeignKeyViolation:
+			return usecase.ErrSymbolNotFound
+		}
+	}
+	return err
 }
