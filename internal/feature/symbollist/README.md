@@ -162,7 +162,7 @@ graph TB
   - `UpdatedAt`: 最終更新日時
 
 #### Adapters層 ([adapters/symbol_repository.go](adapters/symbol_repository.go))
-- **symbolRepository**: GORM ベースのリポジトリ実装。`SymbolRepository` と `LogoSymbolRepository` の両インターフェースを満たす
+- **symbolRepository**: sqlc + database/sql ベースのリポジトリ実装。`SymbolRepository` と `LogoSymbolRepository` の両インターフェースを満たす
   - `ListActive(ctx)`: コード昇順でアクティブな銘柄を返す
   - `UpdateLogoURL(ctx, code, logoURL, updatedAt)`: 指定銘柄のロゴ URL と取得日時を更新（対象行が無い場合は警告ログのみ）
   - `ListActiveCodes(ctx)`: アクティブな銘柄のコードのみを返す（補助メソッド）

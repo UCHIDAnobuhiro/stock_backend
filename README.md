@@ -40,7 +40,8 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 
 - **データベース永続化**
   - PostgreSQL / Cloud SQLによるデータ永続化
-  - GORM ORMによるデータ管理
+  - sqlc 生成コード + `database/sql` (pgx/v5 stdlib driver) によるアクセス
+  - goose による SQL ファイルベースのスキーマ管理（`db/migrations/`）
 
 ---
 
@@ -50,7 +51,8 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 | --------------- | ------------------------------------------------------------------- |
 | 言語            | Go (1.25.8)                                                          |
 | Webフレームワーク | Gin                                                                 |
-| ORM             | GORM                                                                |
+| DB アクセス     | sqlc + database/sql + pgx/v5 stdlib                                 |
+| DB マイグレーション | goose（埋め込み SQL ベース）                                      |
 | DB              | PostgreSQL / Cloud SQL                                              |
 | キャッシュ      | Redis                                                               |
 | AI / ML         | Cloud Vision API / Gemini API（Vertex AI）                          |
@@ -370,11 +372,12 @@ docker compose -f docker/docker-compose.yml -p stock --profile on-demand run --r
 スキーマは [tbls](https://github.com/k1LoW/tbls) で稼働中の PostgreSQL から自動生成されます。
 生成物は [docs/schema/](docs/schema/) 配下にコミットされており、GitHub 上で Mermaid ER 図としてレンダリングされます。
 
-エンティティ（`internal/feature/**/domain/entity/` や GORM タグ）を変更したときは以下の手順で再生成します。
+`db/migrations/` 配下のスキーマを変更したときは以下の手順で再生成します。
 
 ```bash
-# 1) dev コンテナを起動してマイグレーションを反映
-docker compose -f docker/docker-compose.yml -p stock up -d backend
+# 1) dev コンテナを起動 + マイグレーションを適用
+docker compose -f docker/docker-compose.yml -p stock up -d db
+docker compose -f docker/docker-compose.yml -p stock run --rm migrate
 
 # 2) ER 図・テーブル定義書を再生成（docs/schema/ を上書き）
 docker compose -f docker/docker-compose.yml -p stock --profile on-demand run --rm tbls doc --config /work/docs/tbls.yml --force
