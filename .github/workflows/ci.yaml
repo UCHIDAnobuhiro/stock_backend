@@ -1,9 +1,9 @@
-# mainブランチへのPR時に実行されるCIワークフロー
+# PRが作成・更新された時に実行されるCIワークフロー。
+# main 以外のベース（スタック型 PR）でも CI を回すため、branches フィルタは付けない。
 name: CI
 
 on:
   pull_request:
-    branches: [main]
 
 jobs:
   # ドキュメントのみの変更かどうかを判定する（PR全体の差分で判定）
@@ -76,6 +76,23 @@ jobs:
     needs: docs-check
     if: needs.docs-check.outputs.code_changed == 'true'
     runs-on: ubuntu-latest
+    services:
+      # dbtest ヘルパーは TEST_DB_DSN 未設定なら testcontainers-go で PostgreSQL を起動するが、
+      # GitHub Actions の Ryuk 周辺挙動が不安定なため、サービスコンテナで直接 PostgreSQL を提供する。
+      # ユーザーは superuser として作成され CREATEDB 権限を持つので dbtest の CREATE DATABASE が通る。
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: appuser
+          POSTGRES_PASSWORD: apppass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U appuser -d postgres"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -89,6 +106,8 @@ jobs:
         run: go build ./...
 
       - name: Run tests
+        env:
+          TEST_DB_DSN: postgres://appuser:apppass@localhost:5432/postgres?sslmode=disable
         run: go test ./... -v -race -cover
 
   # スキーマドキュメント（docs/schema/）がエンティティ変更と同期しているか検証
