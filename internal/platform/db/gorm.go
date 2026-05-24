@@ -2,6 +2,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
@@ -182,4 +183,13 @@ func OpenDB() *gorm.DB {
 	}
 
 	return db
+}
+
+// NewGORMFromSQL は既存の *sql.DB をベースに *gorm.DB を生成します。
+// 既存の GORM ベース feature と新しい sqlc ベース feature を同一の接続プールで
+// 共存させるためのブリッジで、全 feature が sqlc 化されたら本関数ごと削除します。
+func NewGORMFromSQL(sqlDB *sql.DB) (*gorm.DB, error) {
+	return gorm.Open(postgres.New(postgres.Config{Conn: sqlDB}), &gorm.Config{
+		Logger: logger.Default.LogMode(gormLogLevel()),
+	})
 }

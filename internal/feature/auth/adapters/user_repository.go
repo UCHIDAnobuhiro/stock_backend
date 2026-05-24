@@ -3,83 +3,165 @@ package adapters
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"gorm.io/gorm"
 
+	"stock_backend/internal/feature/auth/adapters/sqlc"
 	"stock_backend/internal/feature/auth/domain/entity"
 	"stock_backend/internal/feature/auth/usecase"
 )
 
-// userRepository はUserRepositoryインターフェースのリポジトリ実装です。
-// GORMを使用してデータベース操作を行います。
+// pgErrUniqueViolation は PostgreSQL のユニーク制約違反コードです。
+const pgErrUniqueViolation = "23505"
+
+// userRepository は UserRepository / OAuthUserCreator の sqlc ベース実装です。
 type userRepository struct {
-	db *gorm.DB
+	db *sql.DB
+	q  *authsqlc.Queries
 }
 
-// userRepositoryがUserRepositoryおよびOAuthUserCreatorを実装していることをコンパイル時に検証します。
-var _ usecase.UserRepository = (*userRepository)(nil)
-var _ usecase.OAuthUserCreator = (*userRepository)(nil)
+var (
+	_ usecase.UserRepository   = (*userRepository)(nil)
+	_ usecase.OAuthUserCreator = (*userRepository)(nil)
+)
 
-// NewUserRepository は指定されたgorm.DB接続でuserRepositoryの新しいインスタンスを生成します。
-// 依存性注入用のコンストラクタです。
-func NewUserRepository(db *gorm.DB) *userRepository {
-	return &userRepository{db: db}
+// NewUserRepository は指定された *sql.DB で userRepository の新しいインスタンスを生成します。
+func NewUserRepository(db *sql.DB) *userRepository {
+	return &userRepository{db: db, q: authsqlc.New(db)}
 }
 
 // Create はユーザーをデータベースに追加します。
-// 同じメールアドレスのユーザーが既に存在する場合、usecase.ErrEmailAlreadyExistsを返します。
+// 同じメールアドレスのユーザーが既に存在する場合、usecase.ErrEmailAlreadyExists を返します。
 func (r *userRepository) Create(ctx context.Context, u *entity.User) error {
-	if err := r.db.WithContext(ctx).Create(u).Error; err != nil {
-		// PostgreSQLエラー23505: ユニーク制約違反
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return usecase.ErrEmailAlreadyExists
-		}
-		return err
+	if u == nil {
+		return errors.New("user is nil")
 	}
+	row, err := r.q.CreateUser(ctx, authsqlc.CreateUserParams{
+		Email:    u.Email,
+		Password: toNullString(u.Password),
+	})
+	if err != nil {
+		return mapEmailUniqueErr(err)
+	}
+	*u = userFromSQLC(row)
 	return nil
 }
 
 // FindByEmail はメールアドレスでユーザーを取得します。
-// ユーザーが存在しない場合、usecase.ErrUserNotFoundを返します。
+// ユーザーが存在しない場合、usecase.ErrUserNotFound を返します。
 func (r *userRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
-	var u entity.User
-	if err := r.db.WithContext(ctx).Where("email = ?", email).First(&u).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	row, err := r.q.FindUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, usecase.ErrUserNotFound
 		}
 		return nil, err
 	}
+	u := userFromSQLC(row)
 	return &u, nil
 }
 
-// CreateUserWithOAuthAccount はUserとOAuthAccountをトランザクション内で原子的に作成します。
-// OAuthUserCreatorインターフェースの実装です。
-func (r *userRepository) CreateUserWithOAuthAccount(ctx context.Context, user *entity.User, account *entity.OAuthAccount) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(user).Error; err != nil {
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-				return usecase.ErrEmailAlreadyExists
-			}
-			return err
-		}
-		account.UserID = user.ID
-		return tx.Create(account).Error
-	})
-}
-
-// FindByID はIDでユーザーを取得します。
-// ユーザーが存在しない場合、usecase.ErrUserNotFoundを返します。
+// FindByID は ID でユーザーを取得します。
+// ユーザーが存在しない場合、usecase.ErrUserNotFound を返します。
 func (r *userRepository) FindByID(ctx context.Context, id uint) (*entity.User, error) {
-	var u entity.User
-	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&u).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+	row, err := r.q.FindUserByID(ctx, int64(id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, usecase.ErrUserNotFound
 		}
 		return nil, err
 	}
+	u := userFromSQLC(row)
 	return &u, nil
+}
+
+// CreateUserWithOAuthAccount は User と OAuthAccount をトランザクション内で原子的に作成します。
+func (r *userRepository) CreateUserWithOAuthAccount(ctx context.Context, user *entity.User, account *entity.OAuthAccount) error {
+	if user == nil || account == nil {
+		return errors.New("user or account is nil")
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	qtx := r.q.WithTx(tx)
+	userRow, err := qtx.CreateUser(ctx, authsqlc.CreateUserParams{
+		Email:    user.Email,
+		Password: toNullString(user.Password),
+	})
+	if err != nil {
+		return mapEmailUniqueErr(err)
+	}
+	*user = userFromSQLC(userRow)
+
+	account.UserID = user.ID
+	acctRow, err := qtx.CreateOAuthAccount(ctx, authsqlc.CreateOAuthAccountParams{
+		UserID:      int64(account.UserID),
+		Provider:    account.Provider,
+		ProviderUid: account.ProviderUID,
+	})
+	if err != nil {
+		return err
+	}
+	*account = oauthAccountFromSQLC(acctRow)
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	committed = true
+	return nil
+}
+
+// userFromSQLC は sqlc 生成モデルをドメインエンティティに変換します。
+func userFromSQLC(m authsqlc.User) entity.User {
+	var pwd *string
+	if m.Password.Valid {
+		s := m.Password.String
+		pwd = &s
+	}
+	return entity.User{
+		ID:        uint(m.ID),
+		Email:     m.Email,
+		Password:  pwd,
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
+	}
+}
+
+// oauthAccountFromSQLC は sqlc 生成モデルをドメインエンティティに変換します。
+func oauthAccountFromSQLC(m authsqlc.OauthAccount) entity.OAuthAccount {
+	return entity.OAuthAccount{
+		ID:          uint(m.ID),
+		UserID:      uint(m.UserID),
+		Provider:    m.Provider,
+		ProviderUID: m.ProviderUid,
+		CreatedAt:   m.CreatedAt,
+	}
+}
+
+// toNullString は *string を sql.NullString に変換します。nil の場合は Valid=false です。
+func toNullString(s *string) sql.NullString {
+	if s == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *s, Valid: true}
+}
+
+// mapEmailUniqueErr は PostgreSQL のユニーク制約違反を usecase.ErrEmailAlreadyExists にマッピングします。
+func mapEmailUniqueErr(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgErrUniqueViolation {
+		return usecase.ErrEmailAlreadyExists
+	}
+	return err
 }
