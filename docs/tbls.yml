@@ -13,8 +13,9 @@ er:
   comment: true
   hideDef: false
 
-# AutoMigrate で作られるが通常 ER 図に載せる必要がないテーブルがあれば除外する
-exclude: []
+# goose のバージョン管理テーブルなど、ER 図に載せる必要がないものを除外する
+exclude:
+  - goose_db_version
 
 # テーブル・カラムに注釈を付けたい場合はここに追記する
 comments: []

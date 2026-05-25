@@ -78,6 +78,20 @@ services:
       redis:
         condition: service_healthy
 
+  # マイグレーション専用バイナリ。本番では同 Dockerfile を Cloud Run Job 等にデプロイ。
+  # ローカル: docker compose -f docker/docker-compose.yml -p stock run --rm migrate [up|status|down|...]
+  migrate:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.migrate
+    env_file:
+      - ./.env.app
+    restart: "no"
+    profiles: ["on-demand"]
+    depends_on:
+      db:
+        condition: service_healthy
+
   swagger-ui:
     image: swaggerapi/swagger-ui
     container_name: stock-swagger-ui

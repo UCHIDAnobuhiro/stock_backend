@@ -1,56 +1,78 @@
-// cmd/migrate はスキーマのマイグレーションだけを実行するバイナリ。
+// cmd/migrate はスキーママイグレーションだけを実行するバイナリです。
 //
-// cmd/server も RUN_MIGRATIONS=true でマイグレーションを実行できるが、
-// サーバー本体は GCP (Vision / Gemini) クライアント初期化も伴うため、
-// 認証情報のない CI 環境や Cloud Run の pre-deploy ジョブでは実行できない。
-// このバイナリは DB 接続と AutoMigrate + FK 制約追加のみを行って終了する。
+// 本番デプロイでは Cloud Run pre-deploy ジョブ等で本バイナリを起動して
+// goose によるマイグレーションを適用し、その後 cmd/server をデプロイします。
+//
+// 使い方:
+//
+//	migrate [up|down|down-to|status|version|reset|redo|up-by-one|up-to] [arg]
+//
+// 引数なしで実行した場合は up を適用します。
 package main
 
 import (
+	"context"
+	"errors"
 	"log/slog"
+	"maps"
 	"os"
+	"slices"
+	"time"
 
-	authadapters "stock_backend/internal/feature/auth/adapters"
-	authentity "stock_backend/internal/feature/auth/domain/entity"
-	candlesadapters "stock_backend/internal/feature/candles/adapters"
-	symbolentity "stock_backend/internal/feature/symbollist/domain/entity"
-	watchlistadapters "stock_backend/internal/feature/watchlist/adapters"
-	watchlistentity "stock_backend/internal/feature/watchlist/domain/entity"
 	infradb "stock_backend/internal/platform/db"
 )
 
+// allowedCommands は本バイナリから実行を許容する goose サブコマンドです。
+// create / fix のような開発者ローカル専用の操作は除外し、デプロイで使うものに限定します。
+var allowedCommands = map[string]struct{}{
+	"up":        {},
+	"up-by-one": {},
+	"up-to":     {},
+	"down":      {},
+	"down-to":   {},
+	"redo":      {},
+	"reset":     {},
+	"status":    {},
+	"version":   {},
+}
+
 func main() {
+	os.Exit(run(os.Args[1:]))
+}
+
+func run(args []string) int {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	db := infradb.OpenDB()
-
-	if err := infradb.RunMigrations(db,
-		&authentity.User{},
-		&authentity.OAuthAccount{},
-		&candlesadapters.CandleModel{},
-		&symbolentity.Symbol{},
-		&watchlistentity.UserSymbol{},
-	); err != nil {
-		slog.Error("failed to migrate", "error", err)
-		os.Exit(1)
+	cmd := "up"
+	var extra []string
+	if len(args) > 0 {
+		cmd = args[0]
+		extra = args[1:]
 	}
-	if err := authadapters.MakePasswordNullable(db); err != nil {
-		slog.Error("failed to make password nullable", "error", err)
-		os.Exit(1)
-	}
-	if err := authadapters.AddOAuthAccountsFKConstraints(db); err != nil {
-		slog.Error("failed to add oauth_accounts FK constraints", "error", err)
-		os.Exit(1)
-	}
-	if err := watchlistadapters.AddFKConstraints(db); err != nil {
-		slog.Error("failed to add watchlist FK constraints", "error", err)
-		os.Exit(1)
-	}
-	if err := candlesadapters.AddFKConstraints(db); err != nil {
-		slog.Error("failed to add candles FK constraints", "error", err)
-		os.Exit(1)
+	if _, ok := allowedCommands[cmd]; !ok {
+		slog.Error("unsupported goose command", "command", cmd, "allowed", slices.Sorted(maps.Keys(allowedCommands)))
+		return 2
 	}
 
-	slog.Info("migrate ok")
+	db := infradb.OpenSQL()
+	defer func() {
+		if err := db.Close(); err != nil {
+			slog.Warn("failed to close DB", "error", err)
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	if err := infradb.RunGoose(ctx, db, cmd, extra...); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			slog.Error("migration timed out", "error", err)
+		} else {
+			slog.Error("migration failed", "command", cmd, "error", err)
+		}
+		return 1
+	}
+	slog.Info("migration ok", "command", cmd)
+	return 0
 }

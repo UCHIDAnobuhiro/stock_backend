@@ -12,8 +12,8 @@
 | logo_url | text |  | true |  |  |  |
 | logo_updated_at | timestamp with time zone |  | true |  |  |  |
 | is_active | boolean | true | false |  |  |  |
-| created_at | timestamp with time zone |  | false |  |  |  |
-| updated_at | timestamp with time zone |  | false |  |  |  |
+| created_at | timestamp with time zone | now() | false |  |  |  |
+| updated_at | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
 

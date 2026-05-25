@@ -18,8 +18,8 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| candles_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | fk_candles_symbol | FOREIGN KEY | FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT |
+| candles_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
