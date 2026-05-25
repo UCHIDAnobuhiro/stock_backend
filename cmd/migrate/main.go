@@ -14,7 +14,9 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"maps"
 	"os"
+	"slices"
 	"time"
 
 	infradb "stock_backend/internal/platform/db"
@@ -49,7 +51,7 @@ func run(args []string) int {
 		extra = args[1:]
 	}
 	if _, ok := allowedCommands[cmd]; !ok {
-		slog.Error("unsupported goose command", "command", cmd, "allowed", keys(allowedCommands))
+		slog.Error("unsupported goose command", "command", cmd, "allowed", slices.Sorted(maps.Keys(allowedCommands)))
 		return 2
 	}
 
@@ -73,12 +75,4 @@ func run(args []string) int {
 	}
 	slog.Info("migration ok", "command", cmd)
 	return 0
-}
-
-func keys(m map[string]struct{}) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	return out
 }
