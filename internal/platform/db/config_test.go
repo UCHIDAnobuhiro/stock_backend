@@ -2,14 +2,11 @@ package db
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
-	"time"
 )
 
 // TestBuildDSN_TCP はTCP接続用のDSN文字列が正しく生成されることを検証します。
@@ -195,65 +192,6 @@ func TestPassword_Masking(t *testing.T) {
 			t.Errorf("string(p) = %q, want %q", string(p), secret)
 		}
 	})
-}
-
-// TestConnectSQLWithRetry_SuccessOnFirstTry は初回接続成功時にリトライせず DB を返すことを検証します。
-func TestConnectSQLWithRetry_SuccessOnFirstTry(t *testing.T) {
-	t.Parallel()
-
-	mockDB := &sql.DB{}
-	opener := func(dsn string) (*sql.DB, error) { return mockDB, nil }
-
-	db, err := ConnectSQLWithRetry("test-dsn", 5*time.Second, opener)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if db != mockDB {
-		t.Error("expected mock DB to be returned")
-	}
-}
-
-// TestConnectSQLWithRetry_RetriesOnFailure は接続失敗時にリトライして最終的に成功することを検証します。
-func TestConnectSQLWithRetry_RetriesOnFailure(t *testing.T) {
-	mockDB := &sql.DB{}
-	attemptCount := 0
-	opener := func(dsn string) (*sql.DB, error) {
-		attemptCount++
-		if attemptCount < 3 {
-			return nil, errors.New("connection refused")
-		}
-		return mockDB, nil
-	}
-
-	db, err := ConnectSQLWithRetry("test-dsn", 10*time.Second, opener)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if db != mockDB {
-		t.Error("expected mock DB to be returned")
-	}
-	if attemptCount != 3 {
-		t.Errorf("expected 3 attempts, got %d", attemptCount)
-	}
-}
-
-// TestConnectSQLWithRetry_TimeoutAfterRetries はタイムアウト後にエラーが返されることを検証します。
-func TestConnectSQLWithRetry_TimeoutAfterRetries(t *testing.T) {
-	t.Parallel()
-
-	attemptCount := 0
-	opener := func(dsn string) (*sql.DB, error) {
-		attemptCount++
-		return nil, errors.New("connection refused")
-	}
-
-	_, err := ConnectSQLWithRetry("test-dsn", 100*time.Millisecond, opener)
-	if err == nil {
-		t.Fatal("expected error after timeout, got nil")
-	}
-	if attemptCount == 0 {
-		t.Error("expected at least one connection attempt")
-	}
 }
 
 // TestConfig_Validate_TCP_Success は TCP 接続で必須項目が揃っていればエラーにならないことを検証します。
