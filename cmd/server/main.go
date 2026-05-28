@@ -73,9 +73,9 @@ func main() {
 		}()
 	}
 
-	// リポジトリ。auth は sqlc 化済み (*sql.DB)、他は GORM (*gorm.DB) のまま。
+	// リポジトリ。auth/symbollist は sqlc 化済み (*sql.DB)、他は GORM (*gorm.DB) のまま。
 	userRepo := authadapters.NewUserRepository(sqlDB)
-	symbolRepo := symbollistadapters.NewSymbolRepository(db)
+	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
 	candleRepo := candlesadapters.NewCandleRepository(db)
 	watchlistRepo := watchlistadapters.NewWatchlistRepository(db)
 

@@ -2,113 +2,131 @@ package adapters
 
 import (
 	"context"
+	"database/sql"
+	"log"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 
 	"stock_backend/internal/feature/symbollist/domain/entity"
+	"stock_backend/internal/platform/db/dbtest"
 )
 
-// setupTestDB はテスト用のインメモリSQLiteデータベースを準備します。
-func setupTestDB(t *testing.T) *gorm.DB {
-	t.Helper()
-
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err, "failed to initialize test database")
-
-	// Symbolテーブルを作成
-	err = db.AutoMigrate(&entity.Symbol{})
-	require.NoError(t, err, "failed to migrate table")
-
-	return db
+func TestMain(m *testing.M) {
+	code, err := dbtest.RunMainWithPostgres(m)
+	if err != nil {
+		log.Fatalf("dbtest setup: %v", err)
+	}
+	os.Exit(code)
 }
 
-// seedSymbol はテスト用の銘柄データをデータベースに作成します。
-// Timezone はテスト便宜上 "Asia/Tokyo" 固定で作成します。
-func seedSymbol(t *testing.T, db *gorm.DB, code, name, market string, isActive bool) *entity.Symbol {
+func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
+	return dbtest.OpenIsolatedDB(t)
+}
 
-	symbol := &entity.Symbol{
+// seedSymbol はテスト用の銘柄データをデータベースに作成し、ID 付きで返します。
+func seedSymbol(t *testing.T, db *sql.DB, code, name, market string, isActive bool) *entity.Symbol {
+	t.Helper()
+	row := db.QueryRowContext(context.Background(),
+		`INSERT INTO symbols (code, name, market, timezone, is_active)
+		 VALUES ($1, $2, $3, 'Asia/Tokyo', $4)
+		 RETURNING id, created_at, updated_at`,
+		code, name, market, isActive,
+	)
+	s := &entity.Symbol{
 		Code:     code,
 		Name:     name,
 		Market:   market,
 		Timezone: "Asia/Tokyo",
 		IsActive: isActive,
 	}
-	err := db.Create(symbol).Error
-	require.NoError(t, err, "failed to seed symbol")
-
-	return symbol
+	var id int64
+	require.NoError(t, row.Scan(&id, &s.CreatedAt, &s.UpdatedAt), "failed to seed symbol")
+	s.ID = uint(id)
+	return s
 }
 
-// updateSymbolActive は銘柄のis_activeフィールドを更新します。
-func updateSymbolActive(t *testing.T, db *gorm.DB, symbol *entity.Symbol, isActive bool) {
+// seedSymbolFull はロゴ情報付きで銘柄をシードします。
+func seedSymbolFull(t *testing.T, db *sql.DB, s *entity.Symbol) {
 	t.Helper()
-	err := db.Model(symbol).Update("is_active", isActive).Error
+	var logoURL sql.NullString
+	if s.LogoURL != nil {
+		logoURL = sql.NullString{String: *s.LogoURL, Valid: true}
+	}
+	var logoAt sql.NullTime
+	if s.LogoUpdatedAt != nil {
+		logoAt = sql.NullTime{Time: *s.LogoUpdatedAt, Valid: true}
+	}
+	row := db.QueryRowContext(context.Background(),
+		`INSERT INTO symbols (code, name, market, timezone, logo_url, logo_updated_at, is_active)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)
+		 RETURNING id, created_at, updated_at`,
+		s.Code, s.Name, s.Market, s.Timezone, logoURL, logoAt, s.IsActive,
+	)
+	var id int64
+	require.NoError(t, row.Scan(&id, &s.CreatedAt, &s.UpdatedAt))
+	s.ID = uint(id)
+}
+
+// updateSymbolActive は銘柄の is_active フィールドを更新します。
+func updateSymbolActive(t *testing.T, db *sql.DB, symbol *entity.Symbol, isActive bool) {
+	t.Helper()
+	_, err := db.ExecContext(context.Background(),
+		`UPDATE symbols SET is_active = $1 WHERE id = $2`, isActive, int64(symbol.ID))
 	require.NoError(t, err, "failed to update symbol active status")
 }
 
-// TestNewSymbolRepository はNewSymbolRepositoryコンストラクタが正しくインスタンスを生成することを検証します。
 func TestNewSymbolRepository(t *testing.T) {
 	t.Parallel()
-
 	db := setupTestDB(t)
 	repo := NewSymbolRepository(db)
-
-	assert.NotNil(t, repo, "repository should not be nil")
-	assert.NotNil(t, repo.db, "database connection should not be nil")
+	assert.NotNil(t, repo)
+	assert.NotNil(t, repo.db)
 }
 
-// TestSymbolRepository_ListActive はListActiveメソッドの各種シナリオをテーブル駆動テストで検証します。
 func TestSymbolRepository_ListActive(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name          string
-		setupFunc     func(t *testing.T, db *gorm.DB)
+		setupFunc     func(t *testing.T, db *sql.DB)
 		expectedCount int
 		expectedCodes []string
-		wantErr       bool
 	}{
 		{
 			name: "success: returns active symbols sorted by code",
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true)
 				seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
 				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 			},
 			expectedCount: 3,
-			expectedCodes: []string{"6758.T", "7203.T", "9984.T"}, // Sorted by code ASC
-			wantErr:       false,
+			expectedCodes: []string{"6758.T", "7203.T", "9984.T"},
 		},
 		{
 			name: "success: excludes inactive symbols",
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
-				inactiveSymbol := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
-				updateSymbolActive(t, db, inactiveSymbol, false) // Set to inactive
+				inactive := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
+				updateSymbolActive(t, db, inactive, false)
 				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true)
 			},
 			expectedCount: 2,
 			expectedCodes: []string{"7203.T", "9984.T"},
-			wantErr:       false,
 		},
 		{
-			name: "success: returns empty list when no symbols",
-			setupFunc: func(t *testing.T, db *gorm.DB) {
-				// No symbols seeded
-			},
+			name:          "success: returns empty list when no symbols",
+			setupFunc:     func(t *testing.T, db *sql.DB) {},
 			expectedCount: 0,
 			expectedCodes: []string{},
-			wantErr:       false,
 		},
 		{
 			name: "success: returns empty list when all symbols are inactive",
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				s1 := seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 				updateSymbolActive(t, db, s1, false)
 				s2 := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
@@ -116,162 +134,128 @@ func TestSymbolRepository_ListActive(t *testing.T) {
 			},
 			expectedCount: 0,
 			expectedCodes: []string{},
-			wantErr:       false,
 		},
 		{
 			name: "success: returns single active symbol",
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 			},
 			expectedCount: 1,
 			expectedCodes: []string{"7203.T"},
-			wantErr:       false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			db := setupTestDB(t)
 			repo := NewSymbolRepository(db)
-
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, db)
 			}
-
 			symbols, err := repo.ListActive(context.Background())
-
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Len(t, symbols, tt.expectedCount)
-
-				// 順序とコードを検証
-				for i, expectedCode := range tt.expectedCodes {
-					assert.Equal(t, expectedCode, symbols[i].Code)
-				}
+			require.NoError(t, err)
+			assert.Len(t, symbols, tt.expectedCount)
+			for i, expectedCode := range tt.expectedCodes {
+				assert.Equal(t, expectedCode, symbols[i].Code)
 			}
 		})
 	}
 }
 
-// TestSymbolRepository_ListActiveCodes はListActiveCodesメソッドの各種シナリオをテーブル駆動テストで検証します。
 func TestSymbolRepository_ListActiveCodes(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name          string
-		setupFunc     func(t *testing.T, db *gorm.DB)
+		setupFunc     func(t *testing.T, db *sql.DB)
 		expectedCodes []string
-		wantErr       bool
 	}{
 		{
 			name: "success: returns active symbol codes sorted by code",
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true)
 				seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
 				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 			},
-			expectedCodes: []string{"6758.T", "7203.T", "9984.T"}, // Sorted by code ASC
-			wantErr:       false,
+			expectedCodes: []string{"6758.T", "7203.T", "9984.T"},
 		},
 		{
 			name: "success: excludes inactive symbol codes",
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
-				inactiveSymbol := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
-				updateSymbolActive(t, db, inactiveSymbol, false) // Set to inactive
+				inactive := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
+				updateSymbolActive(t, db, inactive, false)
 				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true)
 			},
 			expectedCodes: []string{"7203.T", "9984.T"},
-			wantErr:       false,
 		},
 		{
-			name: "success: returns empty list when no symbols",
-			setupFunc: func(t *testing.T, db *gorm.DB) {
-				// No symbols seeded
-			},
+			name:          "success: returns empty list when no symbols",
+			setupFunc:     func(t *testing.T, db *sql.DB) {},
 			expectedCodes: []string{},
-			wantErr:       false,
 		},
 		{
 			name: "success: returns empty list when all symbols are inactive",
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				s1 := seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 				updateSymbolActive(t, db, s1, false)
 				s2 := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
 				updateSymbolActive(t, db, s2, false)
 			},
 			expectedCodes: []string{},
-			wantErr:       false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			db := setupTestDB(t)
 			repo := NewSymbolRepository(db)
-
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, db)
 			}
-
 			codes, err := repo.ListActiveCodes(context.Background())
-
-			if tt.wantErr {
-				assert.Error(t, err)
+			require.NoError(t, err)
+			if len(tt.expectedCodes) == 0 {
+				assert.Empty(t, codes)
 			} else {
-				assert.NoError(t, err)
-				if len(tt.expectedCodes) == 0 {
-					assert.Empty(t, codes)
-				} else {
-					assert.Equal(t, tt.expectedCodes, codes)
-				}
+				assert.Equal(t, tt.expectedCodes, codes)
 			}
 		})
 	}
 }
 
-// TestSymbolRepository_ListActive_FieldValues はListActiveが返す銘柄の全フィールド値が正しいことを検証します。
 func TestSymbolRepository_ListActive_FieldValues(t *testing.T) {
 	t.Parallel()
-
 	db := setupTestDB(t)
 	repo := NewSymbolRepository(db)
 
-	// 全フィールドを持つ銘柄をシード
 	expected := seedSymbol(t, db, "7203.T", "Toyota Motor Corporation", "Tokyo Stock Exchange", true)
-
 	symbols, err := repo.ListActive(context.Background())
-
 	require.NoError(t, err)
 	require.Len(t, symbols, 1)
 
-	symbol := symbols[0]
-	assert.Equal(t, expected.ID, symbol.ID)
-	assert.Equal(t, "7203.T", symbol.Code)
-	assert.Equal(t, "Toyota Motor Corporation", symbol.Name)
-	assert.Equal(t, "Tokyo Stock Exchange", symbol.Market)
-	assert.Equal(t, "Asia/Tokyo", symbol.Timezone)
-	assert.Nil(t, symbol.LogoURL)
-	assert.Nil(t, symbol.LogoUpdatedAt)
-	assert.True(t, symbol.IsActive)
-	assert.False(t, symbol.UpdatedAt.IsZero(), "UpdatedAt should be set")
+	got := symbols[0]
+	assert.Equal(t, expected.ID, got.ID)
+	assert.Equal(t, "7203.T", got.Code)
+	assert.Equal(t, "Toyota Motor Corporation", got.Name)
+	assert.Equal(t, "Tokyo Stock Exchange", got.Market)
+	assert.Equal(t, "Asia/Tokyo", got.Timezone)
+	assert.Nil(t, got.LogoURL)
+	assert.Nil(t, got.LogoUpdatedAt)
+	assert.True(t, got.IsActive)
+	assert.False(t, got.UpdatedAt.IsZero())
 }
 
 func TestSymbolRepository_ListActive_LogoURL(t *testing.T) {
 	t.Parallel()
-
 	db := setupTestDB(t)
 	repo := NewSymbolRepository(db)
 
 	logoURL := "https://api.twelvedata.com/logo/apple.com"
 	logoUpdatedAt := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
-	symbol := &entity.Symbol{
+	s := &entity.Symbol{
 		Code:          "AAPL",
 		Name:          "Apple Inc.",
 		Market:        "NASDAQ",
@@ -280,10 +264,9 @@ func TestSymbolRepository_ListActive_LogoURL(t *testing.T) {
 		LogoUpdatedAt: &logoUpdatedAt,
 		IsActive:      true,
 	}
-	require.NoError(t, db.Create(symbol).Error)
+	seedSymbolFull(t, db, s)
 
 	symbols, err := repo.ListActive(context.Background())
-
 	require.NoError(t, err)
 	require.Len(t, symbols, 1)
 	require.NotNil(t, symbols[0].LogoURL)
@@ -294,119 +277,87 @@ func TestSymbolRepository_ListActive_LogoURL(t *testing.T) {
 
 func TestSymbolRepository_UpdateLogoURL(t *testing.T) {
 	t.Parallel()
-
 	db := setupTestDB(t)
 	repo := NewSymbolRepository(db)
-	symbol := seedSymbol(t, db, "AAPL", "Apple Inc.", "NASDAQ", true)
-	oldLogoURL := "https://api.twelvedata.com/logo/old-apple.com"
-	oldLogoUpdatedAt := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
-	require.NoError(t, db.Model(symbol).Updates(map[string]any{
-		"logo_url":        oldLogoURL,
-		"logo_updated_at": oldLogoUpdatedAt,
-	}).Error)
+	seedSymbol(t, db, "AAPL", "Apple Inc.", "NASDAQ", true)
 
 	newLogoURL := "https://api.twelvedata.com/logo/apple.com"
 	newLogoUpdatedAt := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
+	require.NoError(t, repo.UpdateLogoURL(context.Background(), "AAPL", newLogoURL, newLogoUpdatedAt))
 
-	err := repo.UpdateLogoURL(context.Background(), "AAPL", newLogoURL, newLogoUpdatedAt)
-
+	symbols, err := repo.ListActive(context.Background())
 	require.NoError(t, err)
-	var got entity.Symbol
-	require.NoError(t, db.Where("code = ?", "AAPL").First(&got).Error)
-	require.NotNil(t, got.LogoURL)
-	require.NotNil(t, got.LogoUpdatedAt)
-	assert.Equal(t, newLogoURL, *got.LogoURL)
-	assert.True(t, got.LogoUpdatedAt.Equal(newLogoUpdatedAt))
+	require.Len(t, symbols, 1)
+	require.NotNil(t, symbols[0].LogoURL)
+	require.NotNil(t, symbols[0].LogoUpdatedAt)
+	assert.Equal(t, newLogoURL, *symbols[0].LogoURL)
+	assert.True(t, symbols[0].LogoUpdatedAt.Equal(newLogoUpdatedAt))
 }
 
 func TestSymbolRepository_UpdateLogoURL_NoMatchingSymbol(t *testing.T) {
 	t.Parallel()
-
 	db := setupTestDB(t)
 	repo := NewSymbolRepository(db)
-
 	err := repo.UpdateLogoURL(context.Background(), "MISSING", "https://api.twelvedata.com/logo/missing.com", time.Now())
-
 	assert.NoError(t, err)
 }
 
-// TestSymbolRepository_Exists はExistsメソッドの各種シナリオをテーブル駆動テストで検証します。
 func TestSymbolRepository_Exists(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name       string
-		setupFunc  func(t *testing.T, db *gorm.DB)
+		setupFunc  func(t *testing.T, db *sql.DB)
 		code       string
 		wantExists bool
-		wantErr    bool
 	}{
 		{
 			name: "success: returns true for existing symbol",
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedSymbol(t, db, "AAPL", "Apple Inc.", "NASDAQ", true)
 			},
 			code:       "AAPL",
 			wantExists: true,
-			wantErr:    false,
 		},
 		{
 			name: "success: returns true for inactive symbol",
-			setupFunc: func(t *testing.T, db *gorm.DB) {
+			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedSymbol(t, db, "AAPL", "Apple Inc.", "NASDAQ", false)
 			},
 			code:       "AAPL",
 			wantExists: true,
-			wantErr:    false,
 		},
 		{
-			name: "success: returns false for non-existent symbol",
-			setupFunc: func(t *testing.T, db *gorm.DB) {
-				// No symbols seeded
-			},
+			name:       "success: returns false for non-existent symbol",
+			setupFunc:  func(t *testing.T, db *sql.DB) {},
 			code:       "INVALID",
 			wantExists: false,
-			wantErr:    false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
 			db := setupTestDB(t)
 			repo := NewSymbolRepository(db)
-
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, db)
 			}
-
 			exists, err := repo.Exists(context.Background(), tt.code)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.wantExists, exists)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantExists, exists)
 		})
 	}
 }
 
-// TestSymbolRepository_ContextCancellation はコンテキストがキャンセルされた場合の動作を検証します。
 func TestSymbolRepository_ContextCancellation(t *testing.T) {
 	t.Parallel()
-
 	db := setupTestDB(t)
 	repo := NewSymbolRepository(db)
-
 	seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel context immediately
-
-	// 注意: インメモリSQLiteはキャンセルされたコンテキストで常にエラーを返すとは限りません
-	// このテストは主にコンテキストが正しく伝播されることを検証します
+	cancel()
 	_, err := repo.ListActive(ctx)
 	if err != nil {
 		assert.ErrorIs(t, err, context.Canceled)

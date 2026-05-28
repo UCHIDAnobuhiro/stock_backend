@@ -15,12 +15,19 @@ sql:
         emit_exact_table_names: false
         emit_empty_slices: true
         emit_pointers_for_null_types: false
-  # 以降、Phase 4b/4c/4d で各 feature を追加していく。
-  # - engine: "postgresql"
-  #   schema: "db/migrations"
-  #   queries: "internal/feature/symbollist/adapters/sqlc/queries.sql"
-  #   gen:
-  #     go:
-  #       package: "symbollistsqlc"
-  #       out: "internal/feature/symbollist/adapters/sqlc"
-  #       ...
+  - engine: "postgresql"
+    schema: "db/migrations"
+    queries: "internal/feature/symbollist/adapters/sqlc/queries.sql"
+    gen:
+      go:
+        package: "symbollistsqlc"
+        out: "internal/feature/symbollist/adapters/sqlc"
+        sql_package: "database/sql"
+        emit_json_tags: false
+        emit_db_tags: false
+        emit_prepared_queries: false
+        emit_interface: true
+        emit_exact_table_names: false
+        emit_empty_slices: true
+        emit_pointers_for_null_types: false
+  # 以降、Phase 4c/4d で各 feature を追加していく。
