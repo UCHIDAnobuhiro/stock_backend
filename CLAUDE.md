@@ -148,11 +148,11 @@ feature/<name>/
    - `CandleRepository`（読み取り）と `CandleWriteRepository`（書き込み）の両インターフェースを実装
    - usecaseコードを変更せずにRedisキャッシュを透過的に追加
    - Redisが利用できない場合はグレースフルデグレード（警告ログを出力し、キャッシュなしで動作）
-4. **依存性注入**: `cmd/server/main.go` で手動DI
+4. **依存性注入**: `cmd/api/main.go` で手動DI
    - Repositories → Usecases → Handlers のワイヤリングは主に main.go で直接実施
    - `internal/app/di/` には一部のファクトリ関数を配置（例: MarketRepositoryの生成）
 5. **3つのエントリーポイント**:
-   - `cmd/server/main.go`: REST APIサーバー（ポート8080）の起動・DIワイヤリング
+   - `cmd/api/main.go`: REST APIサーバー（ポート8080）の起動・DIワイヤリング
      - 環境変数パースの純粋関数ヘルパーは `internal/app/config/`（`CORS_ALLOWED_ORIGINS` / `COOKIE_SECURE` 等）
    - `cmd/batch/main.go`: バッチジョブ統合エントリーポイント。コマンド引数 `job_id` で実行内容を切替（`candles`: TwelveData APIから株価データ取得 / `logo`: ロゴURL取得）
    - `cmd/migrate/main.go`: goose 埋め込みマイグレーションを適用する専用バイナリ（Cloud Run Job 等で起動）
@@ -189,7 +189,7 @@ feature/<name>/
    - リクエスト/レスポンス型は `api/openapi.yaml` に定義し、`go generate ./internal/api/...` で生成
 6. **DBスキーマの変更が必要なら**: `go tool goose create <name> sql` で
    `db/migrations/NNNNN_<name>.sql` を作成し、Up/Down 両方を必ず実装
-7. **依存関係をワイヤリング**: `cmd/server/main.go` または `cmd/batch/main.go` にて
+7. **依存関係をワイヤリング**: `cmd/api/main.go` または `cmd/batch/main.go` にて
 8. **ルートを登録**: `internal/app/router/router.go` にて
 9. **depguardルールを追加**: `.golangci.yml` に以下を追加：
    - `layer-isolation` ルールに新フィーチャーの `adapters` と `transport` パッケージのdenyエントリ

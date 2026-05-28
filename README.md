@@ -74,7 +74,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 ├── cmd/
 │   ├── ingest/                 # データ取得・取り込み（バッチジョブ）
 │   ├── migrate/                # スキーマのマイグレーション専用バイナリ（CI / Cloud Run pre-deploy 用）
-│   └── server/                 # メインエントリーポイント（main.go）
+│   └── api/                    # APIサーバーのエントリーポイント（main.go）
 │
 ├── internal/
 │   ├── api/                    # OpenAPIから自動生成された型定義
@@ -141,8 +141,8 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │
 ├── docker/                     # Docker関連ファイル
 │   ├── Dockerfile.batch        # バッチ統合用Dockerfile（本番・job_idでcandles/logo切替）
-│   ├── Dockerfile.server       # APIサーバー用Dockerfile（本番）
-│   ├── Dockerfile.server.dev   # APIサーバー用Dockerfile（ローカル開発）
+│   ├── Dockerfile.api          # APIサーバー用Dockerfile（本番）
+│   ├── Dockerfile.api.dev      # APIサーバー用Dockerfile（ローカル開発）
 │   ├── docker-compose.yml      # ローカル開発用 compose 定義（サービス・ネットワーク設定）
 │   ├── air.toml                # Air（ホットリロード）設定
 │   ├── example.env.app         # アプリ用環境変数テンプレート（コンテナにロード）
