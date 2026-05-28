@@ -73,10 +73,10 @@ func main() {
 		}()
 	}
 
-	// リポジトリ。auth/symbollist は sqlc 化済み (*sql.DB)、他は GORM (*gorm.DB) のまま。
+	// リポジトリ。auth/symbollist/candles は sqlc 化済み (*sql.DB)、watchlist は GORM のまま。
 	userRepo := authadapters.NewUserRepository(sqlDB)
 	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
-	candleRepo := candlesadapters.NewCandleRepository(db)
+	candleRepo := candlesadapters.NewCandleRepository(sqlDB)
 	watchlistRepo := watchlistadapters.NewWatchlistRepository(db)
 
 	// Redisキャッシュでラップ（TTLはingest連続失敗時のセーフティネット、通常は日次ingestで上書き）
