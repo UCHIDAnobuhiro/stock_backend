@@ -14,6 +14,11 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| oauth_accounts_created_at_not_null | n | NOT NULL created_at |
+| oauth_accounts_id_not_null | n | NOT NULL id |
+| oauth_accounts_provider_not_null | n | NOT NULL provider |
+| oauth_accounts_provider_uid_not_null | n | NOT NULL provider_uid |
+| oauth_accounts_user_id_not_null | n | NOT NULL user_id |
 | fk_oauth_accounts_user | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
 | oauth_accounts_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 

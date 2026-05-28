@@ -81,7 +81,7 @@ jobs:
       # GitHub Actions の Ryuk 周辺挙動が不安定なため、サービスコンテナで直接 PostgreSQL を提供する。
       # ユーザーは superuser として作成され CREATEDB 権限を持つので dbtest の CREATE DATABASE が通る。
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_DB: postgres
           POSTGRES_USER: appuser
@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env:
           POSTGRES_DB: app
           POSTGRES_USER: appuser

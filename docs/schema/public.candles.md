@@ -18,6 +18,15 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| candles_close_not_null | n | NOT NULL close |
+| candles_high_not_null | n | NOT NULL high |
+| candles_id_not_null | n | NOT NULL id |
+| candles_interval_not_null | n | NOT NULL "interval" |
+| candles_low_not_null | n | NOT NULL low |
+| candles_open_not_null | n | NOT NULL open |
+| candles_symbol_code_not_null | n | NOT NULL symbol_code |
+| candles_time_not_null | n | NOT NULL "time" |
+| candles_volume_not_null | n | NOT NULL volume |
 | fk_candles_symbol | FOREIGN KEY | FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT |
 | candles_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
