@@ -76,7 +76,7 @@ services:
       - ..:/app
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
-    command: ["go", "run", "./cmd/ingest"]
+    command: ["go", "run", "./cmd/batch", "candles"]
     restart: "no"
     depends_on:
       db:
@@ -132,11 +132,12 @@ services:
   logo-ingest:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.logo-ingest
+      dockerfile: docker/Dockerfile.batch
     image: stock-logo-ingest
     container_name: stock-logo-ingest
     env_file:
       - ./.env.app
+    command: ["logo"]
     restart: "no"
     profiles: ["on-demand"]
 

@@ -66,7 +66,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Main as cmd/ingest/main.go
+    participant Main as cmd/batch (candles)
     participant Usecase as IngestUsecase
     participant SymbolRepo as SymbolRepository
     participant RateLimiter

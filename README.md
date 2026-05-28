@@ -140,7 +140,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │       └── clientratelimit/    # 外部API呼び出し用 in-memory レートリミッター
 │
 ├── docker/                     # Docker関連ファイル
-│   ├── Dockerfile.ingest       # ingest用Dockerfile（本番）
+│   ├── Dockerfile.batch        # バッチ統合用Dockerfile（本番・job_idでcandles/logo切替）
 │   ├── Dockerfile.server       # APIサーバー用Dockerfile（本番）
 │   ├── Dockerfile.server.dev   # APIサーバー用Dockerfile（ローカル開発）
 │   ├── docker-compose.yml      # ローカル開発用 compose 定義（サービス・ネットワーク設定）
@@ -202,7 +202,7 @@ go generate ./internal/api/...
 
 ## データフロー（例: 株価取得）
 
-1. バッチプロセス（`cmd/ingest`）が外部API（Twelve Data）から株式データを取得
+1. バッチプロセス（`cmd/batch candles`）が外部API（Twelve Data）から株式データを取得
 2. 取得したローソク足データをPostgreSQL（またはCloud SQL）に保存
 3. フロントエンドが `GET /v1/candles/AAPL?interval=1day&outputsize=200` をリクエスト（JWT Bearer トークン付き）
 4. ハンドラーが `CandlesUsecase` を呼び出し

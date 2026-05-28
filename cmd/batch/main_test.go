@@ -1,0 +1,116 @@
+package main
+
+import (
+	"testing"
+
+	candlesusecase "stock_backend/internal/feature/candles/usecase"
+	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
+)
+
+// TestShouldFailExit はしきい値判定の境界条件を検証します。
+// しきい値ちょうど（FailureRate == threshold）は許容し、超過時のみ true を返すこと。
+// candles / logo 双方の result 型が failureRater を満たすことも兼ねて検証します。
+func TestShouldFailExit(t *testing.T) {
+	testCases := []struct {
+		name      string
+		result    failureRater
+		threshold float64
+		want      bool
+	}{
+		{
+			name:      "candles: 全銘柄成功 → exit 0",
+			result:    candlesusecase.IngestResult{Total: 10, Succeeded: 10, Failed: 0},
+			threshold: 0.2,
+			want:      false,
+		},
+		{
+			name:      "candles: 失敗率がしきい値ちょうど → exit 0（許容）",
+			result:    candlesusecase.IngestResult{Total: 10, Succeeded: 8, Failed: 2},
+			threshold: 0.2,
+			want:      false,
+		},
+		{
+			name:      "candles: 失敗率がしきい値超過 → exit 1",
+			result:    candlesusecase.IngestResult{Total: 10, Succeeded: 7, Failed: 3},
+			threshold: 0.2,
+			want:      true,
+		},
+		{
+			name:      "candles: 全銘柄失敗 → exit 1",
+			result:    candlesusecase.IngestResult{Total: 5, Succeeded: 0, Failed: 5},
+			threshold: 0.2,
+			want:      true,
+		},
+		{
+			name:      "candles: Total=0（symbol 空） → exit 0",
+			result:    candlesusecase.IngestResult{Total: 0},
+			threshold: 0.2,
+			want:      false,
+		},
+		{
+			name:      "candles: threshold=0 で 1 件失敗 → exit 1（厳格モード）",
+			result:    candlesusecase.IngestResult{Total: 10, Succeeded: 9, Failed: 1},
+			threshold: 0,
+			want:      true,
+		},
+		{
+			name:      "candles: threshold=1.0 で全件失敗 → exit 0（最寛容）",
+			result:    candlesusecase.IngestResult{Total: 5, Succeeded: 0, Failed: 5},
+			threshold: 1.0,
+			want:      false,
+		},
+		{
+			name:      "logo: 全銘柄成功 → exit 0",
+			result:    symbollistusecase.LogoIngestResult{Total: 10, Succeeded: 10, Failed: 0},
+			threshold: 0.2,
+			want:      false,
+		},
+		{
+			name:      "logo: 失敗率がしきい値ちょうど → exit 0（許容）",
+			result:    symbollistusecase.LogoIngestResult{Total: 10, Succeeded: 8, Failed: 2},
+			threshold: 0.2,
+			want:      false,
+		},
+		{
+			name:      "logo: 失敗率がしきい値超過 → exit 1",
+			result:    symbollistusecase.LogoIngestResult{Total: 10, Succeeded: 7, Failed: 3},
+			threshold: 0.2,
+			want:      true,
+		},
+		{
+			name:      "logo: Total=0（symbol 空） → exit 0",
+			result:    symbollistusecase.LogoIngestResult{Total: 0},
+			threshold: 0.2,
+			want:      false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := shouldFailExit(tc.result, tc.threshold); got != tc.want {
+				t.Errorf("shouldFailExit(%+v, %v)=%v, want %v", tc.result, tc.threshold, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestRunInvalidJobID は job_id 未指定・未知の値で exit code 2 を返すことを検証します。
+// candles / logo は DB 接続を伴うため、ここでは引数ディスパッチのエラー系のみを対象とします。
+func TestRunInvalidJobID(t *testing.T) {
+	testCases := []struct {
+		name string
+		args []string
+		want int
+	}{
+		{name: "job_id 未指定", args: []string{}, want: 2},
+		{name: "未知の job_id", args: []string{"bogus"}, want: 2},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := run(tc.args); got != tc.want {
+				t.Errorf("run(%v)=%d, want %d", tc.args, got, tc.want)
+			}
+		})
+	}
+}

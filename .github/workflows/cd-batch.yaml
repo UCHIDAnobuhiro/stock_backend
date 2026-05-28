@@ -11,16 +11,23 @@ permissions:
 
 env:
     REGION: asia-northeast1
-    JOB_NAME: ingest
     REGISTRY: asia-northeast1-docker.pkg.dev/stock-app-473503/stock-registry
     IMAGE_TAG: ${{ github.sha }}
-    DOCKERFILE_PATH: docker/Dockerfile.ingest
+    DOCKERFILE_PATH: docker/Dockerfile.batch
     BUILD_CONTEXT: .
     RUNTIME_SERVICE_ACCOUNT: cr-jobs-runner@stock-app-473503.iam.gserviceaccount.com
 
 jobs:
     deploy-batch:
         runs-on: ubuntu-latest
+
+        strategy:
+            matrix:
+                include:
+                    - job_name: ingest
+                      batch_arg: candles
+                    - job_name: logo
+                      batch_arg: logo
 
         steps:
             - name: Checkout
@@ -43,7 +50,9 @@ jobs:
             - name: Build & Push batch image
               run: |
                   set -euo pipefail
-                  IMAGE=${{ env.REGISTRY }}/${{ env.JOB_NAME }}:${{ env.IMAGE_TAG }}
+                  # 統合バイナリの単一イメージ。job_id はジョブ設定の --args で切り替えるため
+                  # ingest / logo のジョブは同一イメージを共有する（同一タグへの再 push は冪等）。
+                  IMAGE=${{ env.REGISTRY }}/batch:${{ env.IMAGE_TAG }}
                   DOCKER_BUILDKIT=1 docker build -t "$IMAGE" -f "${{ env.DOCKERFILE_PATH }}" "${{ env.BUILD_CONTEXT }}"
                   docker push "$IMAGE"
                   echo "IMAGE=$IMAGE" >> $GITHUB_ENV
@@ -52,7 +61,7 @@ jobs:
               shell: bash
               run: |
                   set -euo pipefail
-                  if gcloud run jobs describe "${{ env.JOB_NAME }}" --region "${{ env.REGION }}" >/dev/null 2>&1; then
+                  if gcloud run jobs describe "${{ matrix.job_name }}" --region "${{ env.REGION }}" >/dev/null 2>&1; then
                     CMD="update"
                   else
                     CMD="create"
@@ -61,12 +70,13 @@ jobs:
                   ARGS=(
                     "--image=$IMAGE"
                     "--region=${{ env.REGION }}"
+                    "--args=${{ matrix.batch_arg }}"
                     "--tasks=1"
                     "--max-retries=1"
                     "--task-timeout=900s"
                     "--cpu=1"
                     "--memory=512Mi"
-                    --set-env-vars=GIN_MODE=release 
+                    --set-env-vars=GIN_MODE=release
                     "--service-account=${{ env.RUNTIME_SERVICE_ACCOUNT }}"
                     "--add-cloudsql-instances=${{ secrets.INSTANCE_CONNECTION_NAME_FOR_DEPLOY }}"
                     "--vpc-connector=run-connector"
@@ -75,7 +85,7 @@ jobs:
                   )
 
                   if [ "$CMD" = "create" ]; then
-                    gcloud run jobs create "${{ env.JOB_NAME }}" "${ARGS[@]}"
+                    gcloud run jobs create "${{ matrix.job_name }}" "${ARGS[@]}"
                   else
-                    gcloud run jobs update "${{ env.JOB_NAME }}" "${ARGS[@]}"
+                    gcloud run jobs update "${{ matrix.job_name }}" "${ARGS[@]}"
                   fi
