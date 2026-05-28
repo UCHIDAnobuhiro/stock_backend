@@ -166,10 +166,10 @@ API仕様は `api/openapi.yaml`（OpenAPI 3.0.3）で管理しています。
 
 ### 仕様の確認（Swagger UI）
 
-開発環境の起動時に Swagger UI も自動で立ち上がります：
+`backend` の起動時に Swagger UI も依存として自動で立ち上がります：
 
 ```bash
-docker compose -f docker/docker-compose.yml -p stock up backend swagger-ui
+docker compose -f docker/docker-compose.yml -p stock up backend
 ```
 
 ブラウザで http://localhost:8081 を開くとAPI仕様を確認できます。
@@ -351,9 +351,15 @@ GOOGLE_CLOUD_LOCATION=asia-northeast1
 
 ### APIサーバーの起動
 
+`backend` を起動すると、依存として `migrate`（マイグレーション適用）→ `seed`（初期データ投入）が
+順に実行され、`swagger-ui`（http://localhost:8081 ）も並行起動します。
+
 ```bash
 docker compose -f docker/docker-compose.yml -p stock up backend
 ```
+
+`seed.sql` は冪等（`INSERT ... ON CONFLICT` による upsert のみ）なので、再起動のたびに
+再実行されても既存の candles / watchlists 等は削除されません。
 
 ### バッチプロセスの起動（株式データ取り込み）
 

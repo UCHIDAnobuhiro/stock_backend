@@ -50,6 +50,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      swagger-ui:
+        condition: service_started
     ports:
       - "8080:8080"
     restart: unless-stopped
@@ -79,7 +85,8 @@ services:
         condition: service_healthy
 
   # マイグレーション専用バイナリ。本番では同 Dockerfile を Cloud Run Job 等にデプロイ。
-  # ローカル: docker compose -f docker/docker-compose.yml -p stock run --rm migrate [up|status|down|...]
+  # backend 起動時に依存として自動実行される。
+  # 個別実行: docker compose -f docker/docker-compose.yml -p stock run --rm migrate [up|status|down|...]
   migrate:
     build:
       context: ..
@@ -87,10 +94,29 @@ services:
     env_file:
       - ./.env.app
     restart: "no"
-    profiles: ["on-demand"]
     depends_on:
       db:
         condition: service_healthy
+
+  # 初期データ投入（symbols の upsert）。migrate 完了後に seed.sql を流す。
+  # seed.sql は冪等なので起動のたびに再実行されても既存データを消さない。
+  seed:
+    image: postgres:18
+    container_name: stock-seed
+    env_file:
+      - ./.env.app
+    volumes:
+      - ./postgres/seed.sql:/seed.sql:ro
+    command:
+      - sh
+      - -c
+      - 'PGPASSWORD="$$DB_PASSWORD" psql -h "$$DB_HOST" -p "$$DB_PORT" -U "$$DB_USER" -d "$$DB_NAME" -v ON_ERROR_STOP=1 -f /seed.sql'
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   swagger-ui:
     image: swaggerapi/swagger-ui

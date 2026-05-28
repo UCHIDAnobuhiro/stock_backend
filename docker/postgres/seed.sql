@@ -1,7 +1,5 @@
--- 警告: このスクリプトは symbols を参照する全テーブル（candles, watchlists 等）を CASCADE で全削除します。
--- ローカル開発環境専用です。本番・staging 環境では絶対に実行しないでください。
-TRUNCATE TABLE symbols CASCADE;
-
+-- symbols の初期データ投入。INSERT ... ON CONFLICT による upsert のみで冪等。
+-- candles / watchlists 等の既存データは削除しないため、起動のたびに安全に再実行できる。
 INSERT INTO symbols (code, name, market, timezone, created_at, updated_at) VALUES
 -- 時価総額上位（メガキャップ）
 ('NVDA', 'NVIDIA Corp', 'NASDAQ', 'America/New_York', NOW(), NOW()),
