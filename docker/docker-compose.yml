@@ -2,7 +2,7 @@
 # ローカル開発用 compose 定義（本番デプロイは GitHub Actions から Cloud Run に直接デプロイされる）
 services:
   db:
-    image: postgres:16
+    image: postgres:18
     container_name: stock-postgres
     environment:
       POSTGRES_DB: app
@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: apppass
       TZ: Asia/Tokyo
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     ports:
       - "5432:5432"
     restart: unless-stopped

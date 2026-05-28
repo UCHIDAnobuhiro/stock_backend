@@ -54,6 +54,46 @@
       ],
       "constraints": [
         {
+          "name": "users_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "users_email_not_null",
+          "type": "n",
+          "def": "NOT NULL email",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "email"
+          ]
+        },
+        {
+          "name": "users_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "users_updated_at_not_null",
+          "type": "n",
+          "def": "NOT NULL updated_at",
+          "table": "public.users",
+          "referenced_table": "",
+          "columns": [
+            "updated_at"
+          ]
+        },
+        {
           "name": "users_pkey",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
@@ -125,6 +165,56 @@
         }
       ],
       "constraints": [
+        {
+          "name": "oauth_accounts_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.oauth_accounts",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "oauth_accounts_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.oauth_accounts",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "oauth_accounts_provider_not_null",
+          "type": "n",
+          "def": "NOT NULL provider",
+          "table": "public.oauth_accounts",
+          "referenced_table": "",
+          "columns": [
+            "provider"
+          ]
+        },
+        {
+          "name": "oauth_accounts_provider_uid_not_null",
+          "type": "n",
+          "def": "NOT NULL provider_uid",
+          "table": "public.oauth_accounts",
+          "referenced_table": "",
+          "columns": [
+            "provider_uid"
+          ]
+        },
+        {
+          "name": "oauth_accounts_user_id_not_null",
+          "type": "n",
+          "def": "NOT NULL user_id",
+          "table": "public.oauth_accounts",
+          "referenced_table": "",
+          "columns": [
+            "user_id"
+          ]
+        },
         {
           "name": "fk_oauth_accounts_user",
           "type": "FOREIGN KEY",
@@ -229,6 +319,86 @@
       ],
       "constraints": [
         {
+          "name": "symbols_code_not_null",
+          "type": "n",
+          "def": "NOT NULL code",
+          "table": "public.symbols",
+          "referenced_table": "",
+          "columns": [
+            "code"
+          ]
+        },
+        {
+          "name": "symbols_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.symbols",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "symbols_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.symbols",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "symbols_is_active_not_null",
+          "type": "n",
+          "def": "NOT NULL is_active",
+          "table": "public.symbols",
+          "referenced_table": "",
+          "columns": [
+            "is_active"
+          ]
+        },
+        {
+          "name": "symbols_market_not_null",
+          "type": "n",
+          "def": "NOT NULL market",
+          "table": "public.symbols",
+          "referenced_table": "",
+          "columns": [
+            "market"
+          ]
+        },
+        {
+          "name": "symbols_name_not_null",
+          "type": "n",
+          "def": "NOT NULL name",
+          "table": "public.symbols",
+          "referenced_table": "",
+          "columns": [
+            "name"
+          ]
+        },
+        {
+          "name": "symbols_timezone_not_null",
+          "type": "n",
+          "def": "NOT NULL timezone",
+          "table": "public.symbols",
+          "referenced_table": "",
+          "columns": [
+            "timezone"
+          ]
+        },
+        {
+          "name": "symbols_updated_at_not_null",
+          "type": "n",
+          "def": "NOT NULL updated_at",
+          "table": "public.symbols",
+          "referenced_table": "",
+          "columns": [
+            "updated_at"
+          ]
+        },
+        {
           "name": "symbols_pkey",
           "type": "PRIMARY KEY",
           "def": "PRIMARY KEY (id)",
@@ -313,6 +483,96 @@
         }
       ],
       "constraints": [
+        {
+          "name": "candles_close_not_null",
+          "type": "n",
+          "def": "NOT NULL close",
+          "table": "public.candles",
+          "referenced_table": "",
+          "columns": [
+            "close"
+          ]
+        },
+        {
+          "name": "candles_high_not_null",
+          "type": "n",
+          "def": "NOT NULL high",
+          "table": "public.candles",
+          "referenced_table": "",
+          "columns": [
+            "high"
+          ]
+        },
+        {
+          "name": "candles_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.candles",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "candles_interval_not_null",
+          "type": "n",
+          "def": "NOT NULL \"interval\"",
+          "table": "public.candles",
+          "referenced_table": "",
+          "columns": [
+            "interval"
+          ]
+        },
+        {
+          "name": "candles_low_not_null",
+          "type": "n",
+          "def": "NOT NULL low",
+          "table": "public.candles",
+          "referenced_table": "",
+          "columns": [
+            "low"
+          ]
+        },
+        {
+          "name": "candles_open_not_null",
+          "type": "n",
+          "def": "NOT NULL open",
+          "table": "public.candles",
+          "referenced_table": "",
+          "columns": [
+            "open"
+          ]
+        },
+        {
+          "name": "candles_symbol_code_not_null",
+          "type": "n",
+          "def": "NOT NULL symbol_code",
+          "table": "public.candles",
+          "referenced_table": "",
+          "columns": [
+            "symbol_code"
+          ]
+        },
+        {
+          "name": "candles_time_not_null",
+          "type": "n",
+          "def": "NOT NULL \"time\"",
+          "table": "public.candles",
+          "referenced_table": "",
+          "columns": [
+            "time"
+          ]
+        },
+        {
+          "name": "candles_volume_not_null",
+          "type": "n",
+          "def": "NOT NULL volume",
+          "table": "public.candles",
+          "referenced_table": "",
+          "columns": [
+            "volume"
+          ]
+        },
         {
           "name": "fk_candles_symbol",
           "type": "FOREIGN KEY",
@@ -415,6 +675,66 @@
       ],
       "constraints": [
         {
+          "name": "watchlists_created_at_not_null",
+          "type": "n",
+          "def": "NOT NULL created_at",
+          "table": "public.watchlists",
+          "referenced_table": "",
+          "columns": [
+            "created_at"
+          ]
+        },
+        {
+          "name": "watchlists_id_not_null",
+          "type": "n",
+          "def": "NOT NULL id",
+          "table": "public.watchlists",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "watchlists_sort_key_not_null",
+          "type": "n",
+          "def": "NOT NULL sort_key",
+          "table": "public.watchlists",
+          "referenced_table": "",
+          "columns": [
+            "sort_key"
+          ]
+        },
+        {
+          "name": "watchlists_symbol_code_not_null",
+          "type": "n",
+          "def": "NOT NULL symbol_code",
+          "table": "public.watchlists",
+          "referenced_table": "",
+          "columns": [
+            "symbol_code"
+          ]
+        },
+        {
+          "name": "watchlists_updated_at_not_null",
+          "type": "n",
+          "def": "NOT NULL updated_at",
+          "table": "public.watchlists",
+          "referenced_table": "",
+          "columns": [
+            "updated_at"
+          ]
+        },
+        {
+          "name": "watchlists_user_id_not_null",
+          "type": "n",
+          "def": "NOT NULL user_id",
+          "table": "public.watchlists",
+          "referenced_table": "",
+          "columns": [
+            "user_id"
+          ]
+        },
+        {
           "name": "fk_watchlists_user",
           "type": "FOREIGN KEY",
           "def": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
@@ -509,7 +829,7 @@
   ],
   "driver": {
     "name": "postgres",
-    "database_version": "PostgreSQL 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+    "database_version": "PostgreSQL 18.4 (Debian 18.4-1.pgdg13+1) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
     "meta": {
       "current_schema": "public",
       "search_paths": [

@@ -14,6 +14,10 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| users_created_at_not_null | n | NOT NULL created_at |
+| users_email_not_null | n | NOT NULL email |
+| users_id_not_null | n | NOT NULL id |
+| users_updated_at_not_null | n | NOT NULL updated_at |
 | users_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes

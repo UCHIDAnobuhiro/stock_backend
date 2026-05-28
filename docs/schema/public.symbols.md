@@ -19,6 +19,14 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| symbols_code_not_null | n | NOT NULL code |
+| symbols_created_at_not_null | n | NOT NULL created_at |
+| symbols_id_not_null | n | NOT NULL id |
+| symbols_is_active_not_null | n | NOT NULL is_active |
+| symbols_market_not_null | n | NOT NULL market |
+| symbols_name_not_null | n | NOT NULL name |
+| symbols_timezone_not_null | n | NOT NULL timezone |
+| symbols_updated_at_not_null | n | NOT NULL updated_at |
 | symbols_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes

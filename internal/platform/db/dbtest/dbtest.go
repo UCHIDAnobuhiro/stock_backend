@@ -120,7 +120,7 @@ func setup(ctx context.Context) error {
 	}
 
 	pgC, err := tcpostgres.Run(ctx,
-		"postgres:16-alpine",
+		"postgres:18-alpine",
 		tcpostgres.WithDatabase("postgres"),
 		tcpostgres.WithUsername("appuser"),
 		tcpostgres.WithPassword("apppass"),

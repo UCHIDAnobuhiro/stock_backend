@@ -15,6 +15,12 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| watchlists_created_at_not_null | n | NOT NULL created_at |
+| watchlists_id_not_null | n | NOT NULL id |
+| watchlists_sort_key_not_null | n | NOT NULL sort_key |
+| watchlists_symbol_code_not_null | n | NOT NULL symbol_code |
+| watchlists_updated_at_not_null | n | NOT NULL updated_at |
+| watchlists_user_id_not_null | n | NOT NULL user_id |
 | fk_watchlists_user | FOREIGN KEY | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE |
 | fk_watchlists_symbol | FOREIGN KEY | FOREIGN KEY (symbol_code) REFERENCES symbols(code) ON DELETE RESTRICT |
 | watchlists_pkey | PRIMARY KEY | PRIMARY KEY (id) |
