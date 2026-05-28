@@ -132,6 +132,18 @@ linters:
             - pkg: "stock_backend/internal/feature/watchlist"
               desc: "platform must not depend on feature"
 
+        # GORM は sqlc + database/sql に移行済み。再混入を防止する。
+        no-gorm:
+          files:
+            - "$all"
+          deny:
+            - pkg: "gorm.io/gorm"
+              desc: "GORM is removed; use sqlc-generated queries on database/sql instead"
+            - pkg: "gorm.io/driver/postgres"
+              desc: "use github.com/jackc/pgx/v5/stdlib (database/sql driver) instead"
+            - pkg: "gorm.io/driver/sqlite"
+              desc: "use testcontainers-go for real PostgreSQL in tests instead"
+
 formatters:
   enable:
     - gofmt
