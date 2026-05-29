@@ -38,7 +38,7 @@ services:
   backend:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.server.dev
+      dockerfile: docker/Dockerfile.api.dev
     container_name: stock-backend
     env_file:
       - ./.env.app
@@ -69,7 +69,7 @@ services:
   ingest:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.server.dev
+      dockerfile: docker/Dockerfile.api.dev
     env_file:
       - ./.env.app
     volumes:

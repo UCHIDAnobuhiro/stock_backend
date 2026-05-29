@@ -66,7 +66,7 @@ go tool goose down
 ## 本番・ステージング環境での適用
 
 `docker/Dockerfile.migrate` でビルドした `migrate` バイナリを Cloud Run Job などで起動し、
-デプロイの前段で `migrate up` を実行してから `cmd/server` のデプロイへ進みます。
+デプロイの前段で `migrate up` を実行してから `cmd/api` のデプロイへ進みます。
 
 接続情報はサーバーと同じ環境変数（`DB_USER` / `DB_PASSWORD` / `DB_NAME` / `DB_HOST` / `DB_PORT` /
 `INSTANCE_CONNECTION_NAME`）から読み取ります。

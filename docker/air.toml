@@ -2,9 +2,9 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -o tmp/server ./cmd/server"
-bin = "tmp/server"
-full_bin = "tmp/server"
+cmd = "go build -o tmp/api ./cmd/api"
+bin = "tmp/api"
+full_bin = "tmp/api"
 log = "build.log"
 delay = 1000
 kill_delay = 500
