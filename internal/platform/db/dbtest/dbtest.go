@@ -36,6 +36,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/testcontainers/testcontainers-go"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
 
 	infradb "stock_backend/internal/platform/db"
 )
@@ -124,7 +125,13 @@ func setup(ctx context.Context) error {
 		tcpostgres.WithDatabase("postgres"),
 		tcpostgres.WithUsername("appuser"),
 		tcpostgres.WithPassword("apppass"),
-		testcontainers.WithWaitStrategyAndDeadline(60*time.Second),
+		// WithWaitStrategyAndDeadline は postgres モジュールのデフォルト待機戦略を
+		// 上書きするため、戦略を省略するとデフォルトが消えて
+		// "no wait strategy supplied" で起動に失敗する。
+		// デフォルトと同等（"ready to accept connections" を 2 回待つ）の戦略を明示的に渡す。
+		testcontainers.WithWaitStrategyAndDeadline(60*time.Second,
+			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
+		),
 	)
 	if err != nil {
 		return fmt.Errorf("dbtest: start postgres container: %w", err)
