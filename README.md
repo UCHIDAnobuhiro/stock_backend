@@ -49,7 +49,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 
 | カテゴリ        | 技術                                                                |
 | --------------- | ------------------------------------------------------------------- |
-| 言語            | Go (1.25.8)                                                          |
+| 言語            | Go (1.26.3)                                                          |
 | Webフレームワーク | Gin                                                                 |
 | DB アクセス     | sqlc + database/sql + pgx/v5 stdlib                                 |
 | DB マイグレーション | goose（埋め込み SQL ベース）                                      |
@@ -57,7 +57,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 | キャッシュ      | Redis                                                               |
 | AI / ML         | Cloud Vision API / Gemini API（Vertex AI）                          |
 | 認証・セキュリティ | JWT / bcrypt / CSRF（Double Submit Cookie）/ レートリミット       |
-| API仕様         | OpenAPI 3.0.3 / oapi-codegen（型生成）                              |
+| API仕様         | OpenAPI 3.0.4 / oapi-codegen（型生成）                              |
 | 設定管理        | **docker/.env.app（ローカル）/ Secret Manager（本番）+ os.Getenv()**|
 | コンテナ        | Docker / Docker Compose                                             |
 | クラウド        | Google Cloud Run / Cloud SQL / Secret Manager / Artifact Registry   |
@@ -68,7 +68,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 ```text
 .
 ├── api/
-│   ├── openapi.yaml            # OpenAPI 3.0.3 仕様（APIコントラクトの単一ソース）
+│   ├── openapi.yaml            # OpenAPI 3.0.4 仕様（APIコントラクトの単一ソース）
 │   └── oapi-codegen.cfg.yaml   # oapi-codegen設定（型のみ生成）
 │
 ├── cmd/
@@ -161,7 +161,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 
 ## API仕様（OpenAPI）
 
-API仕様は `api/openapi.yaml`（OpenAPI 3.0.3）で管理しています。
+API仕様は `api/openapi.yaml`（OpenAPI 3.0.4）で管理しています。
 この仕様ファイルから [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen) を使って Go の型定義を自動生成しています。
 
 ### 仕様の確認（Swagger UI）
