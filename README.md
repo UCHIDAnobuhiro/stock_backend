@@ -381,9 +381,9 @@ docker compose -f docker/docker-compose.yml -p stock --profile on-demand run --r
 `db/migrations/` 配下のスキーマを変更したときは以下の手順で再生成します。
 
 ```bash
-# 1) dev コンテナを起動 + マイグレーションを適用
-docker compose -f docker/docker-compose.yml -p stock up -d db
-docker compose -f docker/docker-compose.yml -p stock run --rm migrate
+# 1) backend を起動（依存する db / migrate / seed が順に立ち上がり、最新スキーマが適用される）
+#    フォアグラウンドで起動し続けるので、手順 2)・3) は別ターミナルで実行する
+docker compose -f docker/docker-compose.yml -p stock up backend
 
 # 2) ER 図・テーブル定義書を再生成（docs/schema/ を上書き）
 docker compose -f docker/docker-compose.yml -p stock --profile on-demand run --rm tbls doc --config /work/docs/tbls.yml --force
@@ -392,10 +392,10 @@ docker compose -f docker/docker-compose.yml -p stock --profile on-demand run --r
 docker compose -f docker/docker-compose.yml -p stock --profile on-demand run --rm tbls diff --config /work/docs/tbls.yml
 ```
 
-GCP 認証情報を持たない環境などで `backend` の起動が難しい場合は、手順 1) を以下の軽量バイナリ (`cmd/migrate`) に置き換えられます。
+`backend` は `.env.app` や GCP ADC 等の環境が必要です。認証情報を持たない環境では、手順 1) を以下の軽量バイナリ (`cmd/migrate`) に置き換えられます（引数なしで `up` が適用されます）。
 
 ```bash
-# 1') db だけ起動して cmd/migrate でスキーマを反映（GCP 認証不要）
+# 1') db だけ起動してローカルの cmd/migrate でスキーマを反映（GCP 認証不要）
 docker compose -f docker/docker-compose.yml -p stock up -d db
 DB_HOST=localhost DB_PORT=5432 DB_USER=appuser DB_PASSWORD=apppass DB_NAME=app \
   go run ./cmd/migrate
