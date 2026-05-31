@@ -170,7 +170,11 @@ func run() int {
 	}
 
 	// データベース接続。スキーマ適用は cmd/migrate バイナリ（goose）で別途実施する。
-	sqlDB := infradb.OpenSQL()
+	sqlDB, err := infradb.OpenSQL()
+	if err != nil {
+		slog.Error("DB open failed", "error", err)
+		return 1
+	}
 	defer func() {
 		if err := sqlDB.Close(); err != nil {
 			slog.Warn("failed to close sqlDB", "error", err)

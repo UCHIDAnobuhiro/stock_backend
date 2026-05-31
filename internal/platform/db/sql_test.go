@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -89,5 +90,44 @@ func TestConnectSQLWithRetry_ErrorWrapped(t *testing.T) {
 	}
 	if !errors.Is(err, sentinel) {
 		t.Errorf("expected wrapped sentinel error, got %v", err)
+	}
+}
+
+func TestOpenSQL_InvalidConfig(t *testing.T) {
+	t.Setenv("DB_USER", "")
+
+	_, err := OpenSQL()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid DB config") {
+		t.Errorf("expected invalid config error, got %v", err)
+	}
+}
+
+func TestOpenSQLWithRetry_ConnectionFailure(t *testing.T) {
+	t.Setenv("DB_USER", "appuser")
+	t.Setenv("DB_PASSWORD", "apppass")
+	t.Setenv("DB_NAME", "app")
+	t.Setenv("DB_HOST", "localhost")
+	t.Setenv("DB_PORT", "5432")
+	t.Setenv("INSTANCE_CONNECTION_NAME", "")
+
+	sentinel := errors.New("connection refused")
+	calls := 0
+	opener := func(dsn string) (*sql.DB, error) {
+		calls++
+		return nil, sentinel
+	}
+
+	_, err := openSQLWithRetry(0, opener)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, sentinel) {
+		t.Errorf("expected wrapped sentinel error, got %v", err)
+	}
+	if calls != 1 {
+		t.Errorf("expected 1 attempt, got %d", calls)
 	}
 }

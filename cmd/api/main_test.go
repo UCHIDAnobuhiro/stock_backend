@@ -81,6 +81,17 @@ func TestLoadServerConfig(t *testing.T) {
 	})
 }
 
+func TestRun_ReturnsOneWhenDBConfigInvalid(t *testing.T) {
+	clearEnv(t)
+	t.Setenv(jwtmw.EnvKeyJWTSecret, "secret")
+	t.Setenv(authusecase.EnvKeyPasswordPepper, "pepper")
+	t.Setenv("DB_USER", "")
+
+	if got := run(); got != 1 {
+		t.Errorf("run() = %d, want 1", got)
+	}
+}
+
 func TestLoadOAuthConfig(t *testing.T) {
 	t.Run("プロバイダ未設定は無効(nil)", func(t *testing.T) {
 		clearEnv(t)
