@@ -1,8 +1,11 @@
 package jwtmw
 
 import (
+	"errors"
+	"math"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -66,14 +69,35 @@ func AuthRequired() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
 			return
 		}
-		sub, ok := claims["sub"].(float64) // JWTの数値はfloat64としてデコードされる
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token: missing subject"})
+		userID, err := parseSubject(claims["sub"])
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token: invalid subject"})
 			return
 		}
-		c.Set(ContextUserID, uint(sub))
+		c.Set(ContextUserID, userID)
 
 		// 6. 次のハンドラーに制御を渡す
 		c.Next()
+	}
+}
+
+// parseSubject はJWT subjectをユーザーIDへ変換します。
+// 新規トークンは文字列を使用しますが、移行中の既存トークン向けに安全な範囲の数値も受理します。
+func parseSubject(claim any) (int64, error) {
+	switch sub := claim.(type) {
+	case string:
+		userID, err := strconv.ParseInt(sub, 10, 64)
+		if err != nil || userID <= 0 {
+			return 0, errors.New("subject must be a positive integer")
+		}
+		return userID, nil
+	case float64:
+		const maxSafeInteger = float64(1<<53 - 1)
+		if sub <= 0 || sub > maxSafeInteger || math.Trunc(sub) != sub {
+			return 0, errors.New("numeric subject must be a safe positive integer")
+		}
+		return int64(sub), nil
+	default:
+		return 0, errors.New("subject must be a string or number")
 	}
 }

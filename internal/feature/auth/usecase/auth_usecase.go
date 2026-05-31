@@ -25,7 +25,7 @@ const (
 // UserCreatedHook はユーザー新規作成後に呼び出されるフックのインターフェースです。
 // usecase層でインターフェースを定義することで、transport層への依存を避けます。
 type UserCreatedHook interface {
-	OnUserCreated(ctx context.Context, userID uint) error
+	OnUserCreated(ctx context.Context, userID int64) error
 }
 
 // OAuthUserInfo はOAuth2プロバイダーから取得したユーザー情報です。
@@ -80,14 +80,14 @@ type UserRepository interface {
 
 	// FindByID は指定されたIDに一致するユーザーを取得します。
 	// ユーザーが存在しない場合、エラーを返します。
-	FindByID(ctx context.Context, id uint) (*entity.User, error)
+	FindByID(ctx context.Context, id int64) (*entity.User, error)
 }
 
 // JWTGenerator はJWTトークン生成のインターフェースを定義します。
 // Goの慣例に従い、インターフェースはプロバイダー（platform/jwt）ではなくコンシューマー（usecase）が定義します。
 type JWTGenerator interface {
 	// GenerateToken は指定されたユーザーの署名済みJWTトークンを生成します。
-	GenerateToken(userID uint, email string) (string, error)
+	GenerateToken(userID int64, email string) (string, error)
 }
 
 // authUsecase は認証ビジネスロジックを実装します。
@@ -133,7 +133,7 @@ func validatePassword(password string) error {
 
 // Signup はハッシュ化されたパスワードで新規ユーザーを登録します。
 // 成功時に作成されたユーザーのIDを返します。
-func (u *authUsecase) Signup(ctx context.Context, email, password string) (uint, error) {
+func (u *authUsecase) Signup(ctx context.Context, email, password string) (int64, error) {
 	// パスワード強度を検証
 	if err := validatePassword(password); err != nil {
 		return 0, err

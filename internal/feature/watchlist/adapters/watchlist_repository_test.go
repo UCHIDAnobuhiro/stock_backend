@@ -56,13 +56,13 @@ func TestWatchlistRepository_Add_and_ListByUser(t *testing.T) {
 	repo := NewWatchlistRepository(db)
 
 	require.NoError(t, repo.Add(context.Background(), entity.UserSymbol{
-		UserID: uint(ids.u1), SymbolCode: "AAPL", SortKey: 0,
+		UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0,
 	}))
 	require.NoError(t, repo.Add(context.Background(), entity.UserSymbol{
-		UserID: uint(ids.u1), SymbolCode: "GOOGL", SortKey: 1,
+		UserID: ids.u1, SymbolCode: "GOOGL", SortKey: 1,
 	}))
 
-	list, err := repo.ListByUser(context.Background(), uint(ids.u1))
+	list, err := repo.ListByUser(context.Background(), ids.u1)
 	require.NoError(t, err)
 	require.Len(t, list, 2)
 	assert.Equal(t, "AAPL", list[0].SymbolCode)
@@ -77,10 +77,10 @@ func TestWatchlistRepository_Add_DuplicateEntry(t *testing.T) {
 	repo := NewWatchlistRepository(db)
 
 	require.NoError(t, repo.Add(context.Background(), entity.UserSymbol{
-		UserID: uint(ids.u1), SymbolCode: "AAPL", SortKey: 0,
+		UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0,
 	}))
 	err := repo.Add(context.Background(), entity.UserSymbol{
-		UserID: uint(ids.u1), SymbolCode: "AAPL", SortKey: 1,
+		UserID: ids.u1, SymbolCode: "AAPL", SortKey: 1,
 	})
 	assert.ErrorIs(t, err, usecase.ErrAlreadyInWatchlist)
 }
@@ -91,7 +91,7 @@ func TestWatchlistRepository_Add_UnknownSymbol(t *testing.T) {
 	repo := NewWatchlistRepository(db)
 
 	err := repo.Add(context.Background(), entity.UserSymbol{
-		UserID: uint(ids.u1), SymbolCode: "UNKNOWN", SortKey: 0,
+		UserID: ids.u1, SymbolCode: "UNKNOWN", SortKey: 0,
 	})
 	assert.ErrorIs(t, err, usecase.ErrSymbolNotFound)
 }
@@ -102,11 +102,11 @@ func TestWatchlistRepository_Remove(t *testing.T) {
 	repo := NewWatchlistRepository(db)
 
 	require.NoError(t, repo.Add(context.Background(), entity.UserSymbol{
-		UserID: uint(ids.u1), SymbolCode: "AAPL", SortKey: 0,
+		UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0,
 	}))
 
-	require.NoError(t, repo.Remove(context.Background(), uint(ids.u1), "AAPL"))
-	list, err := repo.ListByUser(context.Background(), uint(ids.u1))
+	require.NoError(t, repo.Remove(context.Background(), ids.u1, "AAPL"))
+	list, err := repo.ListByUser(context.Background(), ids.u1)
 	require.NoError(t, err)
 	assert.Empty(t, list)
 }
@@ -116,7 +116,7 @@ func TestWatchlistRepository_Remove_NotFound(t *testing.T) {
 	db, ids := setupTestDB(t)
 	repo := NewWatchlistRepository(db)
 
-	err := repo.Remove(context.Background(), uint(ids.u1), "AAPL")
+	err := repo.Remove(context.Background(), ids.u1, "AAPL")
 	assert.ErrorIs(t, err, usecase.ErrNotInWatchlist)
 }
 
@@ -125,11 +125,11 @@ func TestWatchlistRepository_AddWithNextSortKey(t *testing.T) {
 	db, ids := setupTestDB(t)
 	repo := NewWatchlistRepository(db)
 
-	require.NoError(t, repo.AddWithNextSortKey(context.Background(), uint(ids.u1), "AAPL"))
-	require.NoError(t, repo.AddWithNextSortKey(context.Background(), uint(ids.u1), "GOOGL"))
-	require.NoError(t, repo.AddWithNextSortKey(context.Background(), uint(ids.u1), "MSFT"))
+	require.NoError(t, repo.AddWithNextSortKey(context.Background(), ids.u1, "AAPL"))
+	require.NoError(t, repo.AddWithNextSortKey(context.Background(), ids.u1, "GOOGL"))
+	require.NoError(t, repo.AddWithNextSortKey(context.Background(), ids.u1, "MSFT"))
 
-	list, err := repo.ListByUser(context.Background(), uint(ids.u1))
+	list, err := repo.ListByUser(context.Background(), ids.u1)
 	require.NoError(t, err)
 	require.Len(t, list, 3)
 	assert.Equal(t, 0, list[0].SortKey)
@@ -145,9 +145,9 @@ func TestWatchlistRepository_AddWithNextSortKey_FirstEntry(t *testing.T) {
 	db, ids := setupTestDB(t)
 	repo := NewWatchlistRepository(db)
 
-	require.NoError(t, repo.AddWithNextSortKey(context.Background(), uint(ids.u1), "AAPL"))
+	require.NoError(t, repo.AddWithNextSortKey(context.Background(), ids.u1, "AAPL"))
 
-	list, err := repo.ListByUser(context.Background(), uint(ids.u1))
+	list, err := repo.ListByUser(context.Background(), ids.u1)
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 	assert.Equal(t, 0, list[0].SortKey)
@@ -158,8 +158,8 @@ func TestWatchlistRepository_AddWithNextSortKey_DuplicateSymbol(t *testing.T) {
 	db, ids := setupTestDB(t)
 	repo := NewWatchlistRepository(db)
 
-	require.NoError(t, repo.AddWithNextSortKey(context.Background(), uint(ids.u1), "AAPL"))
-	err := repo.AddWithNextSortKey(context.Background(), uint(ids.u1), "AAPL")
+	require.NoError(t, repo.AddWithNextSortKey(context.Background(), ids.u1, "AAPL"))
+	err := repo.AddWithNextSortKey(context.Background(), ids.u1, "AAPL")
 	assert.ErrorIs(t, err, usecase.ErrAlreadyInWatchlist)
 }
 
@@ -169,18 +169,18 @@ func TestWatchlistRepository_UpdateSortKeys(t *testing.T) {
 	repo := NewWatchlistRepository(db)
 	ctx := context.Background()
 
-	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: uint(ids.u1), SymbolCode: "AAPL", SortKey: 0}))
-	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: uint(ids.u1), SymbolCode: "GOOGL", SortKey: 1}))
-	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: uint(ids.u1), SymbolCode: "MSFT", SortKey: 2}))
+	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0}))
+	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: ids.u1, SymbolCode: "GOOGL", SortKey: 1}))
+	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: ids.u1, SymbolCode: "MSFT", SortKey: 2}))
 
 	// 並び替え: MSFT(0), AAPL(1), GOOGL(2)
-	require.NoError(t, repo.UpdateSortKeys(ctx, uint(ids.u1), []entity.UserSymbol{
+	require.NoError(t, repo.UpdateSortKeys(ctx, ids.u1, []entity.UserSymbol{
 		{SymbolCode: "MSFT", SortKey: 0},
 		{SymbolCode: "AAPL", SortKey: 1},
 		{SymbolCode: "GOOGL", SortKey: 2},
 	}))
 
-	list, err := repo.ListByUser(ctx, uint(ids.u1))
+	list, err := repo.ListByUser(ctx, ids.u1)
 	require.NoError(t, err)
 	require.Len(t, list, 3)
 	assert.Equal(t, "MSFT", list[0].SymbolCode)
@@ -194,15 +194,15 @@ func TestWatchlistRepository_ListByUser_Isolation(t *testing.T) {
 	repo := NewWatchlistRepository(db)
 	ctx := context.Background()
 
-	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: uint(ids.u1), SymbolCode: "AAPL", SortKey: 0}))
-	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: uint(ids.u2), SymbolCode: "GOOGL", SortKey: 0}))
+	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0}))
+	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: ids.u2, SymbolCode: "GOOGL", SortKey: 0}))
 
-	u1List, err := repo.ListByUser(ctx, uint(ids.u1))
+	u1List, err := repo.ListByUser(ctx, ids.u1)
 	require.NoError(t, err)
 	require.Len(t, u1List, 1)
 	assert.Equal(t, "AAPL", u1List[0].SymbolCode)
 
-	u2List, err := repo.ListByUser(ctx, uint(ids.u2))
+	u2List, err := repo.ListByUser(ctx, ids.u2)
 	require.NoError(t, err)
 	require.Len(t, u2List, 1)
 	assert.Equal(t, "GOOGL", u2List[0].SymbolCode)

@@ -34,18 +34,18 @@ type mockUserRepository struct {
 	// FindByEmailFunc はFindByEmailメソッド呼び出し時に実行されます。
 	FindByEmailFunc func(ctx context.Context, email string) (*entity.User, error)
 	// FindByIDFunc はFindByIDメソッド呼び出し時に実行されます。
-	FindByIDFunc func(ctx context.Context, id uint) (*entity.User, error)
+	FindByIDFunc func(ctx context.Context, id int64) (*entity.User, error)
 }
 
 // mockJWTGenerator はJWTGeneratorインターフェースのモック実装です。
 // テスト中のJWTトークン生成をシミュレートします。
 type mockJWTGenerator struct {
 	// GenerateTokenFunc はGenerateTokenメソッド呼び出し時に実行されます。
-	GenerateTokenFunc func(userID uint, email string) (string, error)
+	GenerateTokenFunc func(userID int64, email string) (string, error)
 }
 
 // GenerateToken はGenerateTokenメソッドのモック実装です。
-func (m *mockJWTGenerator) GenerateToken(userID uint, email string) (string, error) {
+func (m *mockJWTGenerator) GenerateToken(userID int64, email string) (string, error) {
 	if m.GenerateTokenFunc != nil {
 		return m.GenerateTokenFunc(userID, email)
 	}
@@ -71,7 +71,7 @@ func (m *mockUserRepository) FindByEmail(ctx context.Context, email string) (*en
 }
 
 // FindByID はFindByIDメソッドのモック実装です。
-func (m *mockUserRepository) FindByID(ctx context.Context, id uint) (*entity.User, error) {
+func (m *mockUserRepository) FindByID(ctx context.Context, id int64) (*entity.User, error) {
 	if m.FindByIDFunc != nil {
 		return m.FindByIDFunc(ctx, id)
 	}
@@ -81,7 +81,7 @@ func (m *mockUserRepository) FindByID(ctx context.Context, id uint) (*entity.Use
 
 // createTestUser はテスト用にハッシュ化パスワードを持つテストユーザーを作成します。
 // このヘルパーはコードの重複を削減し、テストの保守性を向上させます。
-func createTestUser(t *testing.T, id uint, email, password string) *entity.User {
+func createTestUser(t *testing.T, id int64, email, password string) *entity.User {
 	t.Helper()
 	pepperedPassword := pepperPasswordForTest(password, testPepper)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(pepperedPassword), bcrypt.MinCost)
@@ -288,7 +288,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 				},
 			}
 			mockJWT := &mockJWTGenerator{
-				GenerateTokenFunc: func(userID uint, email string) (string, error) {
+				GenerateTokenFunc: func(userID int64, email string) (string, error) {
 					if tt.verifyJWTParams {
 						if userID != testUser.ID || email != testUser.Email {
 							t.Errorf("unexpected userID or email: got userID=%d, email=%s", userID, email)

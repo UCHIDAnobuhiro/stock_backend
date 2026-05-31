@@ -21,12 +21,12 @@ import (
 
 // mockAuthUsecase はAuthUsecaseインターフェースのモック実装です。
 type mockAuthUsecase struct {
-	SignupFunc func(ctx context.Context, email, password string) (uint, error)
+	SignupFunc func(ctx context.Context, email, password string) (int64, error)
 	LoginFunc  func(ctx context.Context, email, password string) (string, error)
 }
 
 // Signup はSignupメソッドのモック実装です。
-func (m *mockAuthUsecase) Signup(ctx context.Context, email, password string) (uint, error) {
+func (m *mockAuthUsecase) Signup(ctx context.Context, email, password string) (int64, error) {
 	if m.SignupFunc != nil {
 		return m.SignupFunc(ctx, email, password)
 	}
@@ -119,14 +119,14 @@ func TestAuthHandler_Signup(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    gin.H
-		mockSignupFunc func(ctx context.Context, email, password string) (uint, error)
+		mockSignupFunc func(ctx context.Context, email, password string) (int64, error)
 		expectedStatus int
 		expectedBody   gin.H
 	}{
 		{
 			name:           "success: user registration",
 			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
-			mockSignupFunc: func(ctx context.Context, email, password string) (uint, error) { return 1, nil },
+			mockSignupFunc: func(ctx context.Context, email, password string) (int64, error) { return 1, nil },
 			expectedStatus: http.StatusCreated,
 			expectedBody:   gin.H{"message": "ok"},
 		},
@@ -147,7 +147,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 		{
 			name:        "failure: duplicate email (usecase error)",
 			requestBody: gin.H{"email": "existing@example.com", "password": "password123"},
-			mockSignupFunc: func(ctx context.Context, email, password string) (uint, error) {
+			mockSignupFunc: func(ctx context.Context, email, password string) (int64, error) {
 				return 0, errors.New("email already exists")
 			},
 			expectedStatus: http.StatusConflict,

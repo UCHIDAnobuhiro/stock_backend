@@ -130,7 +130,7 @@ type SymbolItem struct {
 // WatchlistItem defines model for WatchlistItem.
 type WatchlistItem struct {
 	// Id ウォッチリストエントリのID
-	Id int `json:"id"`
+	Id int64 `json:"id"`
 
 	// SortKey 表示順序
 	SortKey int `json:"sort_key"`

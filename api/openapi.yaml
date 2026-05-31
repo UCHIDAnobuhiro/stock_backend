@@ -700,6 +700,7 @@ components:
       properties:
         id:
           type: integer
+          format: int64
           description: ウォッチリストエントリのID
         symbol_code:
           type: string

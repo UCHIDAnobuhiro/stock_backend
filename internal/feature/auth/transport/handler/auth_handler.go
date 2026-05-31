@@ -22,14 +22,14 @@ import (
 // Goの慣例に従い、インターフェースはプロバイダー（usecase）ではなくコンシューマー（handler）が定義します。
 type AuthUsecase interface {
 	// Signup は指定されたメールアドレスとパスワードで新規ユーザーを登録し、作成されたユーザーIDを返します。
-	Signup(ctx context.Context, email, password string) (uint, error)
+	Signup(ctx context.Context, email, password string) (int64, error)
 	// Login はユーザーを認証し、成功時にJWTトークンを返します。
 	Login(ctx context.Context, email, password string) (string, error)
 }
 
 // PostSignupHook はサインアップ成功後に呼び出されるフックのインターフェースです。
 type PostSignupHook interface {
-	OnUserCreated(ctx context.Context, userID uint) error
+	OnUserCreated(ctx context.Context, userID int64) error
 }
 
 // ログインのメールベースレートリミット設定

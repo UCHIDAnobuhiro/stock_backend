@@ -46,7 +46,7 @@ func (r *oauthAccountRepository) Create(ctx context.Context, acct *entity.OAuthA
 		return errors.New("account is nil")
 	}
 	row, err := r.q.CreateOAuthAccount(ctx, authsqlc.CreateOAuthAccountParams{
-		UserID:      int64(acct.UserID),
+		UserID:      acct.UserID,
 		Provider:    acct.Provider,
 		ProviderUid: acct.ProviderUID,
 	})

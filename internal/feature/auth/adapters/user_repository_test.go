@@ -207,7 +207,7 @@ func TestUserRepository_FindByID(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		userID       uint
+		userID       int64
 		wantErr      bool
 		expectedErr  error
 		setupFunc    func(t *testing.T, db *sql.DB) *entity.User
@@ -262,7 +262,7 @@ func TestUserRepository_FindByID(t *testing.T) {
 			db := setupTestDB(t)
 			repo := NewUserRepository(db)
 			var expected *entity.User
-			var targetID uint
+			var targetID int64
 			if tt.setupFunc != nil {
 				expected = tt.setupFunc(t, db)
 				targetID = expected.ID
