@@ -114,3 +114,15 @@ func TestRunInvalidJobID(t *testing.T) {
 		})
 	}
 }
+
+func TestRun_ReturnsOneWhenDBConfigInvalid(t *testing.T) {
+	t.Setenv("DB_USER", "")
+
+	for _, jobID := range []string{"candles", "logo"} {
+		t.Run(jobID, func(t *testing.T) {
+			if got := run([]string{jobID}); got != 1 {
+				t.Errorf("run(%q) = %d, want 1", jobID, got)
+			}
+		})
+	}
+}

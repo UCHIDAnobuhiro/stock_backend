@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // database/sql driver "pgx" の登録
@@ -47,12 +46,17 @@ func ConnectSQLWithRetry(dsn string, timeout time.Duration, opener SQLOpener) (*
 }
 
 // OpenSQL は環境変数から設定を読み取り *sql.DB を返します。
-// リトライロジックを含み、失敗時は os.Exit します（本番環境用）。
-func OpenSQL() *sql.DB {
+// リトライロジックを含み、設定不正や接続失敗は呼び出し元へ返します。
+func OpenSQL() (*sql.DB, error) {
+	return openSQLWithRetry(60*time.Second, DefaultSQLOpener)
+}
+
+// openSQLWithRetry は OpenSQL の設定読み込みと接続処理を実行します。
+// timeout と opener を受け取り、異常系を短時間でテストできるようにします。
+func openSQLWithRetry(timeout time.Duration, opener SQLOpener) (*sql.DB, error) {
 	cfg := LoadConfigFromEnv()
 	if err := cfg.Validate(); err != nil {
-		slog.Error("invalid DB config", "error", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("invalid DB config: %w", err)
 	}
 	if cfg.InstanceName != "" && (cfg.Host != "" || cfg.Port != "") {
 		slog.Warn("DB_HOST and DB_PORT are ignored when INSTANCE_CONNECTION_NAME is set",
@@ -60,10 +64,5 @@ func OpenSQL() *sql.DB {
 	}
 	dsn := BuildDSN(cfg)
 
-	db, err := ConnectSQLWithRetry(dsn, 60*time.Second, DefaultSQLOpener)
-	if err != nil {
-		slog.Error("DB connect failed", "error", err)
-		os.Exit(1)
-	}
-	return db
+	return ConnectSQLWithRetry(dsn, timeout, opener)
 }

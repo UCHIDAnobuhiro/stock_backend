@@ -83,7 +83,11 @@ func run(args []string) int {
 
 // runCandleIngest は TwelveData から株価データを取り込み、終了コード（0 or 1）を返す。
 func runCandleIngest() int {
-	sqlDB := db.OpenSQL()
+	sqlDB, err := db.OpenSQL()
+	if err != nil {
+		slog.Error("DB open failed", "error", err)
+		return 1
+	}
 	defer func() {
 		if err := sqlDB.Close(); err != nil {
 			slog.Warn("failed to close sqlDB", "error", err)
@@ -148,7 +152,11 @@ func runCandleIngest() int {
 
 // runLogoIngest は TwelveData からロゴURLを取り込み、終了コード（0 or 1）を返す。
 func runLogoIngest() int {
-	sqlDB := db.OpenSQL()
+	sqlDB, err := db.OpenSQL()
+	if err != nil {
+		slog.Error("DB open failed", "error", err)
+		return 1
+	}
 	defer func() {
 		if err := sqlDB.Close(); err != nil {
 			slog.Warn("failed to close sqlDB", "error", err)

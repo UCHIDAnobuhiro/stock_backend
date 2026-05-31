@@ -54,3 +54,11 @@ func TestAllowedCommands_ContainsExpectedSet(t *testing.T) {
 		}
 	}
 }
+
+func TestRun_ReturnsOneWhenDBConfigInvalid(t *testing.T) {
+	t.Setenv("DB_USER", "")
+
+	if got := run(nil); got != 1 {
+		t.Errorf("run(nil) = %d, want 1", got)
+	}
+}
