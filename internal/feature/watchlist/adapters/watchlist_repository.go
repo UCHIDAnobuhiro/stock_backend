@@ -33,16 +33,16 @@ func NewWatchlistRepository(db *sql.DB) *watchlistRepository {
 }
 
 // ListByUser はユーザーのウォッチリストを sort_key 昇順で返します。
-func (r *watchlistRepository) ListByUser(ctx context.Context, userID uint) ([]entity.UserSymbol, error) {
-	rows, err := r.q.ListWatchlistByUser(ctx, int64(userID))
+func (r *watchlistRepository) ListByUser(ctx context.Context, userID int64) ([]entity.UserSymbol, error) {
+	rows, err := r.q.ListWatchlistByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]entity.UserSymbol, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, entity.UserSymbol{
-			ID:         uint(row.ID),
-			UserID:     uint(row.UserID),
+			ID:         row.ID,
+			UserID:     row.UserID,
 			SymbolCode: row.SymbolCode,
 			SortKey:    int(row.SortKey),
 			CreatedAt:  row.CreatedAt,
@@ -56,7 +56,7 @@ func (r *watchlistRepository) ListByUser(ctx context.Context, userID uint) ([]en
 // 重複エントリは ErrAlreadyInWatchlist、FK 違反は ErrSymbolNotFound を返します。
 func (r *watchlistRepository) Add(ctx context.Context, entry entity.UserSymbol) error {
 	err := r.q.InsertWatchlist(ctx, watchlistsqlc.InsertWatchlistParams{
-		UserID:     int64(entry.UserID),
+		UserID:     entry.UserID,
 		SymbolCode: entry.SymbolCode,
 		SortKey:    int64(entry.SortKey),
 	})
@@ -65,9 +65,9 @@ func (r *watchlistRepository) Add(ctx context.Context, entry entity.UserSymbol) 
 
 // Remove はウォッチリストから銘柄を削除します。
 // 対象が存在しない場合は ErrNotInWatchlist を返します。
-func (r *watchlistRepository) Remove(ctx context.Context, userID uint, symbolCode string) error {
+func (r *watchlistRepository) Remove(ctx context.Context, userID int64, symbolCode string) error {
 	rowsAffected, err := r.q.DeleteWatchlist(ctx, watchlistsqlc.DeleteWatchlistParams{
-		UserID:     int64(userID),
+		UserID:     userID,
 		SymbolCode: symbolCode,
 	})
 	if err != nil {
@@ -82,7 +82,7 @@ func (r *watchlistRepository) Remove(ctx context.Context, userID uint, symbolCod
 // UpdateSortKeys はウォッチリストの sort_key をトランザクション内で一括更新します。
 // (user_id, sort_key) のユニーク制約が一時的に違反しないよう、まず全レコードを
 // 負値（-(i+1)）にシフトしてから最終値に更新します。
-func (r *watchlistRepository) UpdateSortKeys(ctx context.Context, userID uint, entries []entity.UserSymbol) error {
+func (r *watchlistRepository) UpdateSortKeys(ctx context.Context, userID int64, entries []entity.UserSymbol) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -98,7 +98,7 @@ func (r *watchlistRepository) UpdateSortKeys(ctx context.Context, userID uint, e
 	// Phase 1: 負値にシフト
 	for i, e := range entries {
 		if _, err := qtx.UpdateWatchlistSortKey(ctx, watchlistsqlc.UpdateWatchlistSortKeyParams{
-			UserID:     int64(userID),
+			UserID:     userID,
 			SymbolCode: e.SymbolCode,
 			SortKey:    int64(-(i + 1)),
 		}); err != nil {
@@ -108,7 +108,7 @@ func (r *watchlistRepository) UpdateSortKeys(ctx context.Context, userID uint, e
 	// Phase 2: 最終値に更新
 	for _, e := range entries {
 		if _, err := qtx.UpdateWatchlistSortKey(ctx, watchlistsqlc.UpdateWatchlistSortKeyParams{
-			UserID:     int64(userID),
+			UserID:     userID,
 			SymbolCode: e.SymbolCode,
 			SortKey:    int64(e.SortKey),
 		}); err != nil {
@@ -125,7 +125,7 @@ func (r *watchlistRepository) UpdateSortKeys(ctx context.Context, userID uint, e
 // AddWithNextSortKey は sort_key をトランザクション内で MAX+1 採番して銘柄を追加します。
 // MAX(sort_key) 取得と INSERT を同一トランザクションで実行し、(user_id, sort_key) ユニーク制約で
 // 並行追加の二重登録を最終的にブロックします。
-func (r *watchlistRepository) AddWithNextSortKey(ctx context.Context, userID uint, symbolCode string) error {
+func (r *watchlistRepository) AddWithNextSortKey(ctx context.Context, userID int64, symbolCode string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -138,12 +138,12 @@ func (r *watchlistRepository) AddWithNextSortKey(ctx context.Context, userID uin
 	}()
 	qtx := r.q.WithTx(tx)
 
-	maxKey, err := qtx.MaxWatchlistSortKey(ctx, int64(userID))
+	maxKey, err := qtx.MaxWatchlistSortKey(ctx, userID)
 	if err != nil {
 		return err
 	}
 	if err := qtx.InsertWatchlist(ctx, watchlistsqlc.InsertWatchlistParams{
-		UserID:     int64(userID),
+		UserID:     userID,
 		SymbolCode: symbolCode,
 		SortKey:    maxKey + 1,
 	}); err != nil {

@@ -46,7 +46,7 @@ func seedSymbol(t *testing.T, db *sql.DB, code, name, market string, isActive bo
 	}
 	var id int64
 	require.NoError(t, row.Scan(&id, &s.CreatedAt, &s.UpdatedAt), "failed to seed symbol")
-	s.ID = uint(id)
+	s.ID = id
 	return s
 }
 
@@ -69,14 +69,14 @@ func seedSymbolFull(t *testing.T, db *sql.DB, s *entity.Symbol) {
 	)
 	var id int64
 	require.NoError(t, row.Scan(&id, &s.CreatedAt, &s.UpdatedAt))
-	s.ID = uint(id)
+	s.ID = id
 }
 
 // updateSymbolActive は銘柄の is_active フィールドを更新します。
 func updateSymbolActive(t *testing.T, db *sql.DB, symbol *entity.Symbol, isActive bool) {
 	t.Helper()
 	_, err := db.ExecContext(context.Background(),
-		`UPDATE symbols SET is_active = $1 WHERE id = $2`, isActive, int64(symbol.ID))
+		`UPDATE symbols SET is_active = $1 WHERE id = $2`, isActive, symbol.ID)
 	require.NoError(t, err, "failed to update symbol active status")
 }
 

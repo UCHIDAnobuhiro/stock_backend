@@ -3,6 +3,7 @@ package jwtmw
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -24,9 +25,9 @@ func NewGenerator(secret string, expiration time.Duration) *Generator {
 }
 
 // GenerateToken は標準クレームを含む署名済みJWTトークンを生成します。
-func (g *Generator) GenerateToken(userID uint, email string) (string, error) {
+func (g *Generator) GenerateToken(userID int64, email string) (string, error) {
 	claims := jwt.MapClaims{
-		"sub":   userID,
+		"sub":   strconv.FormatInt(userID, 10),
 		"exp":   time.Now().Add(g.expiration).Unix(),
 		"iat":   time.Now().Unix(),
 		"email": email,

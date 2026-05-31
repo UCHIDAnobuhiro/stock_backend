@@ -117,7 +117,7 @@ func (uc *oauthUsecase) HandleCallback(ctx context.Context, providerName, code, 
 }
 
 // findOrCreateUser は既存OAuthAccountを探し、なければユーザーを作成・リンクします。
-func (uc *oauthUsecase) findOrCreateUser(ctx context.Context, providerName string, info *OAuthUserInfo) (uint, error) {
+func (uc *oauthUsecase) findOrCreateUser(ctx context.Context, providerName string, info *OAuthUserInfo) (int64, error) {
 	// 既存OAuthAccountで検索
 	acct, err := uc.oauthAccts.FindByProvider(ctx, providerName, info.ProviderUID)
 	if err != nil && !errors.Is(err, ErrUserNotFound) {

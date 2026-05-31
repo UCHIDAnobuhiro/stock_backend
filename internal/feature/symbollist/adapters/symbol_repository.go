@@ -81,7 +81,7 @@ func symbolFromSQLC(m symbollistsqlc.Symbol) entity.Symbol {
 		logoUpdatedAt = &t
 	}
 	return entity.Symbol{
-		ID:            uint(m.ID),
+		ID:            m.ID,
 		Code:          m.Code,
 		Name:          m.Name,
 		Market:        m.Market,

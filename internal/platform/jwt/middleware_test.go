@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -112,12 +113,12 @@ func TestAuthRequired_ValidToken(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		userID         uint
-		expectedUserID uint
+		userID         int64
+		expectedUserID int64
 	}{
 		{"user id 1", 1, 1},
 		{"user id 42", 42, 42},
-		{"user id 999", 999, 999},
+		{"max int64 user id", 9223372036854775807, 9223372036854775807},
 	}
 
 	for _, tt := range tests {
@@ -142,8 +143,61 @@ func TestAuthRequired_ValidToken(t *testing.T) {
 				t.Error("expected userID to be set in context")
 				return
 			}
-			if userID.(uint) != tt.expectedUserID {
+			if userID.(int64) != tt.expectedUserID {
 				t.Errorf("expected userID %d, got %d", tt.expectedUserID, userID)
+			}
+		})
+	}
+}
+
+// TestAuthRequired_LegacyNumericSubject は移行前の数値subjectが安全な範囲で受理されることを検証します。
+func TestAuthRequired_LegacyNumericSubject(t *testing.T) {
+	const testSecret = "test-secret-key-for-legacy"
+	t.Setenv(EnvKeyJWTSecret, testSecret)
+
+	token := createLegacyTokenWithSecret(testSecret, 42, time.Hour)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+	c.Request.Header.Set("Authorization", "Bearer "+token)
+
+	AuthRequired()(c)
+
+	if c.IsAborted() {
+		t.Fatalf("expected request not to be aborted, response: %s", w.Body.String())
+	}
+	if userID, _ := c.Get(ContextUserID); userID != int64(42) {
+		t.Errorf("expected userID 42, got %v", userID)
+	}
+}
+
+// TestAuthRequired_InvalidSubject は不正なsubjectが拒否されることを検証します。
+func TestAuthRequired_InvalidSubject(t *testing.T) {
+	const testSecret = "test-secret-key-for-subject"
+	t.Setenv(EnvKeyJWTSecret, testSecret)
+
+	tests := []struct {
+		name string
+		sub  any
+	}{
+		{"missing subject", nil},
+		{"non-numeric string", "abc"},
+		{"zero", "0"},
+		{"unsafe legacy number", float64(1 << 53)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			token := createTokenWithSubject(testSecret, tt.sub, time.Hour)
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+			c.Request.Header.Set("Authorization", "Bearer "+token)
+
+			AuthRequired()(c)
+
+			if w.Code != http.StatusUnauthorized {
+				t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
 			}
 		})
 	}
@@ -176,9 +230,18 @@ func TestAuthRequired_InvalidSigningMethod(t *testing.T) {
 }
 
 // createTokenWithSecret はテスト用に指定されたシークレットとユーザーIDで署名済みJWTトークンを生成します。
-func createTokenWithSecret(secret string, userID uint, expiration time.Duration) string {
+func createTokenWithSecret(secret string, userID int64, expiration time.Duration) string {
+	return createTokenWithSubject(secret, strconv.FormatInt(userID, 10), expiration)
+}
+
+// createLegacyTokenWithSecret は移行前と同じ数値subjectのトークンを生成します。
+func createLegacyTokenWithSecret(secret string, userID int64, expiration time.Duration) string {
+	return createTokenWithSubject(secret, float64(userID), expiration)
+}
+
+func createTokenWithSubject(secret string, subject any, expiration time.Duration) string {
 	claims := jwt.MapClaims{
-		"sub":   float64(userID),
+		"sub":   subject,
 		"exp":   time.Now().Add(expiration).Unix(),
 		"iat":   time.Now().Unix(),
 		"email": "test@example.com",

@@ -1,6 +1,7 @@
 package jwtmw
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -46,13 +47,13 @@ func TestGenerator_GenerateToken(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		userID     uint
+		userID     int64
 		email      string
 		expiration time.Duration
 	}{
 		{"basic user", 1, "user@example.com", time.Hour},
 		{"user with special email", 42, "user+tag@example.com", time.Hour},
-		{"large user id", 999999, "test@test.com", 24 * time.Hour},
+		{"large user id", 9223372036854775807, "test@test.com", 24 * time.Hour},
 	}
 
 	for _, tt := range tests {
@@ -85,7 +86,7 @@ func TestGenerator_GenerateToken(t *testing.T) {
 				t.Fatal("expected MapClaims")
 			}
 
-			if sub, ok := claims["sub"].(float64); !ok || uint(sub) != tt.userID {
+			if sub, ok := claims["sub"].(string); !ok || sub != strconv.FormatInt(tt.userID, 10) {
 				t.Errorf("expected sub %d, got %v", tt.userID, claims["sub"])
 			}
 			if email, ok := claims["email"].(string); !ok || email != tt.email {

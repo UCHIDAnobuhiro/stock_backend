@@ -66,8 +66,8 @@ func (r *userRepository) FindByEmail(ctx context.Context, email string) (*entity
 
 // FindByID は ID でユーザーを取得します。
 // ユーザーが存在しない場合、usecase.ErrUserNotFound を返します。
-func (r *userRepository) FindByID(ctx context.Context, id uint) (*entity.User, error) {
-	row, err := r.q.FindUserByID(ctx, int64(id))
+func (r *userRepository) FindByID(ctx context.Context, id int64) (*entity.User, error) {
+	row, err := r.q.FindUserByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, usecase.ErrUserNotFound
@@ -106,7 +106,7 @@ func (r *userRepository) CreateUserWithOAuthAccount(ctx context.Context, user *e
 
 	account.UserID = user.ID
 	acctRow, err := qtx.CreateOAuthAccount(ctx, authsqlc.CreateOAuthAccountParams{
-		UserID:      int64(account.UserID),
+		UserID:      account.UserID,
 		Provider:    account.Provider,
 		ProviderUid: account.ProviderUID,
 	})
@@ -130,7 +130,7 @@ func userFromSQLC(m authsqlc.User) entity.User {
 		pwd = &s
 	}
 	return entity.User{
-		ID:        uint(m.ID),
+		ID:        m.ID,
 		Email:     m.Email,
 		Password:  pwd,
 		CreatedAt: m.CreatedAt,
@@ -141,8 +141,8 @@ func userFromSQLC(m authsqlc.User) entity.User {
 // oauthAccountFromSQLC は sqlc 生成モデルをドメインエンティティに変換します。
 func oauthAccountFromSQLC(m authsqlc.OauthAccount) entity.OAuthAccount {
 	return entity.OAuthAccount{
-		ID:          uint(m.ID),
-		UserID:      uint(m.UserID),
+		ID:          m.ID,
+		UserID:      m.UserID,
 		Provider:    m.Provider,
 		ProviderUID: m.ProviderUid,
 		CreatedAt:   m.CreatedAt,

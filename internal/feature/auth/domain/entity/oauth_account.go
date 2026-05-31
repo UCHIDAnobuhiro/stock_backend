@@ -6,10 +6,10 @@ import "time"
 // OAuthAccount はOAuth2プロバイダーとユーザーを紐付けるエンティティです。
 // (provider, provider_uid) の複合ユニーク制約でプロバイダー側IDの重複を防ぎます。
 type OAuthAccount struct {
-	ID uint
+	ID int64
 
 	// UserID は紐付けられたユーザーのIDです。
-	UserID uint
+	UserID int64
 
 	// Provider はOAuth2プロバイダー名です（"google" | "github"）。
 	Provider string

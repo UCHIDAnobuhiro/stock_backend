@@ -307,7 +307,7 @@ sequenceDiagram
   - `csrf_token`: CSRFトークン（`SameSite=Lax; Max-Age=3600`）— JavaScriptが読み取り `X-CSRF-Token` ヘッダーにセット（CSRF対策）
 
   **JWTクレーム（auth_token内）:**
-  - `sub`: ユーザーID（uint）
+  - `sub`: ユーザーID（int64を文字列として格納）
   - `email`: ユーザーのメールアドレス
   - `iat`: 発行日時（Unixタイムスタンプ）
   - `exp`: 有効期限（発行日時 + 1時間）
