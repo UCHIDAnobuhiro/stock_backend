@@ -1,0 +1,221 @@
+# AGENTS.md
+
+このファイルは、Codex（Codex.ai/code）がこのリポジトリのコードを扱う際のガイダンスを提供します。
+
+## 開発コマンド
+
+### ローカル開発
+```bash
+# APIサーバー起動（Airによるホットリロード付き）
+docker compose -f docker/docker-compose.yml -p stock up backend
+
+# バッチデータ取り込み実行（外部APIから株価データを取得）
+docker compose -f docker/docker-compose.yml -p stock run --rm --no-deps ingest
+
+# ログ確認
+docker logs -f stock-backend
+```
+
+### マイグレーション（goose）
+スキーマは `db/migrations/*.sql` で管理し、`cmd/migrate` バイナリで適用します。
+詳細は `db/README.md` を参照。
+
+```bash
+# ローカル PostgreSQL に最新スキーマを適用
+DB_USER=appuser DB_PASSWORD=apppass DB_NAME=app DB_HOST=localhost DB_PORT=5432 \
+  go run ./cmd/migrate up
+# または Docker
+docker compose -f docker/docker-compose.yml -p stock run --rm migrate
+
+# 新規マイグレーションファイル作成
+GOOSE_DRIVER=postgres GOOSE_MIGRATION_DIR=db/migrations \
+  go tool goose create <snake_case_name> sql
+```
+
+### sqlc コード生成
+クエリ追加・変更時に再生成します。
+
+```bash
+go tool sqlc generate
+```
+
+各 feature の `internal/feature/<name>/adapters/sqlc/queries.sql` を編集 →
+同ディレクトリに型安全コードが生成されます。
+
+### テスト・リント
+リポジトリテストは [testcontainers-go](https://golang.testcontainers.org/) で実 PostgreSQL を
+立ち上げます。Docker daemon が利用できない環境では、ホストの PostgreSQL を `TEST_DB_DSN` で
+指定すると testcontainers をスキップできます（DB ユーザーには `CREATEDB` 権限が必要）。
+
+```bash
+# 全テスト実行（レースコンディション検出・カバレッジ付き、Docker が必要）
+go test ./... -v -race -cover
+
+# ホストの PostgreSQL を使う場合
+TEST_DB_DSN="postgres://appuser:apppass@localhost:5432/postgres?sslmode=disable" \
+  go test ./... -race
+
+# 特定パッケージのテスト実行
+go test ./internal/feature/candles/usecase/... -v
+
+# 特定テスト関数の実行
+go test ./internal/feature/auth/usecase/... -v -run TestAuthUsecase_Login
+
+# リンター実行（golangci-lint、depguardルール使用）
+golangci-lint run --timeout=5m
+
+# 全パッケージのビルド
+go build ./...
+```
+
+### 環境セットアップ
+- `docker/example.env.app` を `docker/.env.app` にコピーして設定（GCP ADC を使う場合は `docker/example.env.gcp` を `docker/.env` にコピー）：
+  - `TWELVE_DATA_API_KEY`: https://twelvedata.com/ から取得（無料枠: 8リクエスト/分）
+  - `JWT_SECRET`: 本番環境では強力なシークレットを設定
+  - DB・Redisの設定はローカル開発用
+
+## アーキテクチャ概要
+
+**Go/Gin REST API** で、**フィーチャーベースのクリーンアーキテクチャ**（垂直スライス）を採用しています。
+
+### ディレクトリ構成
+
+```
+api/
+├── openapi.yaml          # OpenAPI 3.0.3 仕様（APIコントラクトの単一ソース）
+└── oapi-codegen.cfg.yaml # oapi-codegen設定（型のみ生成）
+
+internal/
+├── api/              # OpenAPIから自動生成された型定義（types.gen.go）
+├── app/
+│   ├── di/           # 依存性注入ファクトリ
+│   └── router/       # HTTPルーター設定
+├── feature/          # フィーチャーモジュール（垂直スライス）
+│   ├── auth/
+│   ├── candles/
+│   ├── logodetection/
+│   ├── symbollist/
+│   └── watchlist/
+├── platform/         # インフラストラクチャ層（旧 "infrastructure"）
+│   ├── csrf/         # CSRF保護（Double Submit Cookieパターン）
+│   ├── db/           # データベース初期化
+│   ├── handler/      # プラットフォームレベルのHTTPハンドラー（ヘルスチェック等）
+│   ├── httpclient/   # 外部API呼び出し用HTTPクライアント設定
+│   ├── httpratelimit/ # Redisベースのスライディングウィンドウレートリミッター（HTTPミドルウェア）
+│   ├── jwt/          # JWT生成・ミドルウェア
+│   ├── middleware/   # プラットフォーム共通のHTTPミドルウェア（セキュリティヘッダー等）
+│   └── redis/        # Redisクライアントセットアップ
+└── shared/           # 共有ユーティリティ（ドメイン横断、usecase からも利用可）
+    └── clientratelimit/ # 外部API呼び出し用 in-memory レートリミッター
+```
+
+### フィーチャーモジュール構成
+
+各フィーチャーは一貫したレイヤー構造に従います：
+
+```
+feature/<name>/
+├── README.md         # フィーチャーのドキュメント
+├── domain/
+│   └── entity/       # ドメインモデル（例: Candle, Symbol, User）
+├── usecase/          # アプリケーションロジック（リポジトリインターフェース定義、ビジネスロジック統合）
+├── adapters/         # リポジトリ実装（PostgreSQL、キャッシュデコレータ、外部APIクライアント等）
+│   └── sqlc/         # sqlc で生成された型安全な DB クエリコード（手動編集禁止）
+└── transport/
+    └── handler/      # HTTPハンドラー（Gin）
+```
+
+**注意**: リクエスト/レスポンスの型は `internal/api/types.gen.go`（OpenAPI仕様から自動生成）を使用します。各フィーチャーにDTOは配置しません。
+
+**注意**: Goの慣例に従い、**リポジトリインターフェースはusecaseレイヤー**（利用者側）で定義します。別途domain/repositoryディレクトリには配置しません。これにより、インターフェースは使用される場所で定義されます。
+
+### 依存関係ルール（golangci-lint depguardで強制）
+
+1. **レイヤー分離**: **domain/** と **usecase/** は以下をインポート不可：
+   - `adapters/`（リポジトリ実装）
+   - `transport/`（HTTPハンドラー）
+   - `internal/api`（API型定義 - transport層のみ使用可）
+2. **フィーチャー分離**: 各フィーチャーは他のフィーチャーをインポート不可
+3. **platform分離**: `platform/` は `feature/` をインポート不可
+
+これにより、ドメインロジックがインフラストラクチャの詳細から独立した状態を保ちます。
+
+### 主要なアーキテクチャパターン
+
+1. **リポジトリパターン**: すべてのデータアクセスは `usecase/` レイヤーで定義されたリポジトリインターフェースを経由します（Goの「インターフェースは利用者が定義する」慣例に従う）
+2. **sqlc によるクエリ実装**: 各 feature の `adapters/sqlc/queries.sql` を `go tool sqlc generate` で生成し、`adapters/<name>_repository.go` が `*sql.DB`（pgx stdlib driver）から呼び出します。GORM は採用していません（ADR-0006 参照）。
+3. **キャッシュ用デコレータパターン**: `feature/candles/adapters/CachingCandleRepository` がベースリポジトリをラップ
+   - `CandleRepository`（読み取り）と `CandleWriteRepository`（書き込み）の両インターフェースを実装
+   - usecaseコードを変更せずにRedisキャッシュを透過的に追加
+   - Redisが利用できない場合はグレースフルデグレード（警告ログを出力し、キャッシュなしで動作）
+4. **依存性注入**: `cmd/api/main.go` で手動DI
+   - Repositories → Usecases → Handlers のワイヤリングは主に main.go で直接実施
+   - `internal/app/di/` には一部のファクトリ関数を配置（例: MarketRepositoryの生成）
+5. **3つのエントリーポイント**:
+   - `cmd/api/main.go`: REST APIサーバー（ポート8080）の起動・DIワイヤリング
+     - 環境変数パースの純粋関数ヘルパーは `internal/app/config/`（`CORS_ALLOWED_ORIGINS` / `COOKIE_SECURE` 等）
+   - `cmd/batch/main.go`: バッチジョブ統合エントリーポイント。コマンド引数 `job_id` で実行内容を切替（`candles`: TwelveData APIから株価データ取得 / `logo`: ロゴURL取得）
+   - `cmd/migrate/main.go`: goose 埋め込みマイグレーションを適用する専用バイナリ（Cloud Run Job 等で起動）
+
+### 外部依存
+- TwelveData API（株価データ、8リクエスト/分制限） / PostgreSQL（database/sql + pgx/v5/stdlib） / Redis（キャッシュ）
+- スキーマは `db/migrations/*.sql`、クエリは各 feature の `adapters/sqlc/queries.sql`
+- 詳細なデータフローは各フィーチャーの README.md を参照
+
+### 認証
+- JWT認証（`platform/jwt/AuthRequired()`）
+- 公開: `/healthz`, `/v1/signup`, `/v1/login` / 保護: その他すべて
+
+### テストに関する注意事項
+
+テスト生成の詳細なルール（テーブル駆動テスト、モック定義、レイヤー別戦略等）は `/test-generate` スキル（`.Codex/skills/test-generate/SKILL.md`）を参照してください。
+
+## 新機能の追加
+
+新機能を追加する際は、確立されたパターンに従ってください：
+
+1. **フィーチャーディレクトリを作成**: `internal/feature/<feature-name>/` 配下
+2. **ドメイン層を最初に定義**:
+   - `domain/entity/` - ドメインモデルを作成（純粋なGo構造体）
+3. **usecase層を実装**: `usecase/`
+   - ここでリポジトリインターフェースを定義（Goの慣例:「インターフェースは利用者が定義する」）
+   - リポジトリを統合するビジネスロジックを実装
+4. **adaptersを実装**: `adapters/` - usecaseで定義されたインターフェースを実装するリポジトリ実装（PostgreSQL等）
+   - SQL を `adapters/sqlc/queries.sql` に書き、`sqlc.yaml` の `sql:` リストに新 feature を追加
+   - `go tool sqlc generate` で型安全コードを生成
+   - リポジトリ実装は `*sql.DB` を受け取り、生成された `Queries` を呼ぶ
+5. **transport層を追加**:
+   - `transport/handler/` - HTTPハンドラー（必要に応じてusecaseインターフェースもここで定義可）
+   - リクエスト/レスポンス型は `api/openapi.yaml` に定義し、`go generate ./internal/api/...` で生成
+6. **DBスキーマの変更が必要なら**: `go tool goose create <name> sql` で
+   `db/migrations/NNNNN_<name>.sql` を作成し、Up/Down 両方を必ず実装
+7. **依存関係をワイヤリング**: `cmd/api/main.go` または `cmd/batch/main.go` にて
+8. **ルートを登録**: `internal/app/router/router.go` にて
+9. **depguardルールを追加**: `.golangci.yml` に以下を追加：
+   - `layer-isolation` ルールに新フィーチャーの `adapters` と `transport` パッケージのdenyエントリ
+   - 新フィーチャー用の `<name>-isolation` ルール（他フィーチャーへの依存禁止）
+   - 既存フィーチャーの isolation ルールに新フィーチャーのdenyエントリ
+   - `platform-isolation` ルールに新フィーチャーのdenyエントリ
+
+**重要**: 依存関係ルールを遵守すること - domain/usecaseレイヤーはadaptersやtransportレイヤーをインポートできません。これはgolangci-lint depguardで強制されています。depguardはワイルドカード非対応のため、新フィーチャー追加時に `.golangci.yml` へ明示的にパッケージパスを追加する必要があります。
+
+## アーキテクチャ決定記録（ADR）
+
+重要なアーキテクチャ上の決定は `docs/adr/` にADRとして記録します。
+
+- ADRの作成: `/adr <決定トピック>` スキル（`.Codex/skills/adr/SKILL.md`）を使用
+- テンプレート: `docs/adr/template.md`
+- 一覧・運用ルール: `docs/adr/README.md`
+
+## コミット・PR作成の言語ルール
+
+コミットメッセージおよびプルリクエストのタイトル・説明はすべて**日本語**で記述してください。
+
+- コミット前のコードレビューは `/code-check` スキル（`.Codex/skills/code-check/SKILL.md`）を参照
+
+## Git ブランチ操作のルール
+
+ブランチを切る・切り替える際は `git checkout` ではなく `git switch` を使用してください。
+
+- 新しいブランチを作成して切り替える: `git switch -c <branch-name>`
+- 既存のブランチに切り替える: `git switch <branch-name>`
