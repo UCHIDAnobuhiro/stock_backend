@@ -37,13 +37,13 @@ var allowedCommands = map[string]struct{}{
 }
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	os.Exit(run(os.Args[1:]))
 }
 
 func run(args []string) int {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
-
 	cmd := "up"
 	var extra []string
 	if len(args) > 0 {
