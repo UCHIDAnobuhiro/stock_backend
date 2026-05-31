@@ -1,6 +1,8 @@
 package main
 
 import (
+	"io"
+	"log/slog"
 	"testing"
 )
 
@@ -24,6 +26,23 @@ func TestRun_RejectsUnsupportedCommand(t *testing.T) {
 				t.Errorf("run(%v) = %d, want 2", tt.args, got)
 			}
 		})
+	}
+}
+
+func TestRun_DoesNotChangeDefaultLogger(t *testing.T) {
+	original := slog.Default()
+	t.Cleanup(func() {
+		slog.SetDefault(original)
+	})
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	slog.SetDefault(logger)
+
+	if got := run([]string{"no-such"}); got != 2 {
+		t.Fatalf("run() = %d, want 2", got)
+	}
+	if got := slog.Default(); got != logger {
+		t.Errorf("slog.Default() = %p, want %p", got, logger)
 	}
 }
 
