@@ -81,6 +81,14 @@ func TestLoadServerConfig(t *testing.T) {
 	})
 }
 
+func TestRun_ReturnsTwoWhenConfigInvalid(t *testing.T) {
+	clearEnv(t) // JWT_SECRET 未設定 → loadServerConfig が失敗する
+
+	if got := run(); got != 2 {
+		t.Errorf("run() = %d, want 2", got)
+	}
+}
+
 func TestRun_ReturnsOneWhenDBConfigInvalid(t *testing.T) {
 	clearEnv(t)
 	t.Setenv(jwt.EnvKeyJWTSecret, "secret")
