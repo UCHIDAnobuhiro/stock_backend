@@ -1,4 +1,4 @@
-package jwtmw
+package jwt
 
 import (
 	"net/http"
@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	gojwt "github.com/golang-jwt/jwt/v5"
 )
 
 // TestMain はテスト実行前にGinをテストモードに設定します。
@@ -209,12 +209,12 @@ func TestAuthRequired_InvalidSigningMethod(t *testing.T) {
 	t.Setenv(EnvKeyJWTSecret, testSecret)
 
 	// Create token with "none" algorithm (unsigned)
-	token := jwt.NewWithClaims(jwt.SigningMethodNone, jwt.MapClaims{
+	token := gojwt.NewWithClaims(gojwt.SigningMethodNone, gojwt.MapClaims{
 		"sub": float64(1),
 		"exp": time.Now().Add(time.Hour).Unix(),
 		"iat": time.Now().Unix(),
 	})
-	tokenStr, _ := token.SignedString(jwt.UnsafeAllowNoneSignatureType)
+	tokenStr, _ := token.SignedString(gojwt.UnsafeAllowNoneSignatureType)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -240,13 +240,13 @@ func createLegacyTokenWithSecret(secret string, userID int64, expiration time.Du
 }
 
 func createTokenWithSubject(secret string, subject any, expiration time.Duration) string {
-	claims := jwt.MapClaims{
+	claims := gojwt.MapClaims{
 		"sub":   subject,
 		"exp":   time.Now().Add(expiration).Unix(),
 		"iat":   time.Now().Unix(),
 		"email": "test@example.com",
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := gojwt.NewWithClaims(gojwt.SigningMethodHS256, claims)
 	signed, _ := token.SignedString([]byte(secret))
 	return signed
 }

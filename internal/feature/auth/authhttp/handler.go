@@ -12,9 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"stock_backend/internal/api"
-	"stock_backend/internal/platform/csrf"
-	"stock_backend/internal/platform/httpratelimit"
-	"stock_backend/internal/platform/logging"
+	"stock_backend/internal/infra/logging"
+	"stock_backend/internal/transport/csrf"
+	"stock_backend/internal/transport/httpratelimit"
 )
 
 // Usecase は認証操作のユースケースを定義します。

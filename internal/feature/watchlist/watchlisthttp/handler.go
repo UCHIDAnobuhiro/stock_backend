@@ -10,7 +10,7 @@ import (
 
 	"stock_backend/internal/api"
 	"stock_backend/internal/feature/watchlist"
-	jwtmw "stock_backend/internal/platform/jwt"
+	"stock_backend/internal/transport/jwt"
 )
 
 // Usecase はウォッチリスト操作のユースケースインターフェースを定義します。
@@ -33,7 +33,7 @@ func NewHandler(uc Usecase) *Handler {
 
 // List はユーザーのウォッチリスト一覧を取得します。
 func (h *Handler) List(c *gin.Context) {
-	userID := c.MustGet(jwtmw.ContextUserID).(int64)
+	userID := c.MustGet(jwt.ContextUserID).(int64)
 
 	entries, err := h.uc.ListUserSymbols(c.Request.Context(), userID)
 	if err != nil {
@@ -55,7 +55,7 @@ func (h *Handler) List(c *gin.Context) {
 
 // Add はウォッチリストに銘柄を追加します。
 func (h *Handler) Add(c *gin.Context) {
-	userID := c.MustGet(jwtmw.ContextUserID).(int64)
+	userID := c.MustGet(jwt.ContextUserID).(int64)
 
 	var req api.AddWatchlistRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -81,7 +81,7 @@ func (h *Handler) Add(c *gin.Context) {
 
 // Remove はウォッチリストから銘柄を削除します。
 func (h *Handler) Remove(c *gin.Context) {
-	userID := c.MustGet(jwtmw.ContextUserID).(int64)
+	userID := c.MustGet(jwt.ContextUserID).(int64)
 	code := c.Param("code")
 
 	if err := h.uc.RemoveSymbol(c.Request.Context(), userID, code); err != nil {
@@ -100,7 +100,7 @@ func (h *Handler) Remove(c *gin.Context) {
 
 // Reorder はウォッチリストの並び順を更新します。
 func (h *Handler) Reorder(c *gin.Context) {
-	userID := c.MustGet(jwtmw.ContextUserID).(int64)
+	userID := c.MustGet(jwt.ContextUserID).(int64)
 
 	var req api.ReorderWatchlistRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

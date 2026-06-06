@@ -4,14 +4,14 @@ import (
 	"testing"
 
 	"stock_backend/internal/feature/auth"
-	jwtmw "stock_backend/internal/platform/jwt"
+	"stock_backend/internal/transport/jwt"
 )
 
 // clearEnv は設定検証に関わる環境変数をすべて空にし、テストを決定的にする。
 func clearEnv(t *testing.T) {
 	t.Helper()
 	for _, k := range []string{
-		jwtmw.EnvKeyJWTSecret,
+		jwt.EnvKeyJWTSecret,
 		auth.EnvKeyPasswordPepper,
 		"COOKIE_SECURE",
 		"APP_ENV",
@@ -39,7 +39,7 @@ func TestLoadServerConfig(t *testing.T) {
 
 	t.Run("PASSWORD_PEPPER 未設定はエラー", func(t *testing.T) {
 		clearEnv(t)
-		t.Setenv(jwtmw.EnvKeyJWTSecret, "secret")
+		t.Setenv(jwt.EnvKeyJWTSecret, "secret")
 		if _, err := loadServerConfig(); err == nil {
 			t.Fatal("expected error when PASSWORD_PEPPER is missing, got nil")
 		}
@@ -47,7 +47,7 @@ func TestLoadServerConfig(t *testing.T) {
 
 	t.Run("必須のみ設定で成功・デフォルト適用", func(t *testing.T) {
 		clearEnv(t)
-		t.Setenv(jwtmw.EnvKeyJWTSecret, "secret")
+		t.Setenv(jwt.EnvKeyJWTSecret, "secret")
 		t.Setenv(auth.EnvKeyPasswordPepper, "pepper")
 
 		cfg, err := loadServerConfig()
@@ -67,7 +67,7 @@ func TestLoadServerConfig(t *testing.T) {
 
 	t.Run("APP_ENV=production で secureCookie が true", func(t *testing.T) {
 		clearEnv(t)
-		t.Setenv(jwtmw.EnvKeyJWTSecret, "secret")
+		t.Setenv(jwt.EnvKeyJWTSecret, "secret")
 		t.Setenv(auth.EnvKeyPasswordPepper, "pepper")
 		t.Setenv("APP_ENV", "production")
 
@@ -83,7 +83,7 @@ func TestLoadServerConfig(t *testing.T) {
 
 func TestRun_ReturnsOneWhenDBConfigInvalid(t *testing.T) {
 	clearEnv(t)
-	t.Setenv(jwtmw.EnvKeyJWTSecret, "secret")
+	t.Setenv(jwt.EnvKeyJWTSecret, "secret")
 	t.Setenv(auth.EnvKeyPasswordPepper, "pepper")
 	t.Setenv("DB_USER", "")
 

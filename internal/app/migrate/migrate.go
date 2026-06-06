@@ -18,7 +18,7 @@ import (
 	"slices"
 	"time"
 
-	infradb "stock_backend/internal/platform/db"
+	infradb "stock_backend/internal/infra/db"
 )
 
 // allowedCommands は本バイナリから実行を許容する goose サブコマンドです。

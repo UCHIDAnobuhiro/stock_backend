@@ -1,4 +1,4 @@
-package jwtmw
+package jwt
 
 const (
 	// EnvKeyJWTSecret はJWT署名シークレットの環境変数キーです。

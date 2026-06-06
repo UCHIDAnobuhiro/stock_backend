@@ -111,14 +111,17 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │       ├── sqlc/           # sqlc 生成コード（package watchlistsqlc）
 │   │       └── watchlisthttp/  # HTTPハンドラー（package watchlisthttp）
 │   │
-│   ├── platform/               # インフラストラクチャ層（外部依存）
+│   ├── transport/             # inbound HTTP 層（Gin ハンドラー/ミドルウェア）
 │   │   ├── csrf/               # CSRF保護（Double Submit Cookieパターン）
-│   │   ├── db/                 # データベース接続初期化
-│   │   ├── http/               # HTTPクライアント設定
-│   │   │   ├── handler/        # ヘルスチェックハンドラー
-│   │   │   └── middleware/     # セキュリティヘッダーミドルウェア
-│   │   ├── jwt/                # JWT生成/検証/ミドルウェア
+│   │   ├── handler/            # ヘルスチェックハンドラー
 │   │   ├── httpratelimit/      # Redisベースのスライディングウィンドウレートリミッター（HTTPミドルウェア）
+│   │   ├── jwt/                # JWT生成/検証/ミドルウェア（package jwt）
+│   │   └── middleware/         # セキュリティヘッダーミドルウェア
+│   │
+│   ├── infra/                  # 技術基盤層（外部リソース接続・横断ユーティリティ）
+│   │   ├── db/                 # データベース接続初期化
+│   │   ├── httpclient/         # 外部API呼び出し用HTTPクライアント設定
+│   │   ├── logging/            # 構造化ログ用ヘルパー
 │   │   └── redis/              # Redisクライアント実装
 │   │
 │   └── shared/                 # 共有ユーティリティ（usecase からも利用可）

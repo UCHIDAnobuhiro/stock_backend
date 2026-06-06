@@ -12,11 +12,11 @@ import (
 	"stock_backend/internal/feature/logodetection/logodetectionhttp"
 	"stock_backend/internal/feature/symbollist/symbollisthttp"
 	"stock_backend/internal/feature/watchlist/watchlisthttp"
-	csrfmw "stock_backend/internal/platform/csrf"
-	handler "stock_backend/internal/platform/handler"
-	"stock_backend/internal/platform/httpratelimit"
-	jwtmw "stock_backend/internal/platform/jwt"
-	httpmw "stock_backend/internal/platform/middleware"
+	csrfmw "stock_backend/internal/transport/csrf"
+	handler "stock_backend/internal/transport/handler"
+	"stock_backend/internal/transport/httpratelimit"
+	"stock_backend/internal/transport/jwt"
+	httpmw "stock_backend/internal/transport/middleware"
 )
 
 // NewRouter はすべてのアプリケーションルートを設定したGinルーターを生成します。
@@ -89,7 +89,7 @@ func NewRouter(authHandler *authhttp.Handler, oauthHandler *authhttp.OAuthHandle
 
 		// 保護ルート（認証必須・CSRF保護）
 		auth := v1.Group("/")
-		auth.Use(jwtmw.AuthRequired())
+		auth.Use(jwt.AuthRequired())
 		auth.Use(csrfmw.Protect())
 		{
 			auth.GET("/candles/:code", candles.GetCandlesHandler)

@@ -24,10 +24,10 @@ import (
 	"stock_backend/internal/feature/symbollist/symbollisthttp"
 	"stock_backend/internal/feature/watchlist"
 	"stock_backend/internal/feature/watchlist/watchlisthttp"
-	infradb "stock_backend/internal/platform/db"
-	"stock_backend/internal/platform/httpratelimit"
-	jwtmw "stock_backend/internal/platform/jwt"
-	infraredis "stock_backend/internal/platform/redis"
+	infradb "stock_backend/internal/infra/db"
+	infraredis "stock_backend/internal/infra/redis"
+	"stock_backend/internal/transport/httpratelimit"
+	"stock_backend/internal/transport/jwt"
 )
 
 // oauthProviderConfig は OAuth プロバイダ1社分の検証済み認証情報。
@@ -57,9 +57,9 @@ type serverConfig struct {
 // 外部接続（DB/Redis/GCP）に依存しない純粋関数なのでユニットテスト可能。
 // 必須項目の欠落や OAuth 設定の不整合があればエラーを返す。
 func loadServerConfig() (serverConfig, error) {
-	jwtSecret := os.Getenv(jwtmw.EnvKeyJWTSecret)
+	jwtSecret := os.Getenv(jwt.EnvKeyJWTSecret)
 	if jwtSecret == "" {
-		return serverConfig{}, fmt.Errorf("%s is required", jwtmw.EnvKeyJWTSecret)
+		return serverConfig{}, fmt.Errorf("%s is required", jwt.EnvKeyJWTSecret)
 	}
 
 	passwordPepper := os.Getenv(auth.EnvKeyPasswordPepper)
@@ -201,7 +201,7 @@ func run() int {
 	cachedCandleRepo := candles.NewCachingRepository(rdb, candles.DefaultCacheTTL, candleRepo, "candles")
 
 	// JWTジェネレータ
-	jwtGen := jwtmw.NewGenerator(cfg.jwtSecret, 1*time.Hour)
+	jwtGen := jwt.NewGenerator(cfg.jwtSecret, 1*time.Hour)
 
 	// Google Cloudクライアント初期化
 	visionDetector, err := vision.NewVisionLogoDetector(context.Background())
