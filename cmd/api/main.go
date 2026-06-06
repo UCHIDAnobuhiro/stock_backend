@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"time"
 
 	redisv9 "github.com/redis/go-redis/v9"
 
 	"stock_backend/internal/app/config"
+	"stock_backend/internal/app/di"
 	"stock_backend/internal/app/router"
 	"stock_backend/internal/feature/auth"
 	"stock_backend/internal/feature/auth/authhttp"
@@ -29,114 +29,6 @@ import (
 	"stock_backend/internal/transport/httpratelimit"
 	"stock_backend/internal/transport/jwt"
 )
-
-// oauthProviderConfig は OAuth プロバイダ1社分の検証済み認証情報。
-type oauthProviderConfig struct {
-	clientID     string
-	clientSecret string
-	redirectURL  string
-}
-
-// oauthConfig は OAuth 機能の検証済み設定。いずれかのプロバイダが設定された場合のみ生成される。
-type oauthConfig struct {
-	frontendURL string
-	google      *oauthProviderConfig // 未設定なら nil
-	github      *oauthProviderConfig // 未設定なら nil
-}
-
-// serverConfig は環境変数から読み込んだ検証済みのサーバー設定。
-type serverConfig struct {
-	jwtSecret      string
-	passwordPepper string
-	secureCookie   bool
-	corsOrigins    []string
-	oauth          *oauthConfig // OAuth 無効なら nil
-}
-
-// loadServerConfig は環境変数を読み込んで検証し、検証済みの設定を返す。
-// 外部接続（DB/Redis/GCP）に依存しない純粋関数なのでユニットテスト可能。
-// 必須項目の欠落や OAuth 設定の不整合があればエラーを返す。
-func loadServerConfig() (serverConfig, error) {
-	jwtSecret := os.Getenv(jwt.EnvKeyJWTSecret)
-	if jwtSecret == "" {
-		return serverConfig{}, fmt.Errorf("%s is required", jwt.EnvKeyJWTSecret)
-	}
-
-	passwordPepper := os.Getenv(auth.EnvKeyPasswordPepper)
-	if passwordPepper == "" {
-		return serverConfig{}, fmt.Errorf("%s is required", auth.EnvKeyPasswordPepper)
-	}
-
-	// COOKIE_SECURE を優先し、未設定なら APP_ENV=production をフォールバックとして使用
-	cookieSecureRaw := os.Getenv("COOKIE_SECURE")
-	defaultSecure := os.Getenv("APP_ENV") == "production"
-	secureCookie, ok := config.ParseBoolString(cookieSecureRaw, defaultSecure)
-	if !ok {
-		slog.Warn("invalid COOKIE_SECURE value, falling back to default", "value", cookieSecureRaw, "default", secureCookie)
-	}
-
-	// CORS許可オリジン（デフォルト: http://localhost:3000）
-	corsOrigins := config.ParseCORSOrigins(os.Getenv("CORS_ALLOWED_ORIGINS"))
-	if corsOrigins == nil {
-		corsOrigins = []string{"http://localhost:3000"}
-	}
-
-	oauth, err := loadOAuthConfig()
-	if err != nil {
-		return serverConfig{}, err
-	}
-
-	return serverConfig{
-		jwtSecret:      jwtSecret,
-		passwordPepper: passwordPepper,
-		secureCookie:   secureCookie,
-		corsOrigins:    corsOrigins,
-		oauth:          oauth,
-	}, nil
-}
-
-// loadOAuthConfig は OAuth 関連の環境変数を検証する。
-// GOOGLE_CLIENT_ID / GITHUB_CLIENT_ID のいずれも未設定なら OAuth 無効として nil を返す。
-func loadOAuthConfig() (*oauthConfig, error) {
-	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
-	githubClientID := os.Getenv("GITHUB_CLIENT_ID")
-	if googleClientID == "" && githubClientID == "" {
-		return nil, nil
-	}
-
-	frontendURL := os.Getenv("OAUTH_FRONTEND_REDIRECT_URL")
-	if frontendURL == "" {
-		return nil, fmt.Errorf("OAUTH_FRONTEND_REDIRECT_URL is required when OAuth is enabled")
-	}
-
-	cfg := &oauthConfig{frontendURL: frontendURL}
-
-	if googleClientID != "" {
-		secret := os.Getenv("GOOGLE_CLIENT_SECRET")
-		if secret == "" {
-			return nil, fmt.Errorf("GOOGLE_CLIENT_SECRET is required when GOOGLE_CLIENT_ID is set")
-		}
-		redirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
-		if redirectURL == "" {
-			return nil, fmt.Errorf("GOOGLE_REDIRECT_URL is required when GOOGLE_CLIENT_ID is set")
-		}
-		cfg.google = &oauthProviderConfig{clientID: googleClientID, clientSecret: secret, redirectURL: redirectURL}
-	}
-
-	if githubClientID != "" {
-		secret := os.Getenv("GITHUB_CLIENT_SECRET")
-		if secret == "" {
-			return nil, fmt.Errorf("GITHUB_CLIENT_SECRET is required when GITHUB_CLIENT_ID is set")
-		}
-		redirectURL := os.Getenv("GITHUB_REDIRECT_URL")
-		if redirectURL == "" {
-			return nil, fmt.Errorf("GITHUB_REDIRECT_URL is required when GITHUB_CLIENT_ID is set")
-		}
-		cfg.github = &oauthProviderConfig{clientID: githubClientID, clientSecret: secret, redirectURL: redirectURL}
-	}
-
-	return cfg, nil
-}
 
 // main は run の戻り値で os.Exit するだけのラッパー。
 // os.Exit は defer を実行しないため、DB / Redis / Vision クライアントの
@@ -234,37 +126,11 @@ func run() int {
 	// OAuth ハンドラー（cfg.oauth が nil の場合はOAuth機能なしで起動）
 	var oauthH *authhttp.OAuthHandler
 	if cfg.oauth != nil {
-		if rdb == nil {
-			slog.Error("OAuth requires Redis but Redis is unavailable")
+		oauthH, err = di.NewOAuthHandler(cfg.oauth, sqlDB, rdb, userRepo, jwtGen, watchlistUC, cfg.secureCookie)
+		if err != nil {
+			slog.Error("failed to set up OAuth", "error", err)
 			return 1
 		}
-		oauthProviders := map[string]auth.OAuthProvider{}
-		if cfg.oauth.google != nil {
-			oauthProviders["google"] = auth.NewGoogleProvider(
-				cfg.oauth.google.clientID,
-				cfg.oauth.google.clientSecret,
-				cfg.oauth.google.redirectURL,
-				&http.Client{Timeout: 10 * time.Second},
-			)
-		}
-		if cfg.oauth.github != nil {
-			oauthProviders["github"] = auth.NewGitHubProvider(
-				cfg.oauth.github.clientID,
-				cfg.oauth.github.clientSecret,
-				cfg.oauth.github.redirectURL,
-				&http.Client{Timeout: 10 * time.Second},
-			)
-		}
-		oauthUC := auth.NewOAuthUsecase(
-			userRepo,
-			auth.NewOAuthAccountRepository(sqlDB),
-			userRepo,
-			auth.NewRedisOAuthStateStore(rdb),
-			jwtGen,
-			oauthProviders,
-			watchlistUC,
-		)
-		oauthH = authhttp.NewOAuthHandler(oauthUC, cfg.secureCookie, cfg.oauth.frontendURL)
 	}
 
 	// ハンドラー
@@ -283,4 +149,98 @@ func run() int {
 		return 1
 	}
 	return 0
+}
+
+// serverConfig は環境変数から読み込んだ検証済みのサーバー設定。
+type serverConfig struct {
+	jwtSecret      string
+	passwordPepper string
+	secureCookie   bool
+	corsOrigins    []string
+	oauth          *di.OAuthConfig // OAuth 無効なら nil
+}
+
+// loadServerConfig は環境変数を読み込んで検証し、検証済みの設定を返す。
+// 外部接続（DB/Redis/GCP）に依存しない純粋関数なのでユニットテスト可能。
+// 必須項目の欠落や OAuth 設定の不整合があればエラーを返す。
+func loadServerConfig() (serverConfig, error) {
+	jwtSecret := os.Getenv(jwt.EnvKeyJWTSecret)
+	if jwtSecret == "" {
+		return serverConfig{}, fmt.Errorf("%s is required", jwt.EnvKeyJWTSecret)
+	}
+
+	passwordPepper := os.Getenv(auth.EnvKeyPasswordPepper)
+	if passwordPepper == "" {
+		return serverConfig{}, fmt.Errorf("%s is required", auth.EnvKeyPasswordPepper)
+	}
+
+	// COOKIE_SECURE を優先し、未設定なら APP_ENV=production をフォールバックとして使用
+	cookieSecureRaw := os.Getenv("COOKIE_SECURE")
+	defaultSecure := os.Getenv("APP_ENV") == "production"
+	secureCookie, ok := config.ParseBoolString(cookieSecureRaw, defaultSecure)
+	if !ok {
+		slog.Warn("invalid COOKIE_SECURE value, falling back to default", "value", cookieSecureRaw, "default", secureCookie)
+	}
+
+	// CORS許可オリジン（デフォルト: http://localhost:3000）
+	corsOrigins := config.ParseCORSOrigins(os.Getenv("CORS_ALLOWED_ORIGINS"))
+	if corsOrigins == nil {
+		corsOrigins = []string{"http://localhost:3000"}
+	}
+
+	oauth, err := loadOAuthConfig()
+	if err != nil {
+		return serverConfig{}, err
+	}
+
+	return serverConfig{
+		jwtSecret:      jwtSecret,
+		passwordPepper: passwordPepper,
+		secureCookie:   secureCookie,
+		corsOrigins:    corsOrigins,
+		oauth:          oauth,
+	}, nil
+}
+
+// loadOAuthConfig は OAuth 関連の環境変数を検証する。
+// GOOGLE_CLIENT_ID / GITHUB_CLIENT_ID のいずれも未設定なら OAuth 無効として nil を返す。
+func loadOAuthConfig() (*di.OAuthConfig, error) {
+	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
+	githubClientID := os.Getenv("GITHUB_CLIENT_ID")
+	if googleClientID == "" && githubClientID == "" {
+		return nil, nil
+	}
+
+	frontendURL := os.Getenv("OAUTH_FRONTEND_REDIRECT_URL")
+	if frontendURL == "" {
+		return nil, fmt.Errorf("OAUTH_FRONTEND_REDIRECT_URL is required when OAuth is enabled")
+	}
+
+	cfg := &di.OAuthConfig{FrontendURL: frontendURL}
+
+	if googleClientID != "" {
+		secret := os.Getenv("GOOGLE_CLIENT_SECRET")
+		if secret == "" {
+			return nil, fmt.Errorf("GOOGLE_CLIENT_SECRET is required when GOOGLE_CLIENT_ID is set")
+		}
+		redirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
+		if redirectURL == "" {
+			return nil, fmt.Errorf("GOOGLE_REDIRECT_URL is required when GOOGLE_CLIENT_ID is set")
+		}
+		cfg.Google = &di.ProviderCredentials{ClientID: googleClientID, ClientSecret: secret, RedirectURL: redirectURL}
+	}
+
+	if githubClientID != "" {
+		secret := os.Getenv("GITHUB_CLIENT_SECRET")
+		if secret == "" {
+			return nil, fmt.Errorf("GITHUB_CLIENT_SECRET is required when GITHUB_CLIENT_ID is set")
+		}
+		redirectURL := os.Getenv("GITHUB_REDIRECT_URL")
+		if redirectURL == "" {
+			return nil, fmt.Errorf("GITHUB_REDIRECT_URL is required when GITHUB_CLIENT_ID is set")
+		}
+		cfg.GitHub = &di.ProviderCredentials{ClientID: githubClientID, ClientSecret: secret, RedirectURL: redirectURL}
+	}
+
+	return cfg, nil
 }

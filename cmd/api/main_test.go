@@ -143,10 +143,10 @@ func TestLoadOAuthConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if cfg == nil || cfg.google == nil {
+		if cfg == nil || cfg.Google == nil {
 			t.Fatalf("expected google config, got %+v", cfg)
 		}
-		if cfg.github != nil {
+		if cfg.GitHub != nil {
 			t.Error("github should be nil when not configured")
 		}
 	})
@@ -175,7 +175,7 @@ func TestLoadOAuthConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if cfg == nil || cfg.google == nil || cfg.github == nil {
+		if cfg == nil || cfg.Google == nil || cfg.GitHub == nil {
 			t.Fatalf("expected both providers, got %+v", cfg)
 		}
 	})
