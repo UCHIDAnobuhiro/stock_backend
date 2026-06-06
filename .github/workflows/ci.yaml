@@ -70,6 +70,24 @@ jobs:
           version: v2.12.2
           args: --timeout=5m
 
+  # アーキテクチャ依存ルール検証（go-arch-lint、デフォルト拒否）
+  arch-lint:
+    name: Arch Lint
+    needs: docs-check
+    if: needs.docs-check.outputs.code_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+
+      - name: Run go-arch-lint
+        run: go tool go-arch-lint check
+
   # ビルド確認とテスト実行
   build-test:
     name: Build & Test
@@ -163,17 +181,19 @@ jobs:
   # GitHub Branch Protectionではこのジョブだけをrequiredに設定する
   ci-gate:
     name: CI Gate
-    needs: [lint, build-test, schema-doc-check]
+    needs: [lint, arch-lint, build-test, schema-doc-check]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check CI results
         run: |
           LINT="${{ needs.lint.result }}"
+          ARCH_LINT="${{ needs.arch-lint.result }}"
           BUILD_TEST="${{ needs.build-test.result }}"
           SCHEMA_DOC="${{ needs.schema-doc-check.result }}"
-          echo "lint=${LINT} build-test=${BUILD_TEST} schema-doc=${SCHEMA_DOC}"
+          echo "lint=${LINT} arch-lint=${ARCH_LINT} build-test=${BUILD_TEST} schema-doc=${SCHEMA_DOC}"
           if [[ "${LINT}" == "success" || "${LINT}" == "skipped" ]] && \
+             [[ "${ARCH_LINT}" == "success" || "${ARCH_LINT}" == "skipped" ]] && \
              [[ "${BUILD_TEST}" == "success" || "${BUILD_TEST}" == "skipped" ]] && \
              [[ "${SCHEMA_DOC}" == "success" || "${SCHEMA_DOC}" == "skipped" ]]; then
             echo "CI passed"
