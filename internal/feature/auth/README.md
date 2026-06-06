@@ -449,9 +449,9 @@ graph TB
         RepoImpl[UserRepository<br/>auth]
     end
 
-    subgraph "Platform Layer"
-        JWTImpl[JWTGenerator<br/>platform/jwt]
-        RateLimiter[Limiter<br/>platform/httpratelimit]
+    subgraph "Transport Layer"
+        JWTImpl[JWTGenerator<br/>transport/jwt]
+        RateLimiter[Limiter<br/>transport/httpratelimit]
     end
 
     subgraph "External Dependencies"
@@ -551,7 +551,7 @@ graph TB
 5. **セキュリティ**:
    - パスワードは保存前にbcryptでハッシュ化
    - タイミング攻撃の防止（ユーザー未検出時もbcrypt比較を実行）
-   - JWTトークンはHS256アルゴリズムで署名（`platform/jwt` で実装）
+   - JWTトークンはHS256アルゴリズムで署名（`transport/jwt` で実装）
    - 署名には環境変数 `JWT_SECRET` を使用
    - ハンドラーレベルで汎用エラーメッセージを返却し、列挙攻撃を防止
 
