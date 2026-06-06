@@ -7,7 +7,7 @@ import (
 
 	"stock_backend/internal/app/di"
 	"stock_backend/internal/feature/symbollist"
-	"stock_backend/internal/platform/db"
+	"stock_backend/internal/infra/db"
 	"stock_backend/internal/shared/clientratelimit"
 )
 

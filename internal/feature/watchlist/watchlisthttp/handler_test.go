@@ -14,7 +14,7 @@ import (
 
 	"stock_backend/internal/feature/watchlist"
 	"stock_backend/internal/feature/watchlist/watchlisthttp"
-	jwtmw "stock_backend/internal/platform/jwt"
+	"stock_backend/internal/transport/jwt"
 )
 
 const testUserID int64 = 1
@@ -61,7 +61,7 @@ func newRouter(t *testing.T, register func(r *gin.Engine)) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(func(c *gin.Context) {
-		c.Set(jwtmw.ContextUserID, testUserID)
+		c.Set(jwt.ContextUserID, testUserID)
 	})
 	register(r)
 	return r

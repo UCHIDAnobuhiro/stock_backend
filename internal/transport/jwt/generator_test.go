@@ -1,11 +1,11 @@
-package jwtmw
+package jwt
 
 import (
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	gojwt "github.com/golang-jwt/jwt/v5"
 )
 
 // TestNewGenerator は各種設定でGeneratorが正しく生成されることを検証します。
@@ -70,7 +70,7 @@ func TestGenerator_GenerateToken(t *testing.T) {
 			}
 
 			// Verify the token can be parsed
-			token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+			token, err := gojwt.Parse(tokenStr, func(t *gojwt.Token) (interface{}, error) {
 				return []byte("test-secret"), nil
 			})
 			if err != nil {
@@ -81,7 +81,7 @@ func TestGenerator_GenerateToken(t *testing.T) {
 			}
 
 			// Verify claims
-			claims, ok := token.Claims.(jwt.MapClaims)
+			claims, ok := token.Claims.(gojwt.MapClaims)
 			if !ok {
 				t.Fatal("expected MapClaims")
 			}
@@ -112,9 +112,9 @@ func TestGenerator_GenerateToken_SigningMethod(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	token, err := jwt.Parse(tokenStr, func(tok *jwt.Token) (interface{}, error) {
+	token, err := gojwt.Parse(tokenStr, func(tok *gojwt.Token) (interface{}, error) {
 		// Verify signing method is HMAC
-		if _, ok := tok.Method.(*jwt.SigningMethodHMAC); !ok {
+		if _, ok := tok.Method.(*gojwt.SigningMethodHMAC); !ok {
 			t.Errorf("unexpected signing method: %v", tok.Header["alg"])
 		}
 		return []byte("test-secret"), nil
@@ -142,11 +142,11 @@ func TestGenerator_GenerateToken_Expiration(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	token, _ := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+	token, _ := gojwt.Parse(tokenStr, func(t *gojwt.Token) (interface{}, error) {
 		return []byte("test-secret"), nil
 	})
 
-	claims := token.Claims.(jwt.MapClaims)
+	claims := token.Claims.(gojwt.MapClaims)
 
 	// Check exp is within expected range (using Unix timestamps for comparison)
 	expUnix := int64(claims["exp"].(float64))

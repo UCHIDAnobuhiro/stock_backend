@@ -10,7 +10,7 @@ import (
 
 	"stock_backend/internal/api"
 	"stock_backend/internal/feature/auth"
-	"stock_backend/internal/platform/csrf"
+	"stock_backend/internal/transport/csrf"
 )
 
 // OAuthUsecase はOAuth2認証フローのユースケースインターフェースです。

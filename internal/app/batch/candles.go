@@ -10,8 +10,8 @@ import (
 	"stock_backend/internal/app/di"
 	"stock_backend/internal/feature/candles"
 	"stock_backend/internal/feature/symbollist"
-	"stock_backend/internal/platform/db"
-	infraredis "stock_backend/internal/platform/redis"
+	"stock_backend/internal/infra/db"
+	infraredis "stock_backend/internal/infra/redis"
 	"stock_backend/internal/shared/clientratelimit"
 )
 

@@ -1,4 +1,4 @@
-package jwtmw
+package jwt
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	gojwt "github.com/golang-jwt/jwt/v5"
 )
 
 // ContextUserID はGinコンテキストに認証済みユーザーIDを格納するためのキーです。
@@ -50,10 +50,10 @@ func AuthRequired() gin.HandlerFunc {
 		}
 
 		// 4. JWT署名をパースして検証
-		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		token, err := gojwt.Parse(tokenStr, func(t *gojwt.Token) (interface{}, error) {
 			// 署名アルゴリズムを確認（HMACのみ許可）
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
+			if _, ok := t.Method.(*gojwt.SigningMethodHMAC); !ok {
+				return nil, gojwt.ErrSignatureInvalid
 			}
 			return []byte(secret), nil
 		})
@@ -64,7 +64,7 @@ func AuthRequired() gin.HandlerFunc {
 		}
 
 		// 5. クレーム（ペイロード）を抽出
-		claims, ok := token.Claims.(jwt.MapClaims)
+		claims, ok := token.Claims.(gojwt.MapClaims)
 		if !ok {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
 			return

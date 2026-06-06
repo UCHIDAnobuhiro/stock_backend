@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"stock_backend/internal/platform/db/dbtest"
+	"stock_backend/internal/infra/db/dbtest"
 )
 
 func TestMain(m *testing.M) {

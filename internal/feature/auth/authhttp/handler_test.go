@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"stock_backend/internal/feature/auth/authhttp"
-	"stock_backend/internal/platform/httpratelimit"
+	"stock_backend/internal/transport/httpratelimit"
 )
 
 // mockUsecase はUsecaseインターフェースのモック実装です。

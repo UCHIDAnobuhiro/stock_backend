@@ -1,12 +1,12 @@
-// Package jwtmw はJWTトークンの生成と認証ミドルウェアを提供します。
-package jwtmw
+// Package jwt はJWTトークンの生成と認証ミドルウェアを提供します。
+package jwt
 
 import (
 	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	gojwt "github.com/golang-jwt/jwt/v5"
 )
 
 // Generator はJWTトークンの生成を実装します。
@@ -26,14 +26,14 @@ func NewGenerator(secret string, expiration time.Duration) *Generator {
 
 // GenerateToken は標準クレームを含む署名済みJWTトークンを生成します。
 func (g *Generator) GenerateToken(userID int64, email string) (string, error) {
-	claims := jwt.MapClaims{
+	claims := gojwt.MapClaims{
 		"sub":   strconv.FormatInt(userID, 10),
 		"exp":   time.Now().Add(g.expiration).Unix(),
 		"iat":   time.Now().Unix(),
 		"email": email,
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := gojwt.NewWithClaims(gojwt.SigningMethodHS256, claims)
 	signed, err := token.SignedString(g.secret)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)

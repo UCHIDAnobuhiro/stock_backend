@@ -37,8 +37,9 @@ components:
   logodetection-vision: { in: internal/feature/logodetection/vision }
   logodetection-http:   { in: internal/feature/logodetection/logodetectionhttp }
   # --- 共通基盤 ---
-  platform: { in: internal/platform/** }
-  shared:   { in: internal/shared/** }
+  transport: { in: internal/transport/** }
+  infra:     { in: internal/infra/** }
+  shared:    { in: internal/shared/** }
   api:      { in: internal/api }
   app:      { in: internal/app/** }
   cmd:      { in: cmd/** }
@@ -59,16 +60,18 @@ deps:
   logodetection-gemini: { mayDependOn: [logodetection] }
   logodetection-vision: { mayDependOn: [logodetection] }
 
-  # transport は api 型境界をここに閉じ込める。コア + api + platform に依存可。
-  candles-http:       { mayDependOn: [candles, api, platform] }
-  auth-http:          { mayDependOn: [auth, api, platform] }
-  symbollist-http:    { mayDependOn: [symbollist, api, platform] }
-  watchlist-http:     { mayDependOn: [watchlist, api, platform] }
-  logodetection-http: { mayDependOn: [logodetection, api, platform] }
+  # http層は api 型境界をここに閉じ込める。コア + api + transport/infra に依存可。
+  candles-http:       { mayDependOn: [candles, api, transport, infra] }
+  auth-http:          { mayDependOn: [auth, api, transport, infra] }
+  symbollist-http:    { mayDependOn: [symbollist, api, transport, infra] }
+  watchlist-http:     { mayDependOn: [watchlist, api, transport, infra] }
+  logodetection-http: { mayDependOn: [logodetection, api, transport, infra] }
 
-  # platform は feature に依存できない。共通基盤・api 型・埋め込み migrations には依存可。
-  # platform 内部のパッケージ間依存（例: db/dbtest → db）を許可するため自身も含める。
-  platform: { mayDependOn: [platform, shared, api, migrations-embed] }
+  # transport（inbound HTTP）/ infra（技術基盤）は feature に依存できない。
+  # transport は infra・共通基盤・api 型に依存可。infra は共通基盤・api 型・埋め込み migrations に依存可。
+  # それぞれ内部のパッケージ間依存を許可するため自身も含める（例: infra の db/dbtest → db）。
+  transport: { mayDependOn: [transport, infra, shared, api] }
+  infra:     { mayDependOn: [infra, shared, api, migrations-embed] }
 
   # 合成ルート（DI/ルーティング/エントリポイント）は全コンポーネントに依存可。
   # app 内部のパッケージ間依存（例: batch → di）を許可するため自身も含める。
@@ -88,7 +91,8 @@ deps:
       - logodetection-gemini
       - logodetection-vision
       - logodetection-http
-      - platform
+      - transport
+      - infra
       - shared
       - api
   cmd:
@@ -107,6 +111,7 @@ deps:
       - logodetection-gemini
       - logodetection-vision
       - logodetection-http
-      - platform
+      - transport
+      - infra
       - shared
       - api

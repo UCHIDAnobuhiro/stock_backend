@@ -38,7 +38,7 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	infradb "stock_backend/internal/platform/db"
+	infradb "stock_backend/internal/infra/db"
 )
 
 const envTestDBDSN = "TEST_DB_DSN"
