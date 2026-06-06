@@ -1,4 +1,4 @@
-package usecase_test
+package logodetection_test
 
 import (
 	"context"
@@ -6,8 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"stock_backend/internal/feature/logodetection/domain/entity"
-	"stock_backend/internal/feature/logodetection/usecase"
+	"stock_backend/internal/feature/logodetection"
 )
 
 // ErrAPI はモックと期待値の間で共有されるセンチネルエラーです。
@@ -15,11 +14,11 @@ var ErrAPI = errors.New("api error")
 
 // mockLogoDetector はLogoDetectorインターフェースのモック実装です。
 type mockLogoDetector struct {
-	DetectLogosFunc  func(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error)
+	DetectLogosFunc  func(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error)
 	DetectLogosCalls int
 }
 
-func (m *mockLogoDetector) DetectLogos(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error) {
+func (m *mockLogoDetector) DetectLogos(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error) {
 	m.DetectLogosCalls++
 	if m.DetectLogosFunc != nil {
 		return m.DetectLogosFunc(ctx, imageData)
@@ -43,7 +42,7 @@ func (m *mockCompanyAnalyzer) Analyze(ctx context.Context, prompt string) (strin
 
 func TestLogoDetectionUsecase_DetectLogos(t *testing.T) {
 	ctx := context.Background()
-	expectedLogos := []entity.DetectedLogo{
+	expectedLogos := []logodetection.DetectedLogo{
 		{Name: "Apple", Confidence: 0.95},
 		{Name: "Google", Confidence: 0.87},
 	}
@@ -51,14 +50,14 @@ func TestLogoDetectionUsecase_DetectLogos(t *testing.T) {
 	testCases := []struct {
 		name          string
 		imageData     []byte
-		mockFunc      func(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error)
-		expectedLogos []entity.DetectedLogo
+		mockFunc      func(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error)
+		expectedLogos []logodetection.DetectedLogo
 		expectedErr   string
 	}{
 		{
 			name:      "success: logos detected",
 			imageData: []byte("fake-image-data"),
-			mockFunc: func(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error) {
+			mockFunc: func(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error) {
 				return expectedLogos, nil
 			},
 			expectedLogos: expectedLogos,
@@ -70,13 +69,13 @@ func TestLogoDetectionUsecase_DetectLogos(t *testing.T) {
 		},
 		{
 			name:        "error: image too large",
-			imageData:   make([]byte, usecase.MaxImageSize+1),
+			imageData:   make([]byte, logodetection.MaxImageSize+1),
 			expectedErr: "image size exceeds maximum",
 		},
 		{
 			name:      "error: api returns error",
 			imageData: []byte("fake-image-data"),
-			mockFunc: func(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error) {
+			mockFunc: func(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error) {
 				return nil, ErrAPI
 			},
 			expectedLogos: nil,
@@ -88,7 +87,7 @@ func TestLogoDetectionUsecase_DetectLogos(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			detector := &mockLogoDetector{DetectLogosFunc: tc.mockFunc}
 			analyzer := &mockCompanyAnalyzer{}
-			uc := usecase.NewLogoDetectionUsecase(detector, analyzer)
+			uc := logodetection.NewLogoDetectionUsecase(detector, analyzer)
 
 			logos, err := uc.DetectLogos(ctx, tc.imageData)
 
@@ -149,7 +148,7 @@ func TestLogoDetectionUsecase_AnalyzeCompany(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			detector := &mockLogoDetector{}
 			analyzer := &mockCompanyAnalyzer{AnalyzeFunc: tc.mockFunc}
-			uc := usecase.NewLogoDetectionUsecase(detector, analyzer)
+			uc := logodetection.NewLogoDetectionUsecase(detector, analyzer)
 
 			result, err := uc.AnalyzeCompany(ctx, tc.companyName)
 

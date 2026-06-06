@@ -16,10 +16,10 @@ import (
 	authhttp "stock_backend/internal/feature/auth/transport"
 	"stock_backend/internal/feature/candles"
 	candleshttp "stock_backend/internal/feature/candles/transport"
-	logogemini "stock_backend/internal/feature/logodetection/adapters/gemini"
-	logovision "stock_backend/internal/feature/logodetection/adapters/vision"
-	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
-	logousecase "stock_backend/internal/feature/logodetection/usecase"
+	"stock_backend/internal/feature/logodetection"
+	"stock_backend/internal/feature/logodetection/gemini"
+	logodetectionhttp "stock_backend/internal/feature/logodetection/transport"
+	"stock_backend/internal/feature/logodetection/vision"
 	"stock_backend/internal/feature/symbollist"
 	symbollisthttp "stock_backend/internal/feature/symbollist/transport"
 	"stock_backend/internal/feature/watchlist"
@@ -204,7 +204,7 @@ func run() int {
 	jwtGen := jwtmw.NewGenerator(cfg.jwtSecret, 1*time.Hour)
 
 	// Google Cloudクライアント初期化
-	visionDetector, err := logovision.NewVisionLogoDetector(context.Background())
+	visionDetector, err := vision.NewVisionLogoDetector(context.Background())
 	if err != nil {
 		slog.Error("failed to create vision client", "error", err)
 		return 1
@@ -215,7 +215,7 @@ func run() int {
 		}
 	}()
 
-	geminiAnalyzer, err := logogemini.NewGeminiAnalyzer(context.Background())
+	geminiAnalyzer, err := gemini.NewGeminiAnalyzer(context.Background())
 	if err != nil {
 		slog.Error("failed to create gemini client", "error", err)
 		return 1
@@ -228,7 +228,7 @@ func run() int {
 	authUC := auth.NewAuthUsecase(userRepo, jwtGen, cfg.passwordPepper)
 	symbolUC := symbollist.NewSymbolUsecase(symbolRepo)
 	candlesUC := candles.NewCandlesUsecase(cachedCandleRepo)
-	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
+	logoUC := logodetection.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
 	watchlistUC := watchlist.NewWatchlistUsecase(watchlistRepo, symbolRepo)
 
 	// OAuth ハンドラー（cfg.oauth が nil の場合はOAuth機能なしで起動）
@@ -271,7 +271,7 @@ func run() int {
 	authH := authhttp.NewAuthHandler(authUC, rateLimiter, cfg.secureCookie, watchlistUC)
 	symbolH := symbollisthttp.NewSymbolHandler(symbolUC)
 	candlesH := candleshttp.NewCandlesHandler(candlesUC)
-	logoH := logohandler.NewLogoDetectionHandler(logoUC)
+	logoH := logodetectionhttp.NewLogoDetectionHandler(logoUC)
 	watchlistH := watchlisthttp.NewWatchlistHandler(watchlistUC)
 
 	// ルーター作成

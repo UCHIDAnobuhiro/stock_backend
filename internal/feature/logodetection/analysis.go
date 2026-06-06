@@ -1,4 +1,4 @@
-package entity
+package logodetection
 
 // CompanyAnalysis は企業の分析結果を表します。
 type CompanyAnalysis struct {

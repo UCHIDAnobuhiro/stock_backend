@@ -1,5 +1,4 @@
-// Package entity はlogodetectionフィーチャーのドメインモデルを定義します。
-package entity
+package logodetection
 
 // DetectedLogo は画像から検出されたロゴを表します。
 type DetectedLogo struct {

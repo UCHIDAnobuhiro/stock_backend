@@ -8,8 +8,7 @@ import (
 	gvision "cloud.google.com/go/vision/v2/apiv1"
 	visionpb "cloud.google.com/go/vision/v2/apiv1/visionpb"
 
-	"stock_backend/internal/feature/logodetection/domain/entity"
-	"stock_backend/internal/feature/logodetection/usecase"
+	"stock_backend/internal/feature/logodetection"
 )
 
 // VisionLogoDetector はGoogle Cloud Vision APIを使用してロゴを検出します。
@@ -18,7 +17,7 @@ type VisionLogoDetector struct {
 }
 
 // VisionLogoDetectorがLogoDetectorを実装していることをコンパイル時に検証します。
-var _ usecase.LogoDetector = (*VisionLogoDetector)(nil)
+var _ logodetection.LogoDetector = (*VisionLogoDetector)(nil)
 
 // NewVisionLogoDetector はADCを使用してVisionLogoDetectorの新しいインスタンスを生成します。
 func NewVisionLogoDetector(ctx context.Context) (*VisionLogoDetector, error) {
@@ -35,7 +34,7 @@ func (v *VisionLogoDetector) Close() error {
 }
 
 // DetectLogos は画像バイト列からロゴを検出します。
-func (v *VisionLogoDetector) DetectLogos(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error) {
+func (v *VisionLogoDetector) DetectLogos(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error) {
 	req := &visionpb.BatchAnnotateImagesRequest{
 		Requests: []*visionpb.AnnotateImageRequest{
 			{
@@ -60,9 +59,9 @@ func (v *VisionLogoDetector) DetectLogos(ctx context.Context, imageData []byte) 
 		return nil, fmt.Errorf("vision API error: %s", resp.Responses[0].Error.Message)
 	}
 
-	logos := make([]entity.DetectedLogo, 0, len(resp.Responses[0].LogoAnnotations))
+	logos := make([]logodetection.DetectedLogo, 0, len(resp.Responses[0].LogoAnnotations))
 	for _, logo := range resp.Responses[0].LogoAnnotations {
-		logos = append(logos, entity.DetectedLogo{
+		logos = append(logos, logodetection.DetectedLogo{
 			Name:       logo.Description,
 			Confidence: logo.Score,
 		})

@@ -1,4 +1,4 @@
-package handler_test
+package logodetectionhttp_test
 
 import (
 	"bytes"
@@ -14,21 +14,21 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"stock_backend/internal/feature/logodetection/domain/entity"
-	"stock_backend/internal/feature/logodetection/transport/handler"
+	"stock_backend/internal/feature/logodetection"
+	"stock_backend/internal/feature/logodetection/transport"
 )
 
 // mockLogoDetectionUsecase はLogoDetectionUsecaseインターフェースのモック実装です。
 type mockLogoDetectionUsecase struct {
-	DetectLogosFunc    func(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error)
-	AnalyzeCompanyFunc func(ctx context.Context, companyName string) (*entity.CompanyAnalysis, error)
+	DetectLogosFunc    func(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error)
+	AnalyzeCompanyFunc func(ctx context.Context, companyName string) (*logodetection.CompanyAnalysis, error)
 }
 
-func (m *mockLogoDetectionUsecase) DetectLogos(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error) {
+func (m *mockLogoDetectionUsecase) DetectLogos(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error) {
 	return m.DetectLogosFunc(ctx, imageData)
 }
 
-func (m *mockLogoDetectionUsecase) AnalyzeCompany(ctx context.Context, companyName string) (*entity.CompanyAnalysis, error) {
+func (m *mockLogoDetectionUsecase) AnalyzeCompany(ctx context.Context, companyName string) (*logodetection.CompanyAnalysis, error) {
 	return m.AnalyzeCompanyFunc(ctx, companyName)
 }
 
@@ -67,7 +67,7 @@ func TestLogoDetectionHandler_DetectLogos(t *testing.T) {
 	tests := []struct {
 		name           string
 		setupRequest   func(t *testing.T) *http.Request
-		mockFunc       func(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error)
+		mockFunc       func(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error)
 		expectedStatus int
 		expectedBody   string
 	}{
@@ -77,8 +77,8 @@ func TestLogoDetectionHandler_DetectLogos(t *testing.T) {
 				req, _ := createMultipartRequest(t, "image", "test.jpg", []byte("fake-image"))
 				return req
 			},
-			mockFunc: func(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error) {
-				return []entity.DetectedLogo{
+			mockFunc: func(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error) {
+				return []logodetection.DetectedLogo{
 					{Name: "Apple", Confidence: 0.95},
 				}, nil
 			},
@@ -101,7 +101,7 @@ func TestLogoDetectionHandler_DetectLogos(t *testing.T) {
 				req, _ := createMultipartRequest(t, "image", "test.jpg", []byte("fake-image"))
 				return req
 			},
-			mockFunc: func(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error) {
+			mockFunc: func(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error) {
 				return nil, errors.New("vision API error")
 			},
 			expectedStatus: http.StatusBadGateway,
@@ -115,7 +115,7 @@ func TestLogoDetectionHandler_DetectLogos(t *testing.T) {
 				DetectLogosFunc: tt.mockFunc,
 			}
 
-			h := handler.NewLogoDetectionHandler(mockUC)
+			h := logodetectionhttp.NewLogoDetectionHandler(mockUC)
 
 			router := gin.New()
 			router.POST("/logo/detect", h.DetectLogos)
@@ -137,16 +137,16 @@ func TestLogoDetectionHandler_AnalyzeCompany(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    string
-		mockFunc       func(ctx context.Context, companyName string) (*entity.CompanyAnalysis, error)
+		mockFunc       func(ctx context.Context, companyName string) (*logodetection.CompanyAnalysis, error)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name:        "success: analysis generated",
 			requestBody: `{"company_name":"任天堂"}`,
-			mockFunc: func(ctx context.Context, companyName string) (*entity.CompanyAnalysis, error) {
+			mockFunc: func(ctx context.Context, companyName string) (*logodetection.CompanyAnalysis, error) {
 				assert.Equal(t, "任天堂", companyName)
-				return &entity.CompanyAnalysis{
+				return &logodetection.CompanyAnalysis{
 					CompanyName: "任天堂",
 					Summary:     "任天堂の強みは...",
 				}, nil
@@ -169,7 +169,7 @@ func TestLogoDetectionHandler_AnalyzeCompany(t *testing.T) {
 		{
 			name:        "error: usecase returns error",
 			requestBody: `{"company_name":"テスト企業"}`,
-			mockFunc: func(ctx context.Context, companyName string) (*entity.CompanyAnalysis, error) {
+			mockFunc: func(ctx context.Context, companyName string) (*logodetection.CompanyAnalysis, error) {
 				return nil, errors.New("gemini API error")
 			},
 			expectedStatus: http.StatusBadGateway,
@@ -183,7 +183,7 @@ func TestLogoDetectionHandler_AnalyzeCompany(t *testing.T) {
 				AnalyzeCompanyFunc: tt.mockFunc,
 			}
 
-			h := handler.NewLogoDetectionHandler(mockUC)
+			h := logodetectionhttp.NewLogoDetectionHandler(mockUC)
 
 			router := gin.New()
 			router.POST("/logo/analyze", h.AnalyzeCompany)

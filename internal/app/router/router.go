@@ -9,7 +9,7 @@ import (
 
 	authhttp "stock_backend/internal/feature/auth/transport"
 	candleshttp "stock_backend/internal/feature/candles/transport"
-	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
+	logodetectionhttp "stock_backend/internal/feature/logodetection/transport"
 	symbollisthttp "stock_backend/internal/feature/symbollist/transport"
 	watchlisthttp "stock_backend/internal/feature/watchlist/transport"
 	csrfmw "stock_backend/internal/platform/csrf"
@@ -24,7 +24,7 @@ import (
 // oauthHandler が nil の場合はOAuthルートを登録しません。
 func NewRouter(authHandler *authhttp.AuthHandler, oauthHandler *authhttp.OAuthHandler,
 	candles *candleshttp.CandlesHandler,
-	symbol *symbollisthttp.SymbolHandler, logo *logohandler.LogoDetectionHandler,
+	symbol *symbollisthttp.SymbolHandler, logo *logodetectionhttp.LogoDetectionHandler,
 	watchlist *watchlisthttp.WatchlistHandler,
 	limiter *httpratelimit.Limiter,
 	allowedOrigins []string,

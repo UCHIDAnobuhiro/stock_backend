@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/genai"
 
-	"stock_backend/internal/feature/logodetection/usecase"
+	"stock_backend/internal/feature/logodetection"
 )
 
 const (
@@ -22,7 +22,7 @@ type GeminiAnalyzer struct {
 }
 
 // GeminiAnalyzerがCompanyAnalyzerを実装していることをコンパイル時に検証します。
-var _ usecase.CompanyAnalyzer = (*GeminiAnalyzer)(nil)
+var _ logodetection.CompanyAnalyzer = (*GeminiAnalyzer)(nil)
 
 // NewGeminiAnalyzer はADCを使用してGeminiAnalyzerの新しいインスタンスを生成します。
 // 環境変数 GOOGLE_GENAI_USE_VERTEXAI, GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION が必要です。

@@ -1,5 +1,4 @@
-// Package handler はlogodetectionフィーチャーのHTTPハンドラーを提供します。
-package handler
+package logodetectionhttp
 
 import (
 	"context"
@@ -10,14 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"stock_backend/internal/api"
-	"stock_backend/internal/feature/logodetection/domain/entity"
+	"stock_backend/internal/feature/logodetection"
 )
 
 // LogoDetectionUsecase はロゴ検出・企業分析のユースケースインターフェースを定義します。
 // Goの慣例に従い、インターフェースは利用者（handler）側で定義します。
 type LogoDetectionUsecase interface {
-	DetectLogos(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error)
-	AnalyzeCompany(ctx context.Context, companyName string) (*entity.CompanyAnalysis, error)
+	DetectLogos(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error)
+	AnalyzeCompany(ctx context.Context, companyName string) (*logodetection.CompanyAnalysis, error)
 }
 
 // LogoDetectionHandler はロゴ検出・企業分析のHTTPリクエストを処理します。

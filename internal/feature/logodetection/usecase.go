@@ -1,5 +1,4 @@
-// Package usecase はlogodetectionフィーチャーのビジネスロジックを実装します。
-package usecase
+package logodetection
 
 import (
 	"context"
@@ -7,8 +6,6 @@ import (
 	"fmt"
 	"regexp"
 	"unicode/utf8"
-
-	"stock_backend/internal/feature/logodetection/domain/entity"
 )
 
 const (
@@ -34,7 +31,7 @@ var validCompanyName = regexp.MustCompile(`^[\p{L}\p{N} ・\-\.&,'']+$`)
 // Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
 type LogoDetector interface {
 	// DetectLogos は画像バイト列からロゴを検出し、検出結果を返します。
-	DetectLogos(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error)
+	DetectLogos(ctx context.Context, imageData []byte) ([]DetectedLogo, error)
 }
 
 // CompanyAnalyzer は企業分析を生成するリポジトリインターフェースです。
@@ -56,7 +53,7 @@ func NewLogoDetectionUsecase(ld LogoDetector, ca CompanyAnalyzer) *logodetection
 }
 
 // DetectLogos は画像データからロゴを検出します。
-func (u *logodetectionUsecase) DetectLogos(ctx context.Context, imageData []byte) ([]entity.DetectedLogo, error) {
+func (u *logodetectionUsecase) DetectLogos(ctx context.Context, imageData []byte) ([]DetectedLogo, error) {
 	if len(imageData) == 0 {
 		return nil, fmt.Errorf("image data is empty")
 	}
@@ -67,7 +64,7 @@ func (u *logodetectionUsecase) DetectLogos(ctx context.Context, imageData []byte
 }
 
 // AnalyzeCompany は企業名から分析サマリーを生成します。
-func (u *logodetectionUsecase) AnalyzeCompany(ctx context.Context, companyName string) (*entity.CompanyAnalysis, error) {
+func (u *logodetectionUsecase) AnalyzeCompany(ctx context.Context, companyName string) (*CompanyAnalysis, error) {
 	if companyName == "" {
 		return nil, fmt.Errorf("company name is required")
 	}
@@ -82,7 +79,7 @@ func (u *logodetectionUsecase) AnalyzeCompany(ctx context.Context, companyName s
 	if err != nil {
 		return nil, fmt.Errorf("company analyzer failed for %q: %w", companyName, err)
 	}
-	return &entity.CompanyAnalysis{
+	return &CompanyAnalysis{
 		CompanyName: companyName,
 		Summary:     summary,
 	}, nil
