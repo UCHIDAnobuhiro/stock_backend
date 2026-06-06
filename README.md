@@ -88,46 +88,28 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │   ├── migrate/            # マイグレーション実行ロジック（goose サブコマンドディスパッチ）
 │   │   └── router/             # ルーティング設定
 │   │
-│   ├── feature/                # フィーチャーモジュール（垂直スライス）
-│   │   ├── auth/               # 認証機能
-│   │   │   ├── domain/         # ドメイン層
-│   │   │   │   └── entity/     # エンティティ（User）
-│   │   │   ├── usecase/        # ユースケース（リポジトリインターフェース定義、ビジネスロジック）
-│   │   │   ├── adapters/       # アダプター（リポジトリ実装）
-│   │   │   └── transport/
-│   │   │       └── handler/    # HTTPハンドラー
+│   ├── feature/                # フィーチャーモジュール（垂直スライス、1機能=1パッケージ）
+│   │   ├── auth/               # 認証機能（package auth: entity/usecase/repository）
+│   │   │   ├── sqlc/           # sqlc 生成コード（package authsqlc）
+│   │   │   └── authhttp/       # HTTPハンドラー（package authhttp）
 │   │   │
-│   │   ├── candles/            # ローソク足データ機能
-│   │   │   ├── domain/
-│   │   │   │   └── entity/     # エンティティ（Candle）
-│   │   │   ├── usecase/        # ユースケース（リポジトリインターフェース定義、取得/保存ロジック）
-│   │   │   ├── adapters/       # リポジトリ実装 / Redisキャッシュデコレータ / TwelveData APIクライアント
-│   │   │   └── transport/
-│   │   │       └── handler/    # HTTPハンドラー
+│   │   ├── candles/            # ローソク足データ機能（package candles）
+│   │   │   ├── sqlc/           # sqlc 生成コード（package candlessqlc）
+│   │   │   ├── twelvedata/     # TwelveData APIクライアント（package twelvedata）
+│   │   │   └── candleshttp/    # HTTPハンドラー（package candleshttp）
 │   │   │
-│   │   ├── logodetection/       # ロゴ検出・企業分析機能
-│   │   │   ├── domain/
-│   │   │   │   └── entity/     # エンティティ（DetectedLogo, CompanyAnalysis）
-│   │   │   ├── usecase/        # ユースケース（Detector/Analyzerインターフェース定義、ビジネスロジック）
-│   │   │   ├── adapters/       # Cloud Vision API / Gemini APIクライアント
-│   │   │   └── transport/
-│   │   │       └── handler/    # HTTPハンドラー
+│   │   ├── logodetection/      # ロゴ検出・企業分析機能（package logodetection）
+│   │   │   ├── gemini/             # Gemini APIクライアント（package gemini）
+│   │   │   ├── vision/             # Cloud Vision APIクライアント（package vision）
+│   │   │   └── logodetectionhttp/  # HTTPハンドラー（package logodetectionhttp）
 │   │   │
-│   │   ├── symbollist/         # シンボルリスト機能
-│   │   │   ├── domain/
-│   │   │   │   └── entity/     # エンティティ（Symbol）
-│   │   │   ├── usecase/        # ユースケース（リポジトリインターフェース定義）
-│   │   │   ├── adapters/       # リポジトリ実装
-│   │   │   └── transport/
-│   │   │       └── handler/    # HTTPハンドラー
+│   │   ├── symbollist/         # シンボルリスト機能（package symbollist）
+│   │   │   ├── sqlc/           # sqlc 生成コード（package symbollistsqlc）
+│   │   │   └── symbollisthttp/ # HTTPハンドラー（package symbollisthttp）
 │   │   │
-│   │   └── watchlist/          # ウォッチリスト機能
-│   │       ├── domain/
-│   │       │   └── entity/     # エンティティ（UserSymbol）
-│   │       ├── usecase/        # ユースケース（リポジトリインターフェース定義、ビジネスロジック）
-│   │       ├── adapters/       # リポジトリ実装（PostgreSQL）
-│   │       └── transport/
-│   │           └── handler/    # HTTPハンドラー
+│   │   └── watchlist/          # ウォッチリスト機能（package watchlist）
+│   │       ├── sqlc/           # sqlc 生成コード（package watchlistsqlc）
+│   │       └── watchlisthttp/  # HTTPハンドラー（package watchlisthttp）
 │   │
 │   ├── platform/               # インフラストラクチャ層（外部依存）
 │   │   ├── csrf/               # CSRF保護（Double Submit Cookieパターン）
@@ -208,7 +190,7 @@ go generate ./internal/api/...
 1. バッチプロセス（`cmd/batch candles`）が外部API（Twelve Data）から株式データを取得
 2. 取得したローソク足データをPostgreSQL（またはCloud SQL）に保存
 3. フロントエンドが `GET /v1/candles/AAPL?interval=1day&outputsize=200` をリクエスト（JWT Bearer トークン付き）
-4. ハンドラーが `CandlesUsecase` を呼び出し
+4. ハンドラーが `Usecase` を呼び出し
 5. ユースケースがリポジトリ経由で **Redisキャッシュ** を確認
    - **キャッシュヒット**: Redisから即座に返却
    - **キャッシュミス**: PostgreSQLから取得 → Redisにキャッシュ → レスポンスを返却

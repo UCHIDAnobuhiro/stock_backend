@@ -2,7 +2,7 @@
 package di
 
 import (
-	"stock_backend/internal/feature/candles/adapters/twelvedata"
+	"stock_backend/internal/feature/candles/twelvedata"
 	"stock_backend/internal/platform/httpclient"
 )
 

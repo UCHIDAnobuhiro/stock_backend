@@ -2,11 +2,11 @@ version: "2"
 sql:
   - engine: "postgresql"
     schema: "db/migrations"
-    queries: "internal/feature/auth/adapters/sqlc/queries.sql"
+    queries: "internal/feature/auth/sqlc/queries.sql"
     gen:
       go:
         package: "authsqlc"
-        out: "internal/feature/auth/adapters/sqlc"
+        out: "internal/feature/auth/sqlc"
         sql_package: "database/sql"
         emit_json_tags: false
         emit_db_tags: false
@@ -17,11 +17,11 @@ sql:
         emit_pointers_for_null_types: false
   - engine: "postgresql"
     schema: "db/migrations"
-    queries: "internal/feature/symbollist/adapters/sqlc/queries.sql"
+    queries: "internal/feature/symbollist/sqlc/queries.sql"
     gen:
       go:
         package: "symbollistsqlc"
-        out: "internal/feature/symbollist/adapters/sqlc"
+        out: "internal/feature/symbollist/sqlc"
         sql_package: "database/sql"
         emit_json_tags: false
         emit_db_tags: false
@@ -32,11 +32,11 @@ sql:
         emit_pointers_for_null_types: false
   - engine: "postgresql"
     schema: "db/migrations"
-    queries: "internal/feature/candles/adapters/sqlc/queries.sql"
+    queries: "internal/feature/candles/sqlc/queries.sql"
     gen:
       go:
         package: "candlessqlc"
-        out: "internal/feature/candles/adapters/sqlc"
+        out: "internal/feature/candles/sqlc"
         sql_package: "database/sql"
         emit_json_tags: false
         emit_db_tags: false
@@ -51,11 +51,11 @@ sql:
             go_type: "float64"
   - engine: "postgresql"
     schema: "db/migrations"
-    queries: "internal/feature/watchlist/adapters/sqlc/queries.sql"
+    queries: "internal/feature/watchlist/sqlc/queries.sql"
     gen:
       go:
         package: "watchlistsqlc"
-        out: "internal/feature/watchlist/adapters/sqlc"
+        out: "internal/feature/watchlist/sqlc"
         sql_package: "database/sql"
         emit_json_tags: false
         emit_db_tags: false

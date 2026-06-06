@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	authusecase "stock_backend/internal/feature/auth/usecase"
+	"stock_backend/internal/feature/auth"
 	jwtmw "stock_backend/internal/platform/jwt"
 )
 
@@ -12,7 +12,7 @@ func clearEnv(t *testing.T) {
 	t.Helper()
 	for _, k := range []string{
 		jwtmw.EnvKeyJWTSecret,
-		authusecase.EnvKeyPasswordPepper,
+		auth.EnvKeyPasswordPepper,
 		"COOKIE_SECURE",
 		"APP_ENV",
 		"CORS_ALLOWED_ORIGINS",
@@ -31,7 +31,7 @@ func clearEnv(t *testing.T) {
 func TestLoadServerConfig(t *testing.T) {
 	t.Run("JWT_SECRET 未設定はエラー", func(t *testing.T) {
 		clearEnv(t)
-		t.Setenv(authusecase.EnvKeyPasswordPepper, "pepper")
+		t.Setenv(auth.EnvKeyPasswordPepper, "pepper")
 		if _, err := loadServerConfig(); err == nil {
 			t.Fatal("expected error when JWT_SECRET is missing, got nil")
 		}
@@ -48,7 +48,7 @@ func TestLoadServerConfig(t *testing.T) {
 	t.Run("必須のみ設定で成功・デフォルト適用", func(t *testing.T) {
 		clearEnv(t)
 		t.Setenv(jwtmw.EnvKeyJWTSecret, "secret")
-		t.Setenv(authusecase.EnvKeyPasswordPepper, "pepper")
+		t.Setenv(auth.EnvKeyPasswordPepper, "pepper")
 
 		cfg, err := loadServerConfig()
 		if err != nil {
@@ -68,7 +68,7 @@ func TestLoadServerConfig(t *testing.T) {
 	t.Run("APP_ENV=production で secureCookie が true", func(t *testing.T) {
 		clearEnv(t)
 		t.Setenv(jwtmw.EnvKeyJWTSecret, "secret")
-		t.Setenv(authusecase.EnvKeyPasswordPepper, "pepper")
+		t.Setenv(auth.EnvKeyPasswordPepper, "pepper")
 		t.Setenv("APP_ENV", "production")
 
 		cfg, err := loadServerConfig()
@@ -84,7 +84,7 @@ func TestLoadServerConfig(t *testing.T) {
 func TestRun_ReturnsOneWhenDBConfigInvalid(t *testing.T) {
 	clearEnv(t)
 	t.Setenv(jwtmw.EnvKeyJWTSecret, "secret")
-	t.Setenv(authusecase.EnvKeyPasswordPepper, "pepper")
+	t.Setenv(auth.EnvKeyPasswordPepper, "pepper")
 	t.Setenv("DB_USER", "")
 
 	if got := run(); got != 1 {

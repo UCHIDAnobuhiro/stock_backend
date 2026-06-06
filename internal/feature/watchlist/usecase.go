@@ -1,0 +1,106 @@
+package watchlist
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+)
+
+// Repository はウォッチリスト操作の永続化層を抽象化します。
+type Repository interface {
+	ListByUser(ctx context.Context, userID int64) ([]UserSymbol, error)
+	// Add はsort_keyを指定してウォッチリストに銘柄を追加します。
+	Add(ctx context.Context, entry UserSymbol) error
+	// AddWithNextSortKey はsort_keyをトランザクション内でMAX+1採番して銘柄を追加します。
+	// MaxSortKey取得とInsertをアトミックに実行するため、並行追加時の重複順位を防ぎます。
+	AddWithNextSortKey(ctx context.Context, userID int64, symbolCode string) error
+	Remove(ctx context.Context, userID int64, symbolCode string) error
+	UpdateSortKeys(ctx context.Context, userID int64, entries []UserSymbol) error
+}
+
+// SymbolExistsChecker は銘柄の存在確認を行うインターフェースです。
+// watchlist usecase が symbollist feature に直接依存しないよう、
+// 最小限の読み取り専用インターフェースをここで定義します。
+type SymbolExistsChecker interface {
+	Exists(ctx context.Context, code string) (bool, error)
+}
+
+// Usecase はウォッチリスト操作のビジネスロジックを提供します。
+type Usecase struct {
+	repo          Repository
+	symbolChecker SymbolExistsChecker
+}
+
+// NewUsecase は指定されたリポジトリと銘柄チェッカーで Usecase の新しいインスタンスを生成します。
+func NewUsecase(repo Repository, symbolChecker SymbolExistsChecker) *Usecase {
+	return &Usecase{repo: repo, symbolChecker: symbolChecker}
+}
+
+// ListUserSymbols はユーザーのウォッチリストをソート順で返します。
+func (u *Usecase) ListUserSymbols(ctx context.Context, userID int64) ([]UserSymbol, error) {
+	return u.repo.ListByUser(ctx, userID)
+}
+
+// AddSymbol はウォッチリストに銘柄を追加します。
+// symbols テーブルに存在しない銘柄コードの場合は ErrSymbolNotFound を返します。
+// 既にウォッチリストに存在する場合は ErrAlreadyInWatchlist を返します。
+func (u *Usecase) AddSymbol(ctx context.Context, userID int64, symbolCode string) error {
+	exists, err := u.symbolChecker.Exists(ctx, symbolCode)
+	if err != nil {
+		return fmt.Errorf("checking symbol existence: %w", err)
+	}
+	if !exists {
+		return ErrSymbolNotFound
+	}
+
+	return u.repo.AddWithNextSortKey(ctx, userID, symbolCode)
+}
+
+// RemoveSymbol はウォッチリストから銘柄を削除します。
+func (u *Usecase) RemoveSymbol(ctx context.Context, userID int64, symbolCode string) error {
+	return u.repo.Remove(ctx, userID, symbolCode)
+}
+
+// ReorderSymbols はウォッチリストの並び順を更新します。
+func (u *Usecase) ReorderSymbols(ctx context.Context, userID int64, orderedCodes []string) error {
+	entries := make([]UserSymbol, 0, len(orderedCodes))
+	for i, code := range orderedCodes {
+		entries = append(entries, UserSymbol{
+			UserID:     userID,
+			SymbolCode: code,
+			SortKey:    i,
+		})
+	}
+	return u.repo.UpdateSortKeys(ctx, userID, entries)
+}
+
+// OnUserCreated は PostSignupHook インターフェースを実装します。
+// サインアップ直後に呼ばれ、デフォルト銘柄を追加します。
+func (u *Usecase) OnUserCreated(ctx context.Context, userID int64) error {
+	return u.InitializeDefaults(ctx, userID)
+}
+
+// InitializeDefaults は新規ユーザー向けにデフォルト銘柄（AAPL/MSFT/GOOGL）を追加します。
+// symbols テーブルに存在する銘柄のみ追加します（存在しない場合はスキップ）。
+func (u *Usecase) InitializeDefaults(ctx context.Context, userID int64) error {
+	defaultSymbols := []string{"AAPL", "MSFT", "GOOGL"}
+
+	for i, code := range defaultSymbols {
+		exists, err := u.symbolChecker.Exists(ctx, code)
+		if err != nil {
+			return fmt.Errorf("checking symbol %s: %w", code, err)
+		}
+		if !exists {
+			slog.Warn("default symbol not found in symbols table, skipping", "code", code)
+			continue
+		}
+		if err := u.repo.Add(ctx, UserSymbol{
+			UserID:     userID,
+			SymbolCode: code,
+			SortKey:    i,
+		}); err != nil {
+			return fmt.Errorf("adding default symbol %s: %w", code, err)
+		}
+	}
+	return nil
+}

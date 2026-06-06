@@ -6,8 +6,7 @@ import (
 	"time"
 
 	"stock_backend/internal/app/di"
-	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
-	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
+	"stock_backend/internal/feature/symbollist"
 	"stock_backend/internal/platform/db"
 	"stock_backend/internal/shared/clientratelimit"
 )
@@ -25,9 +24,9 @@ func runLogoIngest() int {
 		}
 	}()
 	logoProvider := di.NewMarket()
-	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
+	symbolRepo := symbollist.NewRepository(sqlDB)
 	rateLimiter := clientratelimit.NewRateLimiter(rateLimitPerMinute, time.Minute)
-	uc := symbollistusecase.NewLogoIngestUsecase(logoProvider, symbolRepo, rateLimiter)
+	uc := symbollist.NewLogoIngestUsecase(logoProvider, symbolRepo, rateLimiter)
 
 	timeoutHours := parseTimeoutHours("LOGO_INGEST_TIMEOUT_HOURS", 3)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutHours)*time.Hour)

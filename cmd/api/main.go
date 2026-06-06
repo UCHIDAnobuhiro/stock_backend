@@ -12,22 +12,18 @@ import (
 
 	"stock_backend/internal/app/config"
 	"stock_backend/internal/app/router"
-	authadapters "stock_backend/internal/feature/auth/adapters"
-	authhandler "stock_backend/internal/feature/auth/transport/handler"
-	authusecase "stock_backend/internal/feature/auth/usecase"
-	candlesadapters "stock_backend/internal/feature/candles/adapters"
-	candleshandler "stock_backend/internal/feature/candles/transport/handler"
-	candlesusecase "stock_backend/internal/feature/candles/usecase"
-	logogemini "stock_backend/internal/feature/logodetection/adapters/gemini"
-	logovision "stock_backend/internal/feature/logodetection/adapters/vision"
-	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
-	logousecase "stock_backend/internal/feature/logodetection/usecase"
-	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
-	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
-	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
-	watchlistadapters "stock_backend/internal/feature/watchlist/adapters"
-	watchlisthandler "stock_backend/internal/feature/watchlist/transport/handler"
-	watchlistusecase "stock_backend/internal/feature/watchlist/usecase"
+	"stock_backend/internal/feature/auth"
+	"stock_backend/internal/feature/auth/authhttp"
+	"stock_backend/internal/feature/candles"
+	"stock_backend/internal/feature/candles/candleshttp"
+	"stock_backend/internal/feature/logodetection"
+	"stock_backend/internal/feature/logodetection/gemini"
+	"stock_backend/internal/feature/logodetection/logodetectionhttp"
+	"stock_backend/internal/feature/logodetection/vision"
+	"stock_backend/internal/feature/symbollist"
+	"stock_backend/internal/feature/symbollist/symbollisthttp"
+	"stock_backend/internal/feature/watchlist"
+	"stock_backend/internal/feature/watchlist/watchlisthttp"
 	infradb "stock_backend/internal/platform/db"
 	"stock_backend/internal/platform/httpratelimit"
 	jwtmw "stock_backend/internal/platform/jwt"
@@ -66,9 +62,9 @@ func loadServerConfig() (serverConfig, error) {
 		return serverConfig{}, fmt.Errorf("%s is required", jwtmw.EnvKeyJWTSecret)
 	}
 
-	passwordPepper := os.Getenv(authusecase.EnvKeyPasswordPepper)
+	passwordPepper := os.Getenv(auth.EnvKeyPasswordPepper)
 	if passwordPepper == "" {
-		return serverConfig{}, fmt.Errorf("%s is required", authusecase.EnvKeyPasswordPepper)
+		return serverConfig{}, fmt.Errorf("%s is required", auth.EnvKeyPasswordPepper)
 	}
 
 	// COOKIE_SECURE を優先し、未設定なら APP_ENV=production をフォールバックとして使用
@@ -196,19 +192,19 @@ func run() int {
 	}
 
 	// 全 feature が sqlc 化済み。
-	userRepo := authadapters.NewUserRepository(sqlDB)
-	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
-	candleRepo := candlesadapters.NewCandleRepository(sqlDB)
-	watchlistRepo := watchlistadapters.NewWatchlistRepository(sqlDB)
+	userRepo := auth.NewUserRepository(sqlDB)
+	symbolRepo := symbollist.NewRepository(sqlDB)
+	candleRepo := candles.NewRepository(sqlDB)
+	watchlistRepo := watchlist.NewRepository(sqlDB)
 
 	// Redisキャッシュでラップ（TTLはingest連続失敗時のセーフティネット、通常は日次ingestで上書き）
-	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, candlesadapters.DefaultCacheTTL, candleRepo, "candles")
+	cachedCandleRepo := candles.NewCachingRepository(rdb, candles.DefaultCacheTTL, candleRepo, "candles")
 
 	// JWTジェネレータ
 	jwtGen := jwtmw.NewGenerator(cfg.jwtSecret, 1*time.Hour)
 
 	// Google Cloudクライアント初期化
-	visionDetector, err := logovision.NewVisionLogoDetector(context.Background())
+	visionDetector, err := vision.NewVisionLogoDetector(context.Background())
 	if err != nil {
 		slog.Error("failed to create vision client", "error", err)
 		return 1
@@ -219,7 +215,7 @@ func run() int {
 		}
 	}()
 
-	geminiAnalyzer, err := logogemini.NewGeminiAnalyzer(context.Background())
+	geminiAnalyzer, err := gemini.NewGeminiAnalyzer(context.Background())
 	if err != nil {
 		slog.Error("failed to create gemini client", "error", err)
 		return 1
@@ -229,22 +225,22 @@ func run() int {
 	rateLimiter := httpratelimit.NewLimiter(rdb)
 
 	// ユースケース
-	authUC := authusecase.NewAuthUsecase(userRepo, jwtGen, cfg.passwordPepper)
-	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
-	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
-	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
-	watchlistUC := watchlistusecase.NewWatchlistUsecase(watchlistRepo, symbolRepo)
+	authUC := auth.NewUsecase(userRepo, jwtGen, cfg.passwordPepper)
+	symbolUC := symbollist.NewUsecase(symbolRepo)
+	candlesUC := candles.NewUsecase(cachedCandleRepo)
+	logoUC := logodetection.NewUsecase(visionDetector, geminiAnalyzer)
+	watchlistUC := watchlist.NewUsecase(watchlistRepo, symbolRepo)
 
 	// OAuth ハンドラー（cfg.oauth が nil の場合はOAuth機能なしで起動）
-	var oauthH *authhandler.OAuthHandler
+	var oauthH *authhttp.OAuthHandler
 	if cfg.oauth != nil {
 		if rdb == nil {
 			slog.Error("OAuth requires Redis but Redis is unavailable")
 			return 1
 		}
-		oauthProviders := map[string]authusecase.OAuthProvider{}
+		oauthProviders := map[string]auth.OAuthProvider{}
 		if cfg.oauth.google != nil {
-			oauthProviders["google"] = authadapters.NewGoogleProvider(
+			oauthProviders["google"] = auth.NewGoogleProvider(
 				cfg.oauth.google.clientID,
 				cfg.oauth.google.clientSecret,
 				cfg.oauth.google.redirectURL,
@@ -252,31 +248,31 @@ func run() int {
 			)
 		}
 		if cfg.oauth.github != nil {
-			oauthProviders["github"] = authadapters.NewGitHubProvider(
+			oauthProviders["github"] = auth.NewGitHubProvider(
 				cfg.oauth.github.clientID,
 				cfg.oauth.github.clientSecret,
 				cfg.oauth.github.redirectURL,
 				&http.Client{Timeout: 10 * time.Second},
 			)
 		}
-		oauthUC := authusecase.NewOAuthUsecase(
+		oauthUC := auth.NewOAuthUsecase(
 			userRepo,
-			authadapters.NewOAuthAccountRepository(sqlDB),
+			auth.NewOAuthAccountRepository(sqlDB),
 			userRepo,
-			authadapters.NewRedisOAuthStateStore(rdb),
+			auth.NewRedisOAuthStateStore(rdb),
 			jwtGen,
 			oauthProviders,
 			watchlistUC,
 		)
-		oauthH = authhandler.NewOAuthHandler(oauthUC, cfg.secureCookie, cfg.oauth.frontendURL)
+		oauthH = authhttp.NewOAuthHandler(oauthUC, cfg.secureCookie, cfg.oauth.frontendURL)
 	}
 
 	// ハンドラー
-	authH := authhandler.NewAuthHandler(authUC, rateLimiter, cfg.secureCookie, watchlistUC)
-	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
-	candlesH := candleshandler.NewCandlesHandler(candlesUC)
-	logoH := logohandler.NewLogoDetectionHandler(logoUC)
-	watchlistH := watchlisthandler.NewWatchlistHandler(watchlistUC)
+	authH := authhttp.NewHandler(authUC, rateLimiter, cfg.secureCookie, watchlistUC)
+	symbolH := symbollisthttp.NewHandler(symbolUC)
+	candlesH := candleshttp.NewHandler(candlesUC)
+	logoH := logodetectionhttp.NewHandler(logoUC)
+	watchlistH := watchlisthttp.NewHandler(watchlistUC)
 
 	// ルーター作成
 	r := router.NewRouter(authH, oauthH, candlesH, symbolH, logoH, watchlistH, rateLimiter, cfg.corsOrigins)

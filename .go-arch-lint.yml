@@ -1,0 +1,112 @@
+version: 3
+workdir: .
+
+# サードパーティ / 標準ライブラリへの依存は一律許可し、
+# プロジェクト内部コンポーネント間の依存のみを宣言式に強制する。
+allow:
+  depOnAnyVendor: true
+  # import レベルの依存のみを強制する。deepScan（メソッド呼び出し/DI解析）は
+  # 合成ルートでの依存性注入を誤検知するため無効化する。
+  deepScan: false
+
+# アーキテクチャ強制は本番コードに対して行う（テストの白箱/黒箱依存は対象外）。
+excludeFiles:
+  - "_test\\.go$"
+
+components:
+  # --- candles ---
+  candles:            { in: internal/feature/candles }
+  candles-sqlc:       { in: internal/feature/candles/sqlc }
+  candles-twelvedata: { in: internal/feature/candles/twelvedata }
+  candles-http:       { in: internal/feature/candles/candleshttp }
+  # --- auth ---
+  auth:      { in: internal/feature/auth }
+  auth-sqlc: { in: internal/feature/auth/sqlc }
+  auth-http: { in: internal/feature/auth/authhttp }
+  # --- symbollist ---
+  symbollist:      { in: internal/feature/symbollist }
+  symbollist-sqlc: { in: internal/feature/symbollist/sqlc }
+  symbollist-http: { in: internal/feature/symbollist/symbollisthttp }
+  # --- watchlist ---
+  watchlist:      { in: internal/feature/watchlist }
+  watchlist-sqlc: { in: internal/feature/watchlist/sqlc }
+  watchlist-http: { in: internal/feature/watchlist/watchlisthttp }
+  # --- logodetection ---
+  logodetection:        { in: internal/feature/logodetection }
+  logodetection-gemini: { in: internal/feature/logodetection/gemini }
+  logodetection-vision: { in: internal/feature/logodetection/vision }
+  logodetection-http:   { in: internal/feature/logodetection/logodetectionhttp }
+  # --- 共通基盤 ---
+  platform: { in: internal/platform/** }
+  shared:   { in: internal/shared/** }
+  api:      { in: internal/api }
+  app:      { in: internal/app/** }
+  cmd:      { in: cmd/** }
+  # マイグレーション SQL を埋め込む repo 直下の db パッケージ。
+  migrations-embed: { in: db }
+
+deps:
+  # コアは自身の sqlc(永続化生成コード) のみに依存できる。
+  # api 型・platform・他フィーチャーへの依存は宣言していない＝禁止。
+  candles:    { mayDependOn: [candles-sqlc] }
+  auth:       { mayDependOn: [auth-sqlc] }
+  symbollist: { mayDependOn: [symbollist-sqlc] }
+  watchlist:  { mayDependOn: [watchlist-sqlc] }
+  # logodetection コアは内部依存なし（sqlc も持たない）。
+
+  # 外部APIアダプタは自身のコアにのみ依存する。
+  candles-twelvedata:   { mayDependOn: [candles] }
+  logodetection-gemini: { mayDependOn: [logodetection] }
+  logodetection-vision: { mayDependOn: [logodetection] }
+
+  # transport は api 型境界をここに閉じ込める。コア + api + platform に依存可。
+  candles-http:       { mayDependOn: [candles, api, platform] }
+  auth-http:          { mayDependOn: [auth, api, platform] }
+  symbollist-http:    { mayDependOn: [symbollist, api, platform] }
+  watchlist-http:     { mayDependOn: [watchlist, api, platform] }
+  logodetection-http: { mayDependOn: [logodetection, api, platform] }
+
+  # platform は feature に依存できない。共通基盤・api 型・埋め込み migrations には依存可。
+  # platform 内部のパッケージ間依存（例: db/dbtest → db）を許可するため自身も含める。
+  platform: { mayDependOn: [platform, shared, api, migrations-embed] }
+
+  # 合成ルート（DI/ルーティング/エントリポイント）は全コンポーネントに依存可。
+  # app 内部のパッケージ間依存（例: batch → di）を許可するため自身も含める。
+  app:
+    mayDependOn:
+      - app
+      - candles
+      - candles-twelvedata
+      - candles-http
+      - auth
+      - auth-http
+      - symbollist
+      - symbollist-http
+      - watchlist
+      - watchlist-http
+      - logodetection
+      - logodetection-gemini
+      - logodetection-vision
+      - logodetection-http
+      - platform
+      - shared
+      - api
+  cmd:
+    mayDependOn:
+      - app
+      - candles
+      - candles-twelvedata
+      - candles-http
+      - auth
+      - auth-http
+      - symbollist
+      - symbollist-http
+      - watchlist
+      - watchlist-http
+      - logodetection
+      - logodetection-gemini
+      - logodetection-vision
+      - logodetection-http
+      - platform
+      - shared
+      - api

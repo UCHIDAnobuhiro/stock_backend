@@ -7,11 +7,11 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
-	authhandler "stock_backend/internal/feature/auth/transport/handler"
-	candleshandler "stock_backend/internal/feature/candles/transport/handler"
-	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
-	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
-	watchlisthandler "stock_backend/internal/feature/watchlist/transport/handler"
+	"stock_backend/internal/feature/auth/authhttp"
+	"stock_backend/internal/feature/candles/candleshttp"
+	"stock_backend/internal/feature/logodetection/logodetectionhttp"
+	"stock_backend/internal/feature/symbollist/symbollisthttp"
+	"stock_backend/internal/feature/watchlist/watchlisthttp"
 	csrfmw "stock_backend/internal/platform/csrf"
 	handler "stock_backend/internal/platform/handler"
 	"stock_backend/internal/platform/httpratelimit"
@@ -22,10 +22,10 @@ import (
 // NewRouter はすべてのアプリケーションルートを設定したGinルーターを生成します。
 // 公開ルート（signup, login）とJWT認証ミドルウェア付きの保護ルート（candles, symbols, logo, watchlist）を設定します。
 // oauthHandler が nil の場合はOAuthルートを登録しません。
-func NewRouter(authHandler *authhandler.AuthHandler, oauthHandler *authhandler.OAuthHandler,
-	candles *candleshandler.CandlesHandler,
-	symbol *symbollisthandler.SymbolHandler, logo *logohandler.LogoDetectionHandler,
-	watchlist *watchlisthandler.WatchlistHandler,
+func NewRouter(authHandler *authhttp.Handler, oauthHandler *authhttp.OAuthHandler,
+	candles *candleshttp.Handler,
+	symbol *symbollisthttp.Handler, logo *logodetectionhttp.Handler,
+	watchlist *watchlisthttp.Handler,
 	limiter *httpratelimit.Limiter,
 	allowedOrigins []string,
 ) *gin.Engine {
