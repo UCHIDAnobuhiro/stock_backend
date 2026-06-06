@@ -39,8 +39,8 @@ GOOSE_DRIVER=postgres GOOSE_MIGRATION_DIR=db/migrations \
 go tool sqlc generate
 ```
 
-各 feature の `internal/feature/<name>/adapters/sqlc/queries.sql` を編集 →
-同ディレクトリに型安全コードが生成されます。
+各 feature の `internal/feature/<name>/sqlc/queries.sql` を編集 →
+同ディレクトリに型安全コード（`package <name>sqlc`）が生成されます。
 
 ### テスト・リント
 リポジトリテストは [testcontainers-go](https://golang.testcontainers.org/) で実 PostgreSQL を
@@ -56,13 +56,16 @@ TEST_DB_DSN="postgres://appuser:apppass@localhost:5432/postgres?sslmode=disable"
   go test ./... -race
 
 # 特定パッケージのテスト実行
-go test ./internal/feature/candles/usecase/... -v
+go test ./internal/feature/candles/... -v
 
 # 特定テスト関数の実行
-go test ./internal/feature/auth/usecase/... -v -run TestAuthUsecase_Login
+go test ./internal/feature/auth/... -v -run TestAuthUsecase_Login
 
-# リンター実行（golangci-lint、depguardルール使用）
+# リンター実行（golangci-lint、no-gorm depguardルール）
 golangci-lint run --timeout=5m
+
+# アーキテクチャ依存ルールの検証（go-arch-lint、デフォルト拒否）
+go tool go-arch-lint check
 
 # 全パッケージのビルド
 go build ./...
@@ -88,7 +91,10 @@ api/
 internal/
 ├── api/              # OpenAPIから自動生成された型定義（types.gen.go）
 ├── app/
+│   ├── batch/        # バッチ実行ロジック（job_id ディスパッチ: candles / logo）
+│   ├── config/       # 環境変数パースの純粋関数ヘルパー
 │   ├── di/           # 依存性注入ファクトリ
+│   ├── migrate/      # マイグレーション実行ロジック（goose サブコマンドディスパッチ）
 │   └── router/       # HTTPルーター設定
 ├── feature/          # フィーチャーモジュール（垂直スライス）
 │   ├── auth/
@@ -111,40 +117,48 @@ internal/
 
 ### フィーチャーモジュール構成
 
-各フィーチャーは一貫したレイヤー構造に従います：
+各フィーチャーは「1フィーチャー = 1パッケージ」を基本とし、ドメインモデル・ユースケース・
+リポジトリ実装を**同一パッケージ**にまとめます（Go標準ライブラリ寄りの構成）。レイヤーは
+ディレクトリではなく**ファイル分割**で表現します。`<name>http`（HTTPハンドラー）だけは、
+`internal/api`（API型）への依存をこの層に閉じ込めるため別パッケージに分離します。
 
 ```
-feature/<name>/
-├── README.md         # フィーチャーのドキュメント
-├── domain/
-│   └── entity/       # ドメインモデル（例: Candle, Symbol, User）
-├── usecase/          # アプリケーションロジック（リポジトリインターフェース定義、ビジネスロジック統合）
-├── adapters/         # リポジトリ実装（PostgreSQL、キャッシュデコレータ、外部APIクライアント等）
-│   └── sqlc/         # sqlc で生成された型安全な DB クエリコード（手動編集禁止）
-└── transport/
-    └── handler/      # HTTPハンドラー（Gin）
+feature/<name>/                # package <name>（ドメイン+ユースケース+アダプタ）
+├── README.md                  # フィーチャーのドキュメント
+├── <entity>.go                # ドメインモデル（例: candle.go の Candle 型）
+├── usecase.go                 # アプリケーションロジック（リポジトリインターフェース定義含む）
+├── repository.go              # リポジトリ実装（PostgreSQL 等）
+├── sqlc/                      # package <name>sqlc: sqlc 生成コード（手動編集禁止）
+├── <external>/                # 外部APIアダプタ（例: candles/twelvedata, logodetection/gemini）
+└── <name>http/                # package <name>http: HTTPハンドラー（Gin）
+    └── handler.go
 ```
+
+参照例: `candles.Candle` / `candles.NewCandlesUsecase` / `candleshttp.NewCandleHandler`。
+パッケージ名がフィーチャー名で一意になるため、import エイリアスは不要です。
 
 **注意**: リクエスト/レスポンスの型は `internal/api/types.gen.go`（OpenAPI仕様から自動生成）を使用します。各フィーチャーにDTOは配置しません。
 
-**注意**: Goの慣例に従い、**リポジトリインターフェースはusecaseレイヤー**（利用者側）で定義します。別途domain/repositoryディレクトリには配置しません。これにより、インターフェースは使用される場所で定義されます。
+**注意**: Goの慣例に従い、**リポジトリインターフェースは利用者側のファイル**（`usecase.go` / `<name>http/handler.go`）で定義します。別途 domain/repository ディレクトリには配置しません。
 
-### 依存関係ルール（golangci-lint depguardで強制）
+### 依存関係ルール（go-arch-lint で強制）
 
-1. **レイヤー分離**: **domain/** と **usecase/** は以下をインポート不可：
-   - `adapters/`（リポジトリ実装）
-   - `transport/`（HTTPハンドラー）
-   - `internal/api`（API型定義 - transport層のみ使用可）
-2. **フィーチャー分離**: 各フィーチャーは他のフィーチャーをインポート不可
-3. **platform分離**: `platform/` は `feature/` をインポート不可
+`.go-arch-lint.yml` で**デフォルト拒否**の宣言式に強制します（`go tool go-arch-lint check`）。
+未宣言の内部依存はすべてエラーになります。
 
+1. **フィーチャー分離**: 各フィーチャーパッケージは他のフィーチャーをインポート不可
+2. **api 型境界**: フィーチャーコアは `internal/api` をインポート不可（`<name>http` 層のみ可）
+3. **platform 分離**: `platform/` は `feature/` をインポート不可
+4. **外部アダプタの向き**: `twelvedata` / `gemini` / `vision` は自身のフィーチャーコアにのみ依存
+
+サードパーティ/標準ライブラリは `allow.depOnAnyVendor: true` で一律許可し、内部依存のみを管理します。
 これにより、ドメインロジックがインフラストラクチャの詳細から独立した状態を保ちます。
 
 ### 主要なアーキテクチャパターン
 
-1. **リポジトリパターン**: すべてのデータアクセスは `usecase/` レイヤーで定義されたリポジトリインターフェースを経由します（Goの「インターフェースは利用者が定義する」慣例に従う）
-2. **sqlc によるクエリ実装**: 各 feature の `adapters/sqlc/queries.sql` を `go tool sqlc generate` で生成し、`adapters/<name>_repository.go` が `*sql.DB`（pgx stdlib driver）から呼び出します。GORM は採用していません（ADR-0006 参照）。
-3. **キャッシュ用デコレータパターン**: `feature/candles/adapters/CachingCandleRepository` がベースリポジトリをラップ
+1. **リポジトリパターン**: すべてのデータアクセスは `usecase.go` で定義されたリポジトリインターフェースを経由します（Goの「インターフェースは利用者が定義する」慣例に従う）
+2. **sqlc によるクエリ実装**: 各 feature の `sqlc/queries.sql` を `go tool sqlc generate` で生成し、`repository.go` が `*sql.DB`（pgx stdlib driver）から呼び出します。GORM は採用していません（ADR-0006 参照）。
+3. **キャッシュ用デコレータパターン**: `feature/candles` の `CachingCandleRepository` がベースリポジトリをラップ
    - `CandleRepository`（読み取り）と `CandleWriteRepository`（書き込み）の両インターフェースを実装
    - usecaseコードを変更せずにRedisキャッシュを透過的に追加
    - Redisが利用できない場合はグレースフルデグレード（警告ログを出力し、キャッシュなしで動作）
@@ -159,7 +173,7 @@ feature/<name>/
 
 ### 外部依存
 - TwelveData API（株価データ、8リクエスト/分制限） / PostgreSQL（database/sql + pgx/v5/stdlib） / Redis（キャッシュ）
-- スキーマは `db/migrations/*.sql`、クエリは各 feature の `adapters/sqlc/queries.sql`
+- スキーマは `db/migrations/*.sql`、クエリは各 feature の `sqlc/queries.sql`
 - 詳細なデータフローは各フィーチャーの README.md を参照
 
 ### 認証
@@ -168,42 +182,40 @@ feature/<name>/
 
 ### テストに関する注意事項
 
-テスト生成の詳細なルール（テーブル駆動テスト、モック定義、レイヤー別戦略等）は `/test-generate` スキル（`.Codex/skills/test-generate/SKILL.md`）を参照してください。
+テスト生成の詳細なルール（テーブル駆動テスト、モック定義、レイヤー別戦略等）は `/test-generate` スキル（`.claude/skills/test-generate/SKILL.md`）を参照してください。
 
 ## 新機能の追加
 
 新機能を追加する際は、確立されたパターンに従ってください：
 
-1. **フィーチャーディレクトリを作成**: `internal/feature/<feature-name>/` 配下
-2. **ドメイン層を最初に定義**:
-   - `domain/entity/` - ドメインモデルを作成（純粋なGo構造体）
-3. **usecase層を実装**: `usecase/`
+1. **フィーチャーディレクトリを作成**: `internal/feature/<feature-name>/`（`package <feature-name>`）
+2. **ドメインモデルを定義**: `<entity>.go` にドメインモデルを作成（純粋なGo構造体）
+3. **usecaseを実装**: `usecase.go`
    - ここでリポジトリインターフェースを定義（Goの慣例:「インターフェースは利用者が定義する」）
    - リポジトリを統合するビジネスロジックを実装
-4. **adaptersを実装**: `adapters/` - usecaseで定義されたインターフェースを実装するリポジトリ実装（PostgreSQL等）
-   - SQL を `adapters/sqlc/queries.sql` に書き、`sqlc.yaml` の `sql:` リストに新 feature を追加
-   - `go tool sqlc generate` で型安全コードを生成
+4. **リポジトリ実装を追加**: `repository.go` - usecase で定義したインターフェースの実装（PostgreSQL等）
+   - SQL を `sqlc/queries.sql` に書き、`sqlc.yaml` の `sql:` リストに新 feature を追加（`out`/`queries` は `internal/feature/<name>/sqlc`）
+   - `go tool sqlc generate` で型安全コードを生成（package は `<name>sqlc`）
    - リポジトリ実装は `*sql.DB` を受け取り、生成された `Queries` を呼ぶ
-5. **transport層を追加**:
-   - `transport/handler/` - HTTPハンドラー（必要に応じてusecaseインターフェースもここで定義可）
+5. **HTTP層を追加**:
+   - `<name>http/handler.go` - HTTPハンドラー（`package <name>http`。必要に応じてusecaseインターフェースもここで定義可）
    - リクエスト/レスポンス型は `api/openapi.yaml` に定義し、`go generate ./internal/api/...` で生成
 6. **DBスキーマの変更が必要なら**: `go tool goose create <name> sql` で
    `db/migrations/NNNNN_<name>.sql` を作成し、Up/Down 両方を必ず実装
 7. **依存関係をワイヤリング**: `cmd/api/main.go` または `cmd/batch/main.go` にて
 8. **ルートを登録**: `internal/app/router/router.go` にて
-9. **depguardルールを追加**: `.golangci.yml` に以下を追加：
-   - `layer-isolation` ルールに新フィーチャーの `adapters` と `transport` パッケージのdenyエントリ
-   - 新フィーチャー用の `<name>-isolation` ルール（他フィーチャーへの依存禁止）
-   - 既存フィーチャーの isolation ルールに新フィーチャーのdenyエントリ
-   - `platform-isolation` ルールに新フィーチャーのdenyエントリ
+9. **go-arch-lint にコンポーネントを追加**: `.go-arch-lint.yml` に以下を追加：
+   - `components` に `<name>`（コア）、`<name>-http`（transport）、必要なら `<name>-sqlc` や外部アダプタ
+   - `deps` に各コンポーネントの `mayDependOn`（コアは sqlc のみ、transport は `[<name>, api, platform]` 等）
+   - 合成ルート（`app` / `cmd`）の `mayDependOn` に新コンポーネントを追記
 
-**重要**: 依存関係ルールを遵守すること - domain/usecaseレイヤーはadaptersやtransportレイヤーをインポートできません。これはgolangci-lint depguardで強制されています。depguardはワイルドカード非対応のため、新フィーチャー追加時に `.golangci.yml` へ明示的にパッケージパスを追加する必要があります。
+**重要**: 依存関係ルールを遵守すること - フィーチャーコアは他フィーチャーや `internal/api` をインポートできません。これは go-arch-lint で**デフォルト拒否**として強制されており、未宣言の内部依存はすべてエラーになります。`go tool go-arch-lint check` で確認してください。
 
 ## アーキテクチャ決定記録（ADR）
 
 重要なアーキテクチャ上の決定は `docs/adr/` にADRとして記録します。
 
-- ADRの作成: `/adr <決定トピック>` スキル（`.Codex/skills/adr/SKILL.md`）を使用
+- ADRの作成: `/adr <決定トピック>` スキル（`.claude/skills/adr/SKILL.md`）を使用
 - テンプレート: `docs/adr/template.md`
 - 一覧・運用ルール: `docs/adr/README.md`
 
@@ -211,7 +223,7 @@ feature/<name>/
 
 コミットメッセージおよびプルリクエストのタイトル・説明はすべて**日本語**で記述してください。
 
-- コミット前のコードレビューは `/code-check` スキル（`.Codex/skills/code-check/SKILL.md`）を参照
+- コミット前のコードレビューは `/code-check` スキル（`.claude/skills/code-check/SKILL.md`）を参照
 
 ## Git ブランチ操作のルール
 

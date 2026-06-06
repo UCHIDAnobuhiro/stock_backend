@@ -424,7 +424,7 @@ Redisが利用できない場合、レートリミットは無効化され、す
 ```mermaid
 graph TB
     subgraph "Transport Layer"
-        Handler[AuthHandler<br/>transport]
+        Handler[AuthHandler<br/>authhttp]
     end
 
     subgraph "API Types (Generated)"
@@ -490,8 +490,8 @@ graph TB
 ### 依存関係の説明
 
 #### Transport層
-- **AuthHandler**（[transport/handler.go](transport/handler.go)）: メール/パスワード認証のHTTPリクエストを処理し、AuthUsecaseを呼び出す
-- **OAuthHandler**（[transport/oauth.go](transport/oauth.go)）: OAuth2 認可開始およびコールバックを処理し、OAuthUsecaseを呼び出す
+- **AuthHandler**（[authhttp/handler.go](authhttp/handler.go)）: メール/パスワード認証のHTTPリクエストを処理し、AuthUsecaseを呼び出す
+- **OAuthHandler**（[authhttp/oauth.go](authhttp/oauth.go)）: OAuth2 認可開始およびコールバックを処理し、OAuthUsecaseを呼び出す
   - `OAuthUsecase` インターフェースを定義（コンシューマー側で定義）
 - **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成されたリクエスト/レスポンス型を使用
   - `api.SignupRequest`: ユーザー登録リクエスト
@@ -575,7 +575,7 @@ auth/                                  # package auth（フィーチャー直下
 ├── sqlc/                              # package authsqlc（sqlc 生成コード・編集禁止）
 │   ├── queries.sql                    # クエリ定義
 │   └── *.go                           # 型安全な生成コード
-└── transport/                         # package authhttp
+└── authhttp/                         # package authhttp
     ├── handler.go                     # 認証HTTPハンドラー（signup/login/logout）
     ├── handler_test.go                # ハンドラーテスト
     └── oauth.go                       # OAuth2 HTTPハンドラー（begin/callback）
@@ -642,7 +642,7 @@ tests := []struct {
 go test ./internal/feature/auth/... -v
 ```
 
-#### ハンドラーテスト（[transport/handler_test.go](transport/handler_test.go)）
+#### ハンドラーテスト（[authhttp/handler_test.go](authhttp/handler_test.go)）
 
 **モックusecase**を使用してHTTPリクエスト/レスポンスの処理をテストします。
 
@@ -665,7 +665,7 @@ tests := []struct {
 
 **実行コマンド:**
 ```bash
-go test ./internal/feature/auth/transport/... -v
+go test ./internal/feature/auth/authhttp/... -v
 ```
 
 #### リポジトリテスト（[user_repository_test.go](user_repository_test.go)）

@@ -91,25 +91,25 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   ├── feature/                # フィーチャーモジュール（垂直スライス、1機能=1パッケージ）
 │   │   ├── auth/               # 認証機能（package auth: entity/usecase/repository）
 │   │   │   ├── sqlc/           # sqlc 生成コード（package authsqlc）
-│   │   │   └── transport/      # HTTPハンドラー（package authhttp）
+│   │   │   └── authhttp/       # HTTPハンドラー（package authhttp）
 │   │   │
 │   │   ├── candles/            # ローソク足データ機能（package candles）
 │   │   │   ├── sqlc/           # sqlc 生成コード（package candlessqlc）
 │   │   │   ├── twelvedata/     # TwelveData APIクライアント（package twelvedata）
-│   │   │   └── transport/      # HTTPハンドラー（package candleshttp）
+│   │   │   └── candleshttp/    # HTTPハンドラー（package candleshttp）
 │   │   │
 │   │   ├── logodetection/      # ロゴ検出・企業分析機能（package logodetection）
-│   │   │   ├── gemini/         # Gemini APIクライアント（package gemini）
-│   │   │   ├── vision/         # Cloud Vision APIクライアント（package vision）
-│   │   │   └── transport/      # HTTPハンドラー（package logodetectionhttp）
+│   │   │   ├── gemini/             # Gemini APIクライアント（package gemini）
+│   │   │   ├── vision/             # Cloud Vision APIクライアント（package vision）
+│   │   │   └── logodetectionhttp/  # HTTPハンドラー（package logodetectionhttp）
 │   │   │
 │   │   ├── symbollist/         # シンボルリスト機能（package symbollist）
 │   │   │   ├── sqlc/           # sqlc 生成コード（package symbollistsqlc）
-│   │   │   └── transport/      # HTTPハンドラー（package symbollisthttp）
+│   │   │   └── symbollisthttp/ # HTTPハンドラー（package symbollisthttp）
 │   │   │
 │   │   └── watchlist/          # ウォッチリスト機能（package watchlist）
 │   │       ├── sqlc/           # sqlc 生成コード（package watchlistsqlc）
-│   │       └── transport/      # HTTPハンドラー（package watchlisthttp）
+│   │       └── watchlisthttp/  # HTTPハンドラー（package watchlisthttp）
 │   │
 │   ├── platform/               # インフラストラクチャ層（外部依存）
 │   │   ├── csrf/               # CSRF保護（Double Submit Cookieパターン）

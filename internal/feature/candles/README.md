@@ -211,7 +211,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```mermaid
 graph TB
     subgraph "Transport Layer"
-        Handler[CandlesHandler<br/>transport]
+        Handler[CandlesHandler<br/>candleshttp]
     end
 
     subgraph "API Types (Generated)"
@@ -282,7 +282,7 @@ graph TB
 
 ### 依存関係の説明
 
-#### トランスポート層（[transport/handler.go](transport/handler.go)）
+#### トランスポート層（[candleshttp/handler.go](candleshttp/handler.go)）
 - **CandlesHandler**: HTTPリクエストを処理し、CandlesUsecaseを呼び出す
 - **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成された `api.CandleResponse` を使用
 
@@ -368,7 +368,7 @@ candles/                               # package candles（コア: domain/usecas
 │   ├── repository.go                  # MarketRepository実装
 │   ├── repository_test.go
 │   └── time_series_response.go        # APIレスポンス型
-└── transport/                         # package candleshttp
+└── candleshttp/                         # package candleshttp
     ├── handler.go                     # HTTPハンドラー
     └── handler_test.go                # ハンドラーテスト
 ```
@@ -433,7 +433,7 @@ tests := []struct {
 go test ./internal/feature/candles/... -v
 ```
 
-#### ハンドラーテスト（[transport/handler_test.go](transport/handler_test.go)）
+#### ハンドラーテスト（[candleshttp/handler_test.go](candleshttp/handler_test.go)）
 
 HTTPリクエスト/レスポンス処理をテストするために**モックユースケース**を使用します。
 
@@ -456,7 +456,7 @@ tests := []struct {
 
 **実行コマンド:**
 ```bash
-go test ./internal/feature/candles/transport/... -v
+go test ./internal/feature/candles/candleshttp/... -v
 ```
 
 #### リポジトリテスト（[repository_test.go](repository_test.go)）

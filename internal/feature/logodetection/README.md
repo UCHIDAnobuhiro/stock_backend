@@ -224,7 +224,7 @@ Content-Type: application/json
 ```mermaid
 graph TB
     subgraph "Transport Layer"
-        Handler[LogoDetectionHandler<br/>transport]
+        Handler[LogoDetectionHandler<br/>logodetectionhttp]
     end
 
     subgraph "API Types (Generated)"
@@ -277,7 +277,7 @@ graph TB
 
 ### 依存関係の説明
 
-#### トランスポート層（[transport/handler.go](transport/handler.go)）
+#### トランスポート層（[logodetectionhttp/handler.go](logodetectionhttp/handler.go)）
 - **LogoDetectionHandler**: HTTPリクエストを処理し、usecaseを呼び出す
 - `LogoDetectionUsecase`インターフェースを定義（Goの「インターフェースは利用者が定義する」慣例に従う）
 - API型（`internal/api/types.gen.go`）: `api.DetectedLogoResponse`, `api.CompanyAnalysisRequest`, `api.CompanyAnalysisResponse`, `api.ErrorResponse`を使用
@@ -333,7 +333,7 @@ logodetection/
 │   └── client.go        # Google Cloud Vision APIクライアント（LogoDetector実装）
 ├── gemini/
 │   └── client.go        # Google Gemini APIクライアント（CompanyAnalyzer実装）
-└── transport/
+└── logodetectionhttp/
     ├── handler.go       # HTTPハンドラー + LogoDetectionUsecaseインターフェース
     └── handler_test.go  # ハンドラーテスト
 ```
@@ -388,7 +388,7 @@ testCases := []struct {
 go test ./internal/feature/logodetection/ -v
 ```
 
-#### ハンドラーテスト（[transport/handler_test.go](transport/handler_test.go)）
+#### ハンドラーテスト（[logodetectionhttp/handler_test.go](logodetectionhttp/handler_test.go)）
 
 HTTPリクエスト/レスポンス処理をテストするために**モックユースケース**を使用します。
 
@@ -412,7 +412,7 @@ tests := []struct {
 
 **実行コマンド:**
 ```bash
-go test ./internal/feature/logodetection/transport/... -v
+go test ./internal/feature/logodetection/logodetectionhttp/... -v
 ```
 
 **注:** 本フィーチャーはデータベースを使用しないため、リポジトリテスト（インメモリSQLite等）は存在しません。

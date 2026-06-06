@@ -195,8 +195,8 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph "Transport Layer"
-        Handler[WatchlistHandler<br/>transport]
-        UCInterface[WatchlistUsecase Interface<br/>transport/handler.go]
+        Handler[WatchlistHandler<br/>watchlisthttp]
+        UCInterface[WatchlistUsecase Interface<br/>watchlisthttp/handler.go]
     end
 
     subgraph "API Types (Generated)"
@@ -253,9 +253,9 @@ graph TB
 
 ### 依存関係の説明
 
-#### トランスポート層（[transport/handler.go](transport/handler.go)）
+#### トランスポート層（[watchlisthttp/handler.go](watchlisthttp/handler.go)）
 - **WatchlistHandler**: HTTPリクエストを処理し、WatchlistUsecaseを呼び出す
-- **WatchlistUsecase インターフェース**: transport層で定義（Goの「インターフェースは利用者が定義する」慣例）
+- **WatchlistUsecase インターフェース**: watchlisthttp層で定義（Goの「インターフェースは利用者が定義する」慣例）
 - **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成された `api.WatchlistItem` 等を使用
 
 #### ユースケース層（[usecase.go](usecase.go)）
@@ -281,7 +281,7 @@ graph TB
 ### アーキテクチャの特徴
 
 1. **クリーンアーキテクチャ**: ドメイン層がインフラストラクチャから独立
-2. **インターフェース所有権**: `WatchlistRepository` は usecase 層で定義、`WatchlistUsecase` は transport 層で定義
+2. **インターフェース所有権**: `WatchlistRepository` は usecase 層で定義、`WatchlistUsecase` は watchlisthttp 層で定義
 3. **フィーチャー分離**: `SymbolExistsChecker` 最小インターフェースにより symbollist への直接依存を回避
 4. **並行安全**: `AddWithNextSortKey` でトランザクション + `FOR UPDATE` により重複 sort_key を防止
 5. **2フェーズ sort_key 更新**: ユニーク制約を一時的に違反しないよう、負値シフト後に最終値を設定
@@ -302,7 +302,7 @@ watchlist/                            # package watchlist（コア）
 │   ├── querier.go
 │   ├── queries.sql
 │   └── queries.sql.go
-└── transport/
+└── watchlisthttp/
     └── handler.go                    # package watchlisthttp（HTTPハンドラー + WatchlistUsecase インターフェース）
 ```
 
@@ -327,7 +327,7 @@ watchlist/                            # package watchlist（コア）
 - `TestWatchlistUsecase_RemoveSymbol`: 削除成功・ErrNotInWatchlist
 - `TestWatchlistUsecase_ReorderSymbols`: 並び順更新の正常系・エラー系
 
-#### ハンドラーテスト（`transport/handler_test.go`）
+#### ハンドラーテスト（`watchlisthttp/handler_test.go`）
 モックユースケースを使用して HTTP リクエスト/レスポンスをテスト。
 
 - 各エンドポイントの HTTP ステータスコード検証
