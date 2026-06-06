@@ -195,8 +195,8 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph "Transport Layer"
-        Handler[WatchlistHandler<br/>transport/handler]
-        UCInterface[WatchlistUsecase Interface<br/>transport/handler/watchlist_handler.go]
+        Handler[WatchlistHandler<br/>transport]
+        UCInterface[WatchlistUsecase Interface<br/>transport/handler.go]
     end
 
     subgraph "API Types (Generated)"
@@ -204,18 +204,18 @@ graph TB
     end
 
     subgraph "Usecase Layer"
-        WatchlistUC[WatchlistUsecase<br/>usecase/watchlist_usecase.go]
-        RepoInterface[WatchlistRepository Interface<br/>usecase/watchlist_usecase.go]
-        SymbolInterface[SymbolExistsChecker Interface<br/>usecase/watchlist_usecase.go]
-        Errors[Domain Errors<br/>usecase/errors.go]
+        WatchlistUC[WatchlistUsecase<br/>usecase.go]
+        RepoInterface[WatchlistRepository Interface<br/>usecase.go]
+        SymbolInterface[SymbolExistsChecker Interface<br/>usecase.go]
+        Errors[Domain Errors<br/>errors.go]
     end
 
     subgraph "Domain Layer"
-        Entity[UserSymbol Entity<br/>domain/entity/user_symbol.go]
+        Entity[UserSymbol Entity<br/>user_symbol.go]
     end
 
     subgraph "Adapters Layer"
-        RepoImpl[watchlistRepository<br/>adapters/watchlist_repository.go]
+        RepoImpl[watchlistRepository<br/>repository.go]
     end
 
     subgraph "External Feature (via Interface)"
@@ -253,24 +253,24 @@ graph TB
 
 ### 依存関係の説明
 
-#### トランスポート層（[transport/handler/watchlist_handler.go](transport/handler/watchlist_handler.go)）
+#### トランスポート層（[transport/handler.go](transport/handler.go)）
 - **WatchlistHandler**: HTTPリクエストを処理し、WatchlistUsecaseを呼び出す
 - **WatchlistUsecase インターフェース**: transport層で定義（Goの「インターフェースは利用者が定義する」慣例）
 - **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成された `api.WatchlistItem` 等を使用
 
-#### ユースケース層（[usecase/watchlist_usecase.go](usecase/watchlist_usecase.go)）
+#### ユースケース層（[usecase.go](usecase.go)）
 - **WatchlistUsecase**: ウォッチリスト操作のビジネスロジック
 - **WatchlistRepository インターフェース**: 永続化層を抽象化（usecase層で定義）
 - **SymbolExistsChecker インターフェース**: symbollist フィーチャーへの最小限の依存を表現。フィーチャー分離ルールに従い、symbollist の具体実装はインポートせずインターフェース経由で利用
 
-#### ドメイン層（[domain/entity/user_symbol.go](domain/entity/user_symbol.go)）
+#### ドメイン層（[user_symbol.go](user_symbol.go)）
 - **UserSymbol**: `watchlists` テーブルにマップされるエンティティ
   - `UserID`: 所有ユーザーID（FK: users.id）
   - `SymbolCode`: 銘柄コード（FK: symbols.code、最大20文字）
   - `SortKey`: 表示順（ユーザー内でユニーク制約）
 - ユニーク制約: `(user_id, symbol_code)` および `(user_id, sort_key)`
 
-#### アダプター層（[adapters/watchlist_repository.go](adapters/watchlist_repository.go)）
+#### アダプター層（[repository.go](repository.go)）
 - **watchlistRepository**: WatchlistRepositoryインターフェースのPostgreSQL実装
   - `ListByUser`: `sort_key ASC` 順でリスト返却
   - `Add`: エントリ追加（PostgreSQLエラーコードで `ErrAlreadyInWatchlist` / `ErrSymbolNotFound` に変換）
@@ -289,28 +289,37 @@ graph TB
 ## ディレクトリ構成
 
 ```
-watchlist/
+watchlist/                            # package watchlist（コア）
 ├── README.md                         # 本ファイル
-├── domain/
-│   └── entity/
-│       └── user_symbol.go            # UserSymbol エンティティ
-├── usecase/
-│   ├── watchlist_usecase.go          # ビジネスロジック + WatchlistRepository / SymbolExistsChecker インターフェース
-│   └── errors.go                     # ErrSymbolNotFound / ErrAlreadyInWatchlist / ErrNotInWatchlist
-├── adapters/
-│   └── watchlist_repository.go       # WatchlistRepository の PostgreSQL 実装
+├── user_symbol.go                    # UserSymbol エンティティ
+├── usecase.go                        # ビジネスロジック + WatchlistRepository / SymbolExistsChecker インターフェース
+├── errors.go                         # ErrSymbolNotFound / ErrAlreadyInWatchlist / ErrNotInWatchlist
+├── repository.go                     # WatchlistRepository の PostgreSQL 実装
+├── repository_test.go                # リポジトリの統合テスト
+├── sqlc/                             # package watchlistsqlc（sqlc 生成コード）
+│   ├── db.go
+│   ├── models.go
+│   ├── querier.go
+│   ├── queries.sql
+│   └── queries.sql.go
 └── transport/
-    └── handler/
-        └── watchlist_handler.go      # HTTPハンドラー + WatchlistUsecase インターフェース
+    └── handler.go                    # package watchlisthttp（HTTPハンドラー + WatchlistUsecase インターフェース）
 ```
 
 ## テスト
 
-現在テストファイルは未作成です。以下の方針でテストを追加することを推奨します。
+### 現在のテスト構造
 
-### 推奨テスト構造
+#### リポジトリテスト（`repository_test.go`）
+リポジトリの統合テスト。
 
-#### ユースケーステスト（`usecase/watchlist_usecase_test.go`）
+- `AddWithNextSortKey` の並行安全性テスト
+- `UpdateSortKeys` の 2フェーズ更新テスト
+- 重複追加・存在しない銘柄削除のエラー変換テスト
+
+### 推奨テスト構造（未作成）
+
+#### ユースケーステスト（`usecase_test.go`）
 モックリポジトリとモック SymbolExistsChecker を使用してビジネスロジックをテスト。
 
 - `TestWatchlistUsecase_ListUserSymbols`: リスト取得の正常系・エラー系
@@ -318,18 +327,11 @@ watchlist/
 - `TestWatchlistUsecase_RemoveSymbol`: 削除成功・ErrNotInWatchlist
 - `TestWatchlistUsecase_ReorderSymbols`: 並び順更新の正常系・エラー系
 
-#### ハンドラーテスト（`transport/handler/watchlist_handler_test.go`）
+#### ハンドラーテスト（`transport/handler_test.go`）
 モックユースケースを使用して HTTP リクエスト/レスポンスをテスト。
 
 - 各エンドポイントの HTTP ステータスコード検証
 - エラーケース（404/409/500）のレスポンスボディ検証
-
-#### リポジトリテスト（`adapters/watchlist_repository_test.go`）
-インメモリ SQLite を使用した統合テスト。
-
-- `AddWithNextSortKey` の並行安全性テスト
-- `UpdateSortKeys` の 2フェーズ更新テスト
-- 重複追加・存在しない銘柄削除のエラー変換テスト
 
 ### テスト実行コマンド
 
