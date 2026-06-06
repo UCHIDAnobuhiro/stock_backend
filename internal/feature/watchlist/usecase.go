@@ -1,24 +1,21 @@
-// Package usecase はwatchlistフィーチャーのビジネスロジックを実装します。
-package usecase
+package watchlist
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
-
-	"stock_backend/internal/feature/watchlist/domain/entity"
 )
 
 // WatchlistRepository はウォッチリスト操作の永続化層を抽象化します。
 type WatchlistRepository interface {
-	ListByUser(ctx context.Context, userID int64) ([]entity.UserSymbol, error)
+	ListByUser(ctx context.Context, userID int64) ([]UserSymbol, error)
 	// Add はsort_keyを指定してウォッチリストに銘柄を追加します。
-	Add(ctx context.Context, entry entity.UserSymbol) error
+	Add(ctx context.Context, entry UserSymbol) error
 	// AddWithNextSortKey はsort_keyをトランザクション内でMAX+1採番して銘柄を追加します。
 	// MaxSortKey取得とInsertをアトミックに実行するため、並行追加時の重複順位を防ぎます。
 	AddWithNextSortKey(ctx context.Context, userID int64, symbolCode string) error
 	Remove(ctx context.Context, userID int64, symbolCode string) error
-	UpdateSortKeys(ctx context.Context, userID int64, entries []entity.UserSymbol) error
+	UpdateSortKeys(ctx context.Context, userID int64, entries []UserSymbol) error
 }
 
 // SymbolExistsChecker は銘柄の存在確認を行うインターフェースです。
@@ -40,7 +37,7 @@ func NewWatchlistUsecase(repo WatchlistRepository, symbolChecker SymbolExistsChe
 }
 
 // ListUserSymbols はユーザーのウォッチリストをソート順で返します。
-func (u *WatchlistUsecase) ListUserSymbols(ctx context.Context, userID int64) ([]entity.UserSymbol, error) {
+func (u *WatchlistUsecase) ListUserSymbols(ctx context.Context, userID int64) ([]UserSymbol, error) {
 	return u.repo.ListByUser(ctx, userID)
 }
 
@@ -66,9 +63,9 @@ func (u *WatchlistUsecase) RemoveSymbol(ctx context.Context, userID int64, symbo
 
 // ReorderSymbols はウォッチリストの並び順を更新します。
 func (u *WatchlistUsecase) ReorderSymbols(ctx context.Context, userID int64, orderedCodes []string) error {
-	entries := make([]entity.UserSymbol, 0, len(orderedCodes))
+	entries := make([]UserSymbol, 0, len(orderedCodes))
 	for i, code := range orderedCodes {
-		entries = append(entries, entity.UserSymbol{
+		entries = append(entries, UserSymbol{
 			UserID:     userID,
 			SymbolCode: code,
 			SortKey:    i,
@@ -97,7 +94,7 @@ func (u *WatchlistUsecase) InitializeDefaults(ctx context.Context, userID int64)
 			slog.Warn("default symbol not found in symbols table, skipping", "code", code)
 			continue
 		}
-		if err := u.repo.Add(ctx, entity.UserSymbol{
+		if err := u.repo.Add(ctx, UserSymbol{
 			UserID:     userID,
 			SymbolCode: code,
 			SortKey:    i,

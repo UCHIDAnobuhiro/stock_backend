@@ -11,7 +11,7 @@ import (
 	candleshandler "stock_backend/internal/feature/candles/transport/handler"
 	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
-	watchlisthandler "stock_backend/internal/feature/watchlist/transport/handler"
+	watchlisthttp "stock_backend/internal/feature/watchlist/transport"
 	csrfmw "stock_backend/internal/platform/csrf"
 	handler "stock_backend/internal/platform/handler"
 	"stock_backend/internal/platform/httpratelimit"
@@ -25,7 +25,7 @@ import (
 func NewRouter(authHandler *authhandler.AuthHandler, oauthHandler *authhandler.OAuthHandler,
 	candles *candleshandler.CandlesHandler,
 	symbol *symbollisthandler.SymbolHandler, logo *logohandler.LogoDetectionHandler,
-	watchlist *watchlisthandler.WatchlistHandler,
+	watchlist *watchlisthttp.WatchlistHandler,
 	limiter *httpratelimit.Limiter,
 	allowedOrigins []string,
 ) *gin.Engine {

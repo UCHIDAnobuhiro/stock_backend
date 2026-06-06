@@ -1,5 +1,4 @@
-// Package usecase はwatchlistフィーチャーのビジネスロジックを実装します。
-package usecase
+package watchlist
 
 import "errors"
 

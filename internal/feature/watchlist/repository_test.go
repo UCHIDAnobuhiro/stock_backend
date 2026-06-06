@@ -1,4 +1,4 @@
-package adapters
+package watchlist
 
 import (
 	"context"
@@ -10,8 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"stock_backend/internal/feature/watchlist/domain/entity"
-	"stock_backend/internal/feature/watchlist/usecase"
 	"stock_backend/internal/platform/db/dbtest"
 )
 
@@ -55,10 +53,10 @@ func TestWatchlistRepository_Add_and_ListByUser(t *testing.T) {
 	db, ids := setupTestDB(t)
 	repo := NewWatchlistRepository(db)
 
-	require.NoError(t, repo.Add(context.Background(), entity.UserSymbol{
+	require.NoError(t, repo.Add(context.Background(), UserSymbol{
 		UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0,
 	}))
-	require.NoError(t, repo.Add(context.Background(), entity.UserSymbol{
+	require.NoError(t, repo.Add(context.Background(), UserSymbol{
 		UserID: ids.u1, SymbolCode: "GOOGL", SortKey: 1,
 	}))
 
@@ -76,13 +74,13 @@ func TestWatchlistRepository_Add_DuplicateEntry(t *testing.T) {
 	db, ids := setupTestDB(t)
 	repo := NewWatchlistRepository(db)
 
-	require.NoError(t, repo.Add(context.Background(), entity.UserSymbol{
+	require.NoError(t, repo.Add(context.Background(), UserSymbol{
 		UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0,
 	}))
-	err := repo.Add(context.Background(), entity.UserSymbol{
+	err := repo.Add(context.Background(), UserSymbol{
 		UserID: ids.u1, SymbolCode: "AAPL", SortKey: 1,
 	})
-	assert.ErrorIs(t, err, usecase.ErrAlreadyInWatchlist)
+	assert.ErrorIs(t, err, ErrAlreadyInWatchlist)
 }
 
 func TestWatchlistRepository_Add_UnknownSymbol(t *testing.T) {
@@ -90,10 +88,10 @@ func TestWatchlistRepository_Add_UnknownSymbol(t *testing.T) {
 	db, ids := setupTestDB(t)
 	repo := NewWatchlistRepository(db)
 
-	err := repo.Add(context.Background(), entity.UserSymbol{
+	err := repo.Add(context.Background(), UserSymbol{
 		UserID: ids.u1, SymbolCode: "UNKNOWN", SortKey: 0,
 	})
-	assert.ErrorIs(t, err, usecase.ErrSymbolNotFound)
+	assert.ErrorIs(t, err, ErrSymbolNotFound)
 }
 
 func TestWatchlistRepository_Remove(t *testing.T) {
@@ -101,7 +99,7 @@ func TestWatchlistRepository_Remove(t *testing.T) {
 	db, ids := setupTestDB(t)
 	repo := NewWatchlistRepository(db)
 
-	require.NoError(t, repo.Add(context.Background(), entity.UserSymbol{
+	require.NoError(t, repo.Add(context.Background(), UserSymbol{
 		UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0,
 	}))
 
@@ -117,7 +115,7 @@ func TestWatchlistRepository_Remove_NotFound(t *testing.T) {
 	repo := NewWatchlistRepository(db)
 
 	err := repo.Remove(context.Background(), ids.u1, "AAPL")
-	assert.ErrorIs(t, err, usecase.ErrNotInWatchlist)
+	assert.ErrorIs(t, err, ErrNotInWatchlist)
 }
 
 func TestWatchlistRepository_AddWithNextSortKey(t *testing.T) {
@@ -160,7 +158,7 @@ func TestWatchlistRepository_AddWithNextSortKey_DuplicateSymbol(t *testing.T) {
 
 	require.NoError(t, repo.AddWithNextSortKey(context.Background(), ids.u1, "AAPL"))
 	err := repo.AddWithNextSortKey(context.Background(), ids.u1, "AAPL")
-	assert.ErrorIs(t, err, usecase.ErrAlreadyInWatchlist)
+	assert.ErrorIs(t, err, ErrAlreadyInWatchlist)
 }
 
 func TestWatchlistRepository_UpdateSortKeys(t *testing.T) {
@@ -169,12 +167,12 @@ func TestWatchlistRepository_UpdateSortKeys(t *testing.T) {
 	repo := NewWatchlistRepository(db)
 	ctx := context.Background()
 
-	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0}))
-	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: ids.u1, SymbolCode: "GOOGL", SortKey: 1}))
-	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: ids.u1, SymbolCode: "MSFT", SortKey: 2}))
+	require.NoError(t, repo.Add(ctx, UserSymbol{UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0}))
+	require.NoError(t, repo.Add(ctx, UserSymbol{UserID: ids.u1, SymbolCode: "GOOGL", SortKey: 1}))
+	require.NoError(t, repo.Add(ctx, UserSymbol{UserID: ids.u1, SymbolCode: "MSFT", SortKey: 2}))
 
 	// 並び替え: MSFT(0), AAPL(1), GOOGL(2)
-	require.NoError(t, repo.UpdateSortKeys(ctx, ids.u1, []entity.UserSymbol{
+	require.NoError(t, repo.UpdateSortKeys(ctx, ids.u1, []UserSymbol{
 		{SymbolCode: "MSFT", SortKey: 0},
 		{SymbolCode: "AAPL", SortKey: 1},
 		{SymbolCode: "GOOGL", SortKey: 2},
@@ -194,8 +192,8 @@ func TestWatchlistRepository_ListByUser_Isolation(t *testing.T) {
 	repo := NewWatchlistRepository(db)
 	ctx := context.Background()
 
-	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0}))
-	require.NoError(t, repo.Add(ctx, entity.UserSymbol{UserID: ids.u2, SymbolCode: "GOOGL", SortKey: 0}))
+	require.NoError(t, repo.Add(ctx, UserSymbol{UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0}))
+	require.NoError(t, repo.Add(ctx, UserSymbol{UserID: ids.u2, SymbolCode: "GOOGL", SortKey: 0}))
 
 	u1List, err := repo.ListByUser(ctx, ids.u1)
 	require.NoError(t, err)

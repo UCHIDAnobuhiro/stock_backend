@@ -25,9 +25,8 @@ import (
 	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
-	watchlistadapters "stock_backend/internal/feature/watchlist/adapters"
-	watchlisthandler "stock_backend/internal/feature/watchlist/transport/handler"
-	watchlistusecase "stock_backend/internal/feature/watchlist/usecase"
+	"stock_backend/internal/feature/watchlist"
+	watchlisthttp "stock_backend/internal/feature/watchlist/transport"
 	infradb "stock_backend/internal/platform/db"
 	"stock_backend/internal/platform/httpratelimit"
 	jwtmw "stock_backend/internal/platform/jwt"
@@ -199,7 +198,7 @@ func run() int {
 	userRepo := authadapters.NewUserRepository(sqlDB)
 	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
 	candleRepo := candlesadapters.NewCandleRepository(sqlDB)
-	watchlistRepo := watchlistadapters.NewWatchlistRepository(sqlDB)
+	watchlistRepo := watchlist.NewWatchlistRepository(sqlDB)
 
 	// Redisキャッシュでラップ（TTLはingest連続失敗時のセーフティネット、通常は日次ingestで上書き）
 	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, candlesadapters.DefaultCacheTTL, candleRepo, "candles")
@@ -233,7 +232,7 @@ func run() int {
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
 	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
 	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
-	watchlistUC := watchlistusecase.NewWatchlistUsecase(watchlistRepo, symbolRepo)
+	watchlistUC := watchlist.NewWatchlistUsecase(watchlistRepo, symbolRepo)
 
 	// OAuth ハンドラー（cfg.oauth が nil の場合はOAuth機能なしで起動）
 	var oauthH *authhandler.OAuthHandler
@@ -276,7 +275,7 @@ func run() int {
 	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
 	candlesH := candleshandler.NewCandlesHandler(candlesUC)
 	logoH := logohandler.NewLogoDetectionHandler(logoUC)
-	watchlistH := watchlisthandler.NewWatchlistHandler(watchlistUC)
+	watchlistH := watchlisthttp.NewWatchlistHandler(watchlistUC)
 
 	// ルーター作成
 	r := router.NewRouter(authH, oauthH, candlesH, symbolH, logoH, watchlistH, rateLimiter, cfg.corsOrigins)

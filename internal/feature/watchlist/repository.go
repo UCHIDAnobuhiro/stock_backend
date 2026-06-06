@@ -1,5 +1,4 @@
-// Package adapters はwatchlistフィーチャーのリポジトリ実装を提供します。
-package adapters
+package watchlist
 
 import (
 	"context"
@@ -9,9 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"stock_backend/internal/feature/watchlist/adapters/sqlc"
-	"stock_backend/internal/feature/watchlist/domain/entity"
-	"stock_backend/internal/feature/watchlist/usecase"
+	"stock_backend/internal/feature/watchlist/sqlc"
 )
 
 const (
@@ -25,7 +22,7 @@ type watchlistRepository struct {
 	q  *watchlistsqlc.Queries
 }
 
-var _ usecase.WatchlistRepository = (*watchlistRepository)(nil)
+var _ WatchlistRepository = (*watchlistRepository)(nil)
 
 // NewWatchlistRepository は指定された *sql.DB で watchlistRepository の新しいインスタンスを生成します。
 func NewWatchlistRepository(db *sql.DB) *watchlistRepository {
@@ -33,14 +30,14 @@ func NewWatchlistRepository(db *sql.DB) *watchlistRepository {
 }
 
 // ListByUser はユーザーのウォッチリストを sort_key 昇順で返します。
-func (r *watchlistRepository) ListByUser(ctx context.Context, userID int64) ([]entity.UserSymbol, error) {
+func (r *watchlistRepository) ListByUser(ctx context.Context, userID int64) ([]UserSymbol, error) {
 	rows, err := r.q.ListWatchlistByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]entity.UserSymbol, 0, len(rows))
+	out := make([]UserSymbol, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, entity.UserSymbol{
+		out = append(out, UserSymbol{
 			ID:         row.ID,
 			UserID:     row.UserID,
 			SymbolCode: row.SymbolCode,
@@ -54,7 +51,7 @@ func (r *watchlistRepository) ListByUser(ctx context.Context, userID int64) ([]e
 
 // Add はウォッチリストに銘柄を追加します。
 // 重複エントリは ErrAlreadyInWatchlist、FK 違反は ErrSymbolNotFound を返します。
-func (r *watchlistRepository) Add(ctx context.Context, entry entity.UserSymbol) error {
+func (r *watchlistRepository) Add(ctx context.Context, entry UserSymbol) error {
 	err := r.q.InsertWatchlist(ctx, watchlistsqlc.InsertWatchlistParams{
 		UserID:     entry.UserID,
 		SymbolCode: entry.SymbolCode,
@@ -74,7 +71,7 @@ func (r *watchlistRepository) Remove(ctx context.Context, userID int64, symbolCo
 		return err
 	}
 	if rowsAffected == 0 {
-		return usecase.ErrNotInWatchlist
+		return ErrNotInWatchlist
 	}
 	return nil
 }
@@ -82,7 +79,7 @@ func (r *watchlistRepository) Remove(ctx context.Context, userID int64, symbolCo
 // UpdateSortKeys はウォッチリストの sort_key をトランザクション内で一括更新します。
 // (user_id, sort_key) のユニーク制約が一時的に違反しないよう、まず全レコードを
 // 負値（-(i+1)）にシフトしてから最終値に更新します。
-func (r *watchlistRepository) UpdateSortKeys(ctx context.Context, userID int64, entries []entity.UserSymbol) error {
+func (r *watchlistRepository) UpdateSortKeys(ctx context.Context, userID int64, entries []UserSymbol) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -165,9 +162,9 @@ func mapWatchlistPGErr(err error) error {
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
 		case pgUniqueViolation:
-			return usecase.ErrAlreadyInWatchlist
+			return ErrAlreadyInWatchlist
 		case pgForeignKeyViolation:
-			return usecase.ErrSymbolNotFound
+			return ErrSymbolNotFound
 		}
 	}
 	return err

@@ -1,5 +1,4 @@
-// Package handler はwatchlistフィーチャーのHTTPハンドラーを提供します。
-package handler
+package watchlisthttp
 
 import (
 	"context"
@@ -10,14 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"stock_backend/internal/api"
-	"stock_backend/internal/feature/watchlist/domain/entity"
-	"stock_backend/internal/feature/watchlist/usecase"
+	"stock_backend/internal/feature/watchlist"
 	jwtmw "stock_backend/internal/platform/jwt"
 )
 
 // WatchlistUsecase はウォッチリスト操作のユースケースインターフェースを定義します。
 type WatchlistUsecase interface {
-	ListUserSymbols(ctx context.Context, userID int64) ([]entity.UserSymbol, error)
+	ListUserSymbols(ctx context.Context, userID int64) ([]watchlist.UserSymbol, error)
 	AddSymbol(ctx context.Context, userID int64, symbolCode string) error
 	RemoveSymbol(ctx context.Context, userID int64, symbolCode string) error
 	ReorderSymbols(ctx context.Context, userID int64, orderedCodes []string) error
@@ -67,9 +65,9 @@ func (h *WatchlistHandler) Add(c *gin.Context) {
 
 	if err := h.uc.AddSymbol(c.Request.Context(), userID, req.SymbolCode); err != nil {
 		switch {
-		case errors.Is(err, usecase.ErrSymbolNotFound):
+		case errors.Is(err, watchlist.ErrSymbolNotFound):
 			c.JSON(http.StatusNotFound, api.ErrorResponse{Error: err.Error()})
-		case errors.Is(err, usecase.ErrAlreadyInWatchlist):
+		case errors.Is(err, watchlist.ErrAlreadyInWatchlist):
 			c.JSON(http.StatusConflict, api.ErrorResponse{Error: err.Error()})
 		default:
 			slog.Error("failed to add watchlist symbol", "error", err, "userID", userID)
@@ -88,7 +86,7 @@ func (h *WatchlistHandler) Remove(c *gin.Context) {
 
 	if err := h.uc.RemoveSymbol(c.Request.Context(), userID, code); err != nil {
 		switch {
-		case errors.Is(err, usecase.ErrNotInWatchlist):
+		case errors.Is(err, watchlist.ErrNotInWatchlist):
 			c.JSON(http.StatusNotFound, api.ErrorResponse{Error: err.Error()})
 		default:
 			slog.Error("failed to remove watchlist symbol", "error", err, "userID", userID)

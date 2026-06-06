@@ -1,5 +1,4 @@
-// Package entity はwatchlistフィーチャーのドメインエンティティを定義します。
-package entity
+package watchlist
 
 import "time"
 
