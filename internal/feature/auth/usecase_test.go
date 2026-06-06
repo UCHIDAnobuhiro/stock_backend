@@ -200,7 +200,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			}
 			mockJWT := &mockJWTGenerator{}
 
-			uc := auth.NewAuthUsecase(mockRepo, mockJWT, testPepper)
+			uc := auth.NewUsecase(mockRepo, mockJWT, testPepper)
 			_, err := uc.Signup(context.Background(), tt.email, tt.password)
 
 			// Assert error expectations
@@ -300,7 +300,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 				},
 			}
 
-			uc := auth.NewAuthUsecase(mockRepo, mockJWT, testPepper)
+			uc := auth.NewUsecase(mockRepo, mockJWT, testPepper)
 			token, err := uc.Login(context.Background(), tt.email, tt.password)
 
 			// エラーの期待値を検証
@@ -343,7 +343,7 @@ func TestAuthUsecase_PepperApplied(t *testing.T) {
 		}
 		mockJWT := &mockJWTGenerator{}
 
-		uc := auth.NewAuthUsecase(mockRepo, mockJWT, testPepper)
+		uc := auth.NewUsecase(mockRepo, mockJWT, testPepper)
 		_, err := uc.Signup(context.Background(), "test@example.com", "password123")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -365,7 +365,7 @@ func TestAuthUsecase_PepperApplied(t *testing.T) {
 		}
 		mockJWT := &mockJWTGenerator{}
 
-		uc := auth.NewAuthUsecase(mockRepo, mockJWT, testPepper)
+		uc := auth.NewUsecase(mockRepo, mockJWT, testPepper)
 		_, err := uc.Signup(context.Background(), "test@example.com", longPassword)
 		if err != nil {
 			t.Fatalf("unexpected signup error: %v", err)

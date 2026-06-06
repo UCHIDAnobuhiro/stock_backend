@@ -87,17 +87,17 @@ type JWTGenerator interface {
 	GenerateToken(userID int64, email string) (string, error)
 }
 
-// authUsecase は認証ビジネスロジックを実装します。
-type authUsecase struct {
+// usecase は認証ビジネスロジックを実装します。
+type usecase struct {
 	users        UserRepository
 	jwtGenerator JWTGenerator
 	pepper       string
 	dummyHash    string // タイミング攻撃防止用のダミーハッシュ
 }
 
-// NewAuthUsecase はauthUsecaseの新しいインスタンスを生成します。
-func NewAuthUsecase(users UserRepository, jwtGenerator JWTGenerator, pepper string) *authUsecase {
-	uc := &authUsecase{
+// NewUsecase はusecaseの新しいインスタンスを生成します。
+func NewUsecase(users UserRepository, jwtGenerator JWTGenerator, pepper string) *usecase {
+	uc := &usecase{
 		users:        users,
 		jwtGenerator: jwtGenerator,
 		pepper:       pepper,
@@ -111,7 +111,7 @@ func NewAuthUsecase(users UserRepository, jwtGenerator JWTGenerator, pepper stri
 
 // pepperPassword はHMAC-SHA256を使用してパスワードにペッパーを適用します。
 // bcryptの72バイト制限を回避するため、HMAC-SHA256で固定長のハッシュを生成します。
-func (u *authUsecase) pepperPassword(password string) string {
+func (u *usecase) pepperPassword(password string) string {
 	if u.pepper == "" {
 		return password
 	}
@@ -130,7 +130,7 @@ func validatePassword(password string) error {
 
 // Signup はハッシュ化されたパスワードで新規ユーザーを登録します。
 // 成功時に作成されたユーザーのIDを返します。
-func (u *authUsecase) Signup(ctx context.Context, email, password string) (int64, error) {
+func (u *usecase) Signup(ctx context.Context, email, password string) (int64, error) {
 	// パスワード強度を検証
 	if err := validatePassword(password); err != nil {
 		return 0, err
@@ -152,7 +152,7 @@ func (u *authUsecase) Signup(ctx context.Context, email, password string) (int64
 // Login はユーザーを認証し、成功時にJWTトークンを返します。
 // メールアドレスとパスワードを検証し、署名済みJWTトークンを生成します。
 // タイミング攻撃を防止するため、ユーザーが存在しない場合でもbcrypt比較を実行します。
-func (u *authUsecase) Login(ctx context.Context, email, password string) (string, error) {
+func (u *usecase) Login(ctx context.Context, email, password string) (string, error) {
 	// メールアドレスでユーザーを検索
 	user, err := u.users.FindByEmail(ctx, email)
 

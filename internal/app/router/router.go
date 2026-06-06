@@ -22,10 +22,10 @@ import (
 // NewRouter はすべてのアプリケーションルートを設定したGinルーターを生成します。
 // 公開ルート（signup, login）とJWT認証ミドルウェア付きの保護ルート（candles, symbols, logo, watchlist）を設定します。
 // oauthHandler が nil の場合はOAuthルートを登録しません。
-func NewRouter(authHandler *authhttp.AuthHandler, oauthHandler *authhttp.OAuthHandler,
-	candles *candleshttp.CandlesHandler,
-	symbol *symbollisthttp.SymbolHandler, logo *logodetectionhttp.LogoDetectionHandler,
-	watchlist *watchlisthttp.WatchlistHandler,
+func NewRouter(authHandler *authhttp.Handler, oauthHandler *authhttp.OAuthHandler,
+	candles *candleshttp.Handler,
+	symbol *symbollisthttp.Handler, logo *logodetectionhttp.Handler,
+	watchlist *watchlisthttp.Handler,
 	limiter *httpratelimit.Limiter,
 	allowedOrigins []string,
 ) *gin.Engine {

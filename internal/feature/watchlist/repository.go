@@ -16,21 +16,21 @@ const (
 	pgForeignKeyViolation = "23503"
 )
 
-// watchlistRepository は WatchlistRepository の sqlc ベース実装です。
-type watchlistRepository struct {
+// repository は Repository の sqlc ベース実装です。
+type repository struct {
 	db *sql.DB
 	q  *watchlistsqlc.Queries
 }
 
-var _ WatchlistRepository = (*watchlistRepository)(nil)
+var _ Repository = (*repository)(nil)
 
-// NewWatchlistRepository は指定された *sql.DB で watchlistRepository の新しいインスタンスを生成します。
-func NewWatchlistRepository(db *sql.DB) *watchlistRepository {
-	return &watchlistRepository{db: db, q: watchlistsqlc.New(db)}
+// NewRepository は指定された *sql.DB で repository の新しいインスタンスを生成します。
+func NewRepository(db *sql.DB) *repository {
+	return &repository{db: db, q: watchlistsqlc.New(db)}
 }
 
 // ListByUser はユーザーのウォッチリストを sort_key 昇順で返します。
-func (r *watchlistRepository) ListByUser(ctx context.Context, userID int64) ([]UserSymbol, error) {
+func (r *repository) ListByUser(ctx context.Context, userID int64) ([]UserSymbol, error) {
 	rows, err := r.q.ListWatchlistByUser(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (r *watchlistRepository) ListByUser(ctx context.Context, userID int64) ([]U
 
 // Add はウォッチリストに銘柄を追加します。
 // 重複エントリは ErrAlreadyInWatchlist、FK 違反は ErrSymbolNotFound を返します。
-func (r *watchlistRepository) Add(ctx context.Context, entry UserSymbol) error {
+func (r *repository) Add(ctx context.Context, entry UserSymbol) error {
 	err := r.q.InsertWatchlist(ctx, watchlistsqlc.InsertWatchlistParams{
 		UserID:     entry.UserID,
 		SymbolCode: entry.SymbolCode,
@@ -62,7 +62,7 @@ func (r *watchlistRepository) Add(ctx context.Context, entry UserSymbol) error {
 
 // Remove はウォッチリストから銘柄を削除します。
 // 対象が存在しない場合は ErrNotInWatchlist を返します。
-func (r *watchlistRepository) Remove(ctx context.Context, userID int64, symbolCode string) error {
+func (r *repository) Remove(ctx context.Context, userID int64, symbolCode string) error {
 	rowsAffected, err := r.q.DeleteWatchlist(ctx, watchlistsqlc.DeleteWatchlistParams{
 		UserID:     userID,
 		SymbolCode: symbolCode,
@@ -79,7 +79,7 @@ func (r *watchlistRepository) Remove(ctx context.Context, userID int64, symbolCo
 // UpdateSortKeys はウォッチリストの sort_key をトランザクション内で一括更新します。
 // (user_id, sort_key) のユニーク制約が一時的に違反しないよう、まず全レコードを
 // 負値（-(i+1)）にシフトしてから最終値に更新します。
-func (r *watchlistRepository) UpdateSortKeys(ctx context.Context, userID int64, entries []UserSymbol) error {
+func (r *repository) UpdateSortKeys(ctx context.Context, userID int64, entries []UserSymbol) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -122,7 +122,7 @@ func (r *watchlistRepository) UpdateSortKeys(ctx context.Context, userID int64, 
 // AddWithNextSortKey は sort_key をトランザクション内で MAX+1 採番して銘柄を追加します。
 // MAX(sort_key) 取得と INSERT を同一トランザクションで実行し、(user_id, sort_key) ユニーク制約で
 // 並行追加の二重登録を最終的にブロックします。
-func (r *watchlistRepository) AddWithNextSortKey(ctx context.Context, userID int64, symbolCode string) error {
+func (r *repository) AddWithNextSortKey(ctx context.Context, userID int64, symbolCode string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)

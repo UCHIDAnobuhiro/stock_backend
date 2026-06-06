@@ -193,12 +193,12 @@ func run() int {
 
 	// 全 feature が sqlc 化済み。
 	userRepo := auth.NewUserRepository(sqlDB)
-	symbolRepo := symbollist.NewSymbolRepository(sqlDB)
-	candleRepo := candles.NewCandleRepository(sqlDB)
-	watchlistRepo := watchlist.NewWatchlistRepository(sqlDB)
+	symbolRepo := symbollist.NewRepository(sqlDB)
+	candleRepo := candles.NewRepository(sqlDB)
+	watchlistRepo := watchlist.NewRepository(sqlDB)
 
 	// Redisキャッシュでラップ（TTLはingest連続失敗時のセーフティネット、通常は日次ingestで上書き）
-	cachedCandleRepo := candles.NewCachingCandleRepository(rdb, candles.DefaultCacheTTL, candleRepo, "candles")
+	cachedCandleRepo := candles.NewCachingRepository(rdb, candles.DefaultCacheTTL, candleRepo, "candles")
 
 	// JWTジェネレータ
 	jwtGen := jwtmw.NewGenerator(cfg.jwtSecret, 1*time.Hour)
@@ -225,11 +225,11 @@ func run() int {
 	rateLimiter := httpratelimit.NewLimiter(rdb)
 
 	// ユースケース
-	authUC := auth.NewAuthUsecase(userRepo, jwtGen, cfg.passwordPepper)
-	symbolUC := symbollist.NewSymbolUsecase(symbolRepo)
-	candlesUC := candles.NewCandlesUsecase(cachedCandleRepo)
-	logoUC := logodetection.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
-	watchlistUC := watchlist.NewWatchlistUsecase(watchlistRepo, symbolRepo)
+	authUC := auth.NewUsecase(userRepo, jwtGen, cfg.passwordPepper)
+	symbolUC := symbollist.NewUsecase(symbolRepo)
+	candlesUC := candles.NewUsecase(cachedCandleRepo)
+	logoUC := logodetection.NewUsecase(visionDetector, geminiAnalyzer)
+	watchlistUC := watchlist.NewUsecase(watchlistRepo, symbolRepo)
 
 	// OAuth ハンドラー（cfg.oauth が nil の場合はOAuth機能なしで起動）
 	var oauthH *authhttp.OAuthHandler
@@ -268,11 +268,11 @@ func run() int {
 	}
 
 	// ハンドラー
-	authH := authhttp.NewAuthHandler(authUC, rateLimiter, cfg.secureCookie, watchlistUC)
-	symbolH := symbollisthttp.NewSymbolHandler(symbolUC)
-	candlesH := candleshttp.NewCandlesHandler(candlesUC)
-	logoH := logodetectionhttp.NewLogoDetectionHandler(logoUC)
-	watchlistH := watchlisthttp.NewWatchlistHandler(watchlistUC)
+	authH := authhttp.NewHandler(authUC, rateLimiter, cfg.secureCookie, watchlistUC)
+	symbolH := symbollisthttp.NewHandler(symbolUC)
+	candlesH := candleshttp.NewHandler(candlesUC)
+	logoH := logodetectionhttp.NewHandler(logoUC)
+	watchlistH := watchlisthttp.NewHandler(watchlistUC)
 
 	// ルーター作成
 	r := router.NewRouter(authH, oauthH, candlesH, symbolH, logoH, watchlistH, rateLimiter, cfg.corsOrigins)

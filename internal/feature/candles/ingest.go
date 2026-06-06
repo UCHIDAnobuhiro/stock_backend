@@ -11,9 +11,9 @@ const (
 	ingestOutputSize = 5000 // 1リクエストあたりの取得データポイント数（TwelveData 最大値）
 )
 
-// CandleWriteRepository はローソク足データの書き込みレイヤーを抽象化します。
+// WriteRepository はローソク足データの書き込みレイヤーを抽象化します。
 // Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
-type CandleWriteRepository interface {
+type WriteRepository interface {
 	// UpsertBatch は（symbol, interval, time）をユニークキーとしてUpsert操作を行います。
 	UpsertBatch(ctx context.Context, candles []Candle) error
 }
@@ -67,13 +67,13 @@ func (r IngestResult) FailureRate() float64 {
 // IngestUsecase は外部APIからデータを取得し、データベースに永続化するユースケースを定義します。
 type IngestUsecase struct {
 	market      MarketRepository
-	candle      CandleWriteRepository
+	candle      WriteRepository
 	symbol      SymbolRepository
 	rateLimiter RateLimiter
 }
 
 // NewIngestUsecase はIngestUsecaseの新しいインスタンスを生成します。
-func NewIngestUsecase(market MarketRepository, candle CandleWriteRepository, symbol SymbolRepository, rateLimiter RateLimiter) *IngestUsecase {
+func NewIngestUsecase(market MarketRepository, candle WriteRepository, symbol SymbolRepository, rateLimiter RateLimiter) *IngestUsecase {
 	return &IngestUsecase{market: market, candle: candle, symbol: symbol, rateLimiter: rateLimiter}
 }
 

@@ -10,26 +10,26 @@ import (
 	"stock_backend/internal/feature/symbollist"
 )
 
-// SymbolUsecase は銘柄（株式コード）操作のユースケースインターフェースを定義します。
+// Usecase は銘柄（株式コード）操作のユースケースインターフェースを定義します。
 // Goの慣例に従い、インターフェースは利用者（handler）側で定義します。
-type SymbolUsecase interface {
+type Usecase interface {
 	ListActiveSymbols(ctx context.Context) ([]symbollist.Symbol, error)
 }
 
-// SymbolHandler は銘柄情報に関連するHTTPリクエストを処理します。
-type SymbolHandler struct {
-	uc SymbolUsecase
+// Handler は銘柄情報に関連するHTTPリクエストを処理します。
+type Handler struct {
+	uc Usecase
 }
 
-// NewSymbolHandler はSymbolHandlerの新しいインスタンスを生成します。
-func NewSymbolHandler(uc SymbolUsecase) *SymbolHandler {
-	return &SymbolHandler{uc: uc}
+// NewHandler はHandlerの新しいインスタンスを生成します。
+func NewHandler(uc Usecase) *Handler {
+	return &Handler{uc: uc}
 }
 
 // List はアクティブな銘柄の一覧を取得します。
 // ユースケースを呼び出して銘柄リストを取得し、DTOに変換してJSONレスポンスとして返します。
 // ユースケースがエラーを返した場合は500 Internal Server Errorを返します。
-func (h *SymbolHandler) List(c *gin.Context) {
+func (h *Handler) List(c *gin.Context) {
 	symbols, err := h.uc.ListActiveSymbols(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: err.Error()})

@@ -11,27 +11,27 @@ import (
 	"stock_backend/internal/feature/candles"
 )
 
-// CandlesUsecase はローソク足データ操作のユースケースインターフェースを定義します。
+// Usecase はローソク足データ操作のユースケースインターフェースを定義します。
 // Goの慣例に従い、インターフェースは利用者（handler）側で定義します。
-type CandlesUsecase interface {
+type Usecase interface {
 	GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error)
 }
 
-// CandlesHandler はローソク足データのHTTPリクエストを処理します。
-type CandlesHandler struct {
-	uc CandlesUsecase
+// Handler はローソク足データのHTTPリクエストを処理します。
+type Handler struct {
+	uc Usecase
 }
 
-// NewCandlesHandler は指定されたusecaseでCandlesHandlerの新しいインスタンスを生成します。
-func NewCandlesHandler(uc CandlesUsecase) *CandlesHandler {
-	return &CandlesHandler{uc: uc}
+// NewHandler は指定されたusecaseでHandlerの新しいインスタンスを生成します。
+func NewHandler(uc Usecase) *Handler {
+	return &Handler{uc: uc}
 }
 
 // GetCandlesHandler は銘柄コードと時間間隔を受け取り、ローソク足データをJSONで返します。
 //
 // エンドポイント例:
 // GET /candles/:code?interval=1day&outputsize=200
-func (h *CandlesHandler) GetCandlesHandler(c *gin.Context) {
+func (h *Handler) GetCandlesHandler(c *gin.Context) {
 	code := c.Param("code")
 	// 未指定の場合はデフォルト値を使用
 	interval := c.DefaultQuery("interval", "1day")

@@ -9,24 +9,24 @@ import (
 	"stock_backend/internal/feature/symbollist/sqlc"
 )
 
-// symbolRepository は SymbolRepository / LogoSymbolRepository の sqlc ベース実装です。
-type symbolRepository struct {
+// repository は Repository / LogoSymbolRepository の sqlc ベース実装です。
+type repository struct {
 	db *sql.DB
 	q  *symbollistsqlc.Queries
 }
 
 var (
-	_ SymbolRepository     = (*symbolRepository)(nil)
-	_ LogoSymbolRepository = (*symbolRepository)(nil)
+	_ Repository           = (*repository)(nil)
+	_ LogoSymbolRepository = (*repository)(nil)
 )
 
-// NewSymbolRepository は指定された *sql.DB で symbolRepository の新しいインスタンスを生成します。
-func NewSymbolRepository(db *sql.DB) *symbolRepository {
-	return &symbolRepository{db: db, q: symbollistsqlc.New(db)}
+// NewRepository は指定された *sql.DB で repository の新しいインスタンスを生成します。
+func NewRepository(db *sql.DB) *repository {
+	return &repository{db: db, q: symbollistsqlc.New(db)}
 }
 
 // ListActive はコード昇順にすべてのアクティブな銘柄を返します。
-func (r *symbolRepository) ListActive(ctx context.Context) ([]Symbol, error) {
+func (r *repository) ListActive(ctx context.Context) ([]Symbol, error) {
 	rows, err := r.q.ListActiveSymbols(ctx)
 	if err != nil {
 		return nil, err
@@ -39,18 +39,18 @@ func (r *symbolRepository) ListActive(ctx context.Context) ([]Symbol, error) {
 }
 
 // ListActiveCodes はコード昇順にアクティブな銘柄のコードのみを返します。
-func (r *symbolRepository) ListActiveCodes(ctx context.Context) ([]string, error) {
+func (r *repository) ListActiveCodes(ctx context.Context) ([]string, error) {
 	return r.q.ListActiveSymbolCodes(ctx)
 }
 
 // Exists は指定されたコードの銘柄が存在するかを返します。
-func (r *symbolRepository) Exists(ctx context.Context, code string) (bool, error) {
+func (r *repository) Exists(ctx context.Context, code string) (bool, error) {
 	return r.q.SymbolExists(ctx, code)
 }
 
 // UpdateLogoURL は指定された銘柄のロゴURLと取得日時を更新します。
 // 対象行が存在しない場合はエラーとせず警告ログを出力します（バッチの続行を優先するため）。
-func (r *symbolRepository) UpdateLogoURL(ctx context.Context, code, logoURL string, updatedAt time.Time) error {
+func (r *repository) UpdateLogoURL(ctx context.Context, code, logoURL string, updatedAt time.Time) error {
 	rowsAffected, err := r.q.UpdateSymbolLogoURL(ctx, symbollistsqlc.UpdateSymbolLogoURLParams{
 		Code:          code,
 		LogoUrl:       sql.NullString{String: logoURL, Valid: true},

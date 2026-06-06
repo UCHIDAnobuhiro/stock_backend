@@ -13,26 +13,26 @@ import (
 	jwtmw "stock_backend/internal/platform/jwt"
 )
 
-// WatchlistUsecase はウォッチリスト操作のユースケースインターフェースを定義します。
-type WatchlistUsecase interface {
+// Usecase はウォッチリスト操作のユースケースインターフェースを定義します。
+type Usecase interface {
 	ListUserSymbols(ctx context.Context, userID int64) ([]watchlist.UserSymbol, error)
 	AddSymbol(ctx context.Context, userID int64, symbolCode string) error
 	RemoveSymbol(ctx context.Context, userID int64, symbolCode string) error
 	ReorderSymbols(ctx context.Context, userID int64, orderedCodes []string) error
 }
 
-// WatchlistHandler はウォッチリストに関連するHTTPリクエストを処理します。
-type WatchlistHandler struct {
-	uc WatchlistUsecase
+// Handler はウォッチリストに関連するHTTPリクエストを処理します。
+type Handler struct {
+	uc Usecase
 }
 
-// NewWatchlistHandler はWatchlistHandlerの新しいインスタンスを生成します。
-func NewWatchlistHandler(uc WatchlistUsecase) *WatchlistHandler {
-	return &WatchlistHandler{uc: uc}
+// NewHandler はHandlerの新しいインスタンスを生成します。
+func NewHandler(uc Usecase) *Handler {
+	return &Handler{uc: uc}
 }
 
 // List はユーザーのウォッチリスト一覧を取得します。
-func (h *WatchlistHandler) List(c *gin.Context) {
+func (h *Handler) List(c *gin.Context) {
 	userID := c.MustGet(jwtmw.ContextUserID).(int64)
 
 	entries, err := h.uc.ListUserSymbols(c.Request.Context(), userID)
@@ -54,7 +54,7 @@ func (h *WatchlistHandler) List(c *gin.Context) {
 }
 
 // Add はウォッチリストに銘柄を追加します。
-func (h *WatchlistHandler) Add(c *gin.Context) {
+func (h *Handler) Add(c *gin.Context) {
 	userID := c.MustGet(jwtmw.ContextUserID).(int64)
 
 	var req api.AddWatchlistRequest
@@ -80,7 +80,7 @@ func (h *WatchlistHandler) Add(c *gin.Context) {
 }
 
 // Remove はウォッチリストから銘柄を削除します。
-func (h *WatchlistHandler) Remove(c *gin.Context) {
+func (h *Handler) Remove(c *gin.Context) {
 	userID := c.MustGet(jwtmw.ContextUserID).(int64)
 	code := c.Param("code")
 
@@ -99,7 +99,7 @@ func (h *WatchlistHandler) Remove(c *gin.Context) {
 }
 
 // Reorder はウォッチリストの並び順を更新します。
-func (h *WatchlistHandler) Reorder(c *gin.Context) {
+func (h *Handler) Reorder(c *gin.Context) {
 	userID := c.MustGet(jwtmw.ContextUserID).(int64)
 
 	var req api.ReorderWatchlistRequest

@@ -13,7 +13,7 @@ import (
 // ErrDB はモックと期待値の間で共有されるセンチネルエラーです。
 var ErrDB = errors.New("database error")
 
-// mockCandleRepository はCandleRepositoryインターフェースのモック実装です。
+// mockCandleRepository はRepositoryインターフェースのモック実装です。
 type mockCandleRepository struct {
 	FindFunc  func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error)
 	FindCalls int
@@ -125,7 +125,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 					return tc.mockFindFunc(ctx, symbol, interval, outputsize)
 				},
 			}
-			uc := candles.NewCandlesUsecase(mockRepo)
+			uc := candles.NewUsecase(mockRepo)
 
 			candles, err := uc.GetCandles(ctx, tc.inputSymbol, tc.inputInterval, tc.inputOutputsize)
 

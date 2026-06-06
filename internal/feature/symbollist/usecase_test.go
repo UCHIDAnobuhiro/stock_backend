@@ -10,7 +10,7 @@ import (
 	"stock_backend/internal/feature/symbollist"
 )
 
-// mockSymbolRepository はSymbolRepositoryインターフェースのモック実装です。
+// mockSymbolRepository はRepositoryインターフェースのモック実装です。
 type mockSymbolRepository struct {
 	ListActiveFunc func(ctx context.Context) ([]symbollist.Symbol, error)
 }
@@ -23,12 +23,12 @@ func (m *mockSymbolRepository) ListActive(ctx context.Context) ([]symbollist.Sym
 	return nil, nil
 }
 
-// TestNewSymbolUsecase はNewSymbolUsecaseコンストラクタが正しくインスタンスを生成することを検証します。
+// TestNewSymbolUsecase はNewUsecaseコンストラクタが正しくインスタンスを生成することを検証します。
 func TestNewSymbolUsecase(t *testing.T) {
 	t.Parallel()
 
 	mockRepo := &mockSymbolRepository{}
-	uc := symbollist.NewSymbolUsecase(mockRepo)
+	uc := symbollist.NewUsecase(mockRepo)
 
 	assert.NotNil(t, uc, "usecase should not be nil")
 }
@@ -104,7 +104,7 @@ func TestSymbolUsecase_ListActiveSymbols(t *testing.T) {
 			mockRepo := &mockSymbolRepository{
 				ListActiveFunc: tt.mockListActive,
 			}
-			uc := symbollist.NewSymbolUsecase(mockRepo)
+			uc := symbollist.NewUsecase(mockRepo)
 
 			symbols, err := uc.ListActiveSymbols(context.Background())
 
@@ -134,7 +134,7 @@ func TestSymbolUsecase_ListActiveSymbols_ContextCancellation(t *testing.T) {
 			return nil, ctx.Err()
 		},
 	}
-	uc := symbollist.NewSymbolUsecase(mockRepo)
+	uc := symbollist.NewUsecase(mockRepo)
 
 	symbols, err := uc.ListActiveSymbols(ctx)
 

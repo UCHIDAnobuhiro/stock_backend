@@ -12,21 +12,21 @@ import (
 	"stock_backend/internal/feature/logodetection"
 )
 
-// LogoDetectionUsecase はロゴ検出・企業分析のユースケースインターフェースを定義します。
+// Usecase はロゴ検出・企業分析のユースケースインターフェースを定義します。
 // Goの慣例に従い、インターフェースは利用者（handler）側で定義します。
-type LogoDetectionUsecase interface {
+type Usecase interface {
 	DetectLogos(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error)
 	AnalyzeCompany(ctx context.Context, companyName string) (*logodetection.CompanyAnalysis, error)
 }
 
-// LogoDetectionHandler はロゴ検出・企業分析のHTTPリクエストを処理します。
-type LogoDetectionHandler struct {
-	uc LogoDetectionUsecase
+// Handler はロゴ検出・企業分析のHTTPリクエストを処理します。
+type Handler struct {
+	uc Usecase
 }
 
-// NewLogoDetectionHandler はLogoDetectionHandlerの新しいインスタンスを生成します。
-func NewLogoDetectionHandler(uc LogoDetectionUsecase) *LogoDetectionHandler {
-	return &LogoDetectionHandler{uc: uc}
+// NewHandler はHandlerの新しいインスタンスを生成します。
+func NewHandler(uc Usecase) *Handler {
+	return &Handler{uc: uc}
 }
 
 // DetectLogos は画像をアップロードしてロゴを検出します。
@@ -34,7 +34,7 @@ func NewLogoDetectionHandler(uc LogoDetectionUsecase) *LogoDetectionHandler {
 // エンドポイント: POST /v1/logo/detect
 // Content-Type: multipart/form-data
 // フィールド: image（画像ファイル、最大10MB）
-func (h *LogoDetectionHandler) DetectLogos(c *gin.Context) {
+func (h *Handler) DetectLogos(c *gin.Context) {
 	const maxImageSize = 10 * 1024 * 1024 // 10MB
 
 	file, err := c.FormFile("image")
@@ -90,7 +90,7 @@ func (h *LogoDetectionHandler) DetectLogos(c *gin.Context) {
 //
 // エンドポイント: POST /v1/logo/analyze
 // Content-Type: application/json
-func (h *LogoDetectionHandler) AnalyzeCompany(c *gin.Context) {
+func (h *Handler) AnalyzeCompany(c *gin.Context) {
 	var req api.CompanyAnalysisRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Warn("企業分析リクエストのバリデーションに失敗", "error", err, "remote_addr", c.ClientIP())

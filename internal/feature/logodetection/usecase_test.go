@@ -87,7 +87,7 @@ func TestLogoDetectionUsecase_DetectLogos(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			detector := &mockLogoDetector{DetectLogosFunc: tc.mockFunc}
 			analyzer := &mockCompanyAnalyzer{}
-			uc := logodetection.NewLogoDetectionUsecase(detector, analyzer)
+			uc := logodetection.NewUsecase(detector, analyzer)
 
 			logos, err := uc.DetectLogos(ctx, tc.imageData)
 
@@ -148,7 +148,7 @@ func TestLogoDetectionUsecase_AnalyzeCompany(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			detector := &mockLogoDetector{}
 			analyzer := &mockCompanyAnalyzer{AnalyzeFunc: tc.mockFunc}
-			uc := logodetection.NewLogoDetectionUsecase(detector, analyzer)
+			uc := logodetection.NewUsecase(detector, analyzer)
 
 			result, err := uc.AnalyzeCompany(ctx, tc.companyName)
 

@@ -24,7 +24,7 @@ func runLogoIngest() int {
 		}
 	}()
 	logoProvider := di.NewMarket()
-	symbolRepo := symbollist.NewSymbolRepository(sqlDB)
+	symbolRepo := symbollist.NewRepository(sqlDB)
 	rateLimiter := clientratelimit.NewRateLimiter(rateLimitPerMinute, time.Minute)
 	uc := symbollist.NewLogoIngestUsecase(logoProvider, symbolRepo, rateLimiter)
 

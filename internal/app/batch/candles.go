@@ -28,8 +28,8 @@ func runCandleIngest() int {
 		}
 	}()
 	marketRepo := di.NewMarket()
-	candleRepo := candles.NewCandleRepository(sqlDB)
-	symbolRepo := symbollist.NewSymbolRepository(sqlDB)
+	candleRepo := candles.NewRepository(sqlDB)
+	symbolRepo := symbollist.NewRepository(sqlDB)
 	ingestSymbolRepo := di.NewIngestSymbolAdapter(symbolRepo)
 	rateLimiter := clientratelimit.NewRateLimiter(rateLimitPerMinute, time.Minute)
 
@@ -47,7 +47,7 @@ func runCandleIngest() int {
 	}
 
 	// TTLはingest連続失敗時のセーフティネット、通常は UpsertBatch で日次上書き
-	cachedCandleRepo := candles.NewCachingCandleRepository(rdb, candles.DefaultCacheTTL, candleRepo, "candles")
+	cachedCandleRepo := candles.NewCachingRepository(rdb, candles.DefaultCacheTTL, candleRepo, "candles")
 
 	uc := candles.NewIngestUsecase(marketRepo, cachedCandleRepo, ingestSymbolRepo, rateLimiter)
 

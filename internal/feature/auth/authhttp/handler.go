@@ -17,9 +17,9 @@ import (
 	"stock_backend/internal/platform/logging"
 )
 
-// AuthUsecase は認証操作のユースケースを定義します。
+// Usecase は認証操作のユースケースを定義します。
 // Goの慣例に従い、インターフェースはプロバイダー（usecase）ではなくコンシューマー（handler）が定義します。
-type AuthUsecase interface {
+type Usecase interface {
 	// Signup は指定されたメールアドレスとパスワードで新規ユーザーを登録し、作成されたユーザーIDを返します。
 	Signup(ctx context.Context, email, password string) (int64, error)
 	// Login はユーザーを認証し、成功時にJWTトークンを返します。
@@ -37,21 +37,21 @@ const (
 	loginEmailWindow = 15 * time.Minute // メールベースレートリミットのウィンドウ
 )
 
-// AuthHandler は認証操作のHTTPリクエストを処理します。
-// AuthUsecaseインターフェースに依存し、JSONリクエスト/レスポンスを処理します。
-type AuthHandler struct {
-	auth         AuthUsecase
+// Handler は認証操作のHTTPリクエストを処理します。
+// Usecaseインターフェースに依存し、JSONリクエスト/レスポンスを処理します。
+type Handler struct {
+	auth         Usecase
 	limiter      *httpratelimit.Limiter
 	secureCookie bool
 	postHooks    []PostSignupHook
 }
 
-// NewAuthHandler はAuthHandlerの新しいインスタンスを生成します。
-// 依存性注入用のコンストラクタで、外部からAuthUsecaseとレートリミッターを注入します。
+// NewHandler はHandlerの新しいインスタンスを生成します。
+// 依存性注入用のコンストラクタで、外部からUsecaseとレートリミッターを注入します。
 // secureCookie が true の場合、Secure属性付きのCookieを設定します（本番環境用）。
 // postHooks にはサインアップ後に実行するフックを任意で渡せます。
-func NewAuthHandler(auth AuthUsecase, limiter *httpratelimit.Limiter, secureCookie bool, postHooks ...PostSignupHook) *AuthHandler {
-	return &AuthHandler{auth: auth, limiter: limiter, secureCookie: secureCookie, postHooks: postHooks}
+func NewHandler(auth Usecase, limiter *httpratelimit.Limiter, secureCookie bool, postHooks ...PostSignupHook) *Handler {
+	return &Handler{auth: auth, limiter: limiter, secureCookie: secureCookie, postHooks: postHooks}
 }
 
 // Signup はユーザー登録APIエンドポイントを処理します。
@@ -59,7 +59,7 @@ func NewAuthHandler(auth AuthUsecase, limiter *httpratelimit.Limiter, secureCook
 // - バリデーションエラー時は400を返却
 // - ユーザー作成失敗時（メール重複等）は409を返却
 // - 成功時は201を返却
-func (h *AuthHandler) Signup(c *gin.Context) {
+func (h *Handler) Signup(c *gin.Context) {
 	var req api.SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Warn("signup validation failed", "error", err, "remote_addr", c.ClientIP())
@@ -89,7 +89,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 // - バリデーションエラー時は400を返却
 // - 認証失敗時は401を返却
 // - 認証成功時はJWTトークン付きで200を返却
-func (h *AuthHandler) Login(c *gin.Context) {
+func (h *Handler) Login(c *gin.Context) {
 	var req api.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		slog.Warn("login validation failed", "error", err, "remote_addr", c.ClientIP())
@@ -143,7 +143,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 // Logout はauth_tokenとcsrf_tokenのCookieを削除してログアウトします。
 // 期限切れトークンでも動作するよう認証不要のルートに配置します。
-func (h *AuthHandler) Logout(c *gin.Context) {
+func (h *Handler) Logout(c *gin.Context) {
 	// GinのSetSameSiteは直後のSetCookie1回にのみ適用されリセットされる仕様のため、
 	// Cookieごとに毎回SetSameSiteを呼ぶ必要がある。
 	// MaxAge=-1 はGinがMax-Age=0に変換し、ブラウザにCookieの即時削除を指示する。

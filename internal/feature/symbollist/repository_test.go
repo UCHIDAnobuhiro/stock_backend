@@ -82,7 +82,7 @@ func updateSymbolActive(t *testing.T, db *sql.DB, symbol *Symbol, isActive bool)
 func TestNewSymbolRepository(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	repo := NewSymbolRepository(db)
+	repo := NewRepository(db)
 	assert.NotNil(t, repo)
 	assert.NotNil(t, repo.db)
 }
@@ -148,7 +148,7 @@ func TestSymbolRepository_ListActive(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			db := setupTestDB(t)
-			repo := NewSymbolRepository(db)
+			repo := NewRepository(db)
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, db)
 			}
@@ -210,7 +210,7 @@ func TestSymbolRepository_ListActiveCodes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			db := setupTestDB(t)
-			repo := NewSymbolRepository(db)
+			repo := NewRepository(db)
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, db)
 			}
@@ -228,7 +228,7 @@ func TestSymbolRepository_ListActiveCodes(t *testing.T) {
 func TestSymbolRepository_ListActive_FieldValues(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	repo := NewSymbolRepository(db)
+	repo := NewRepository(db)
 
 	expected := seedSymbol(t, db, "7203.T", "Toyota Motor Corporation", "Tokyo Stock Exchange", true)
 	symbols, err := repo.ListActive(context.Background())
@@ -250,7 +250,7 @@ func TestSymbolRepository_ListActive_FieldValues(t *testing.T) {
 func TestSymbolRepository_ListActive_LogoURL(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	repo := NewSymbolRepository(db)
+	repo := NewRepository(db)
 
 	logoURL := "https://api.twelvedata.com/logo/apple.com"
 	logoUpdatedAt := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
@@ -277,7 +277,7 @@ func TestSymbolRepository_ListActive_LogoURL(t *testing.T) {
 func TestSymbolRepository_UpdateLogoURL(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	repo := NewSymbolRepository(db)
+	repo := NewRepository(db)
 	seedSymbol(t, db, "AAPL", "Apple Inc.", "NASDAQ", true)
 
 	newLogoURL := "https://api.twelvedata.com/logo/apple.com"
@@ -296,7 +296,7 @@ func TestSymbolRepository_UpdateLogoURL(t *testing.T) {
 func TestSymbolRepository_UpdateLogoURL_NoMatchingSymbol(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	repo := NewSymbolRepository(db)
+	repo := NewRepository(db)
 	err := repo.UpdateLogoURL(context.Background(), "MISSING", "https://api.twelvedata.com/logo/missing.com", time.Now())
 	assert.NoError(t, err)
 }
@@ -338,7 +338,7 @@ func TestSymbolRepository_Exists(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			db := setupTestDB(t)
-			repo := NewSymbolRepository(db)
+			repo := NewRepository(db)
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, db)
 			}
@@ -352,7 +352,7 @@ func TestSymbolRepository_Exists(t *testing.T) {
 func TestSymbolRepository_ContextCancellation(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	repo := NewSymbolRepository(db)
+	repo := NewRepository(db)
 	seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
 
 	ctx, cancel := context.WithCancel(context.Background())

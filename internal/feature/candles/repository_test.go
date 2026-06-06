@@ -59,7 +59,7 @@ func candleCount(t *testing.T, db *sql.DB) int64 {
 func TestNewCandleRepository(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	repo := NewCandleRepository(db)
+	repo := NewRepository(db)
 	assert.NotNil(t, repo)
 	assert.NotNil(t, repo.db)
 }
@@ -140,7 +140,7 @@ func TestCandleRepository_UpsertBatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			db := setupTestDB(t)
-			repo := NewCandleRepository(db)
+			repo := NewRepository(db)
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, db)
 			}
@@ -243,7 +243,7 @@ func TestCandleRepository_Find(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			db := setupTestDB(t)
-			repo := NewCandleRepository(db)
+			repo := NewRepository(db)
 			if tt.setupFunc != nil {
 				tt.setupFunc(t, db)
 			}
@@ -259,7 +259,7 @@ func TestCandleRepository_Find(t *testing.T) {
 func TestCandleRepository_Find_EntityMapping(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)
-	repo := NewCandleRepository(db)
+	repo := NewRepository(db)
 
 	testTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
 	_, err := db.ExecContext(context.Background(),

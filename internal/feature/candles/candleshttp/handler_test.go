@@ -17,7 +17,7 @@ import (
 	"stock_backend/internal/feature/candles/candleshttp"
 )
 
-// mockCandlesUsecase はcandlesUsecaseインターフェースのモック実装です。
+// mockCandlesUsecase はusecaseインターフェースのモック実装です。
 type mockCandlesUsecase struct {
 	GetCandlesFunc func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error)
 }
@@ -91,7 +91,7 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 				GetCandlesFunc: tt.mockGetCandles,
 			}
 
-			h := candleshttp.NewCandlesHandler(mockUC)
+			h := candleshttp.NewHandler(mockUC)
 
 			router := gin.New()
 			router.GET("/candles/:code", h.GetCandlesHandler)

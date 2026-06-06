@@ -190,7 +190,7 @@ go generate ./internal/api/...
 1. バッチプロセス（`cmd/batch candles`）が外部API（Twelve Data）から株式データを取得
 2. 取得したローソク足データをPostgreSQL（またはCloud SQL）に保存
 3. フロントエンドが `GET /v1/candles/AAPL?interval=1day&outputsize=200` をリクエスト（JWT Bearer トークン付き）
-4. ハンドラーが `CandlesUsecase` を呼び出し
+4. ハンドラーが `Usecase` を呼び出し
 5. ユースケースがリポジトリ経由で **Redisキャッシュ** を確認
    - **キャッシュヒット**: Redisから即座に返却
    - **キャッシュミス**: PostgreSQLから取得 → Redisにキャッシュ → レスポンスを返却

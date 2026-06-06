@@ -41,19 +41,19 @@ type CompanyAnalyzer interface {
 	Analyze(ctx context.Context, prompt string) (string, error)
 }
 
-// logodetectionUsecase はロゴ検出・企業分析のビジネスロジックを提供します。
-type logodetectionUsecase struct {
+// usecase はロゴ検出・企業分析のビジネスロジックを提供します。
+type usecase struct {
 	logoDetector    LogoDetector
 	companyAnalyzer CompanyAnalyzer
 }
 
-// NewLogoDetectionUsecase はlogodetectionUsecaseの新しいインスタンスを生成します。
-func NewLogoDetectionUsecase(ld LogoDetector, ca CompanyAnalyzer) *logodetectionUsecase {
-	return &logodetectionUsecase{logoDetector: ld, companyAnalyzer: ca}
+// NewUsecase はusecaseの新しいインスタンスを生成します。
+func NewUsecase(ld LogoDetector, ca CompanyAnalyzer) *usecase {
+	return &usecase{logoDetector: ld, companyAnalyzer: ca}
 }
 
 // DetectLogos は画像データからロゴを検出します。
-func (u *logodetectionUsecase) DetectLogos(ctx context.Context, imageData []byte) ([]DetectedLogo, error) {
+func (u *usecase) DetectLogos(ctx context.Context, imageData []byte) ([]DetectedLogo, error) {
 	if len(imageData) == 0 {
 		return nil, fmt.Errorf("image data is empty")
 	}
@@ -64,7 +64,7 @@ func (u *logodetectionUsecase) DetectLogos(ctx context.Context, imageData []byte
 }
 
 // AnalyzeCompany は企業名から分析サマリーを生成します。
-func (u *logodetectionUsecase) AnalyzeCompany(ctx context.Context, companyName string) (*CompanyAnalysis, error) {
+func (u *usecase) AnalyzeCompany(ctx context.Context, companyName string) (*CompanyAnalysis, error) {
 	if companyName == "" {
 		return nil, fmt.Errorf("company name is required")
 	}

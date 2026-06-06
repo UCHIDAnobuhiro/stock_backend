@@ -9,20 +9,20 @@ import (
 	"stock_backend/internal/feature/candles/sqlc"
 )
 
-// candleDBRepository は CandleRepository / CandleWriteRepository の sqlc + 生 SQL 実装です。
+// dbRepository は Repository / WriteRepository の sqlc + 生 SQL 実装です。
 // Find は sqlc 生成クエリを使用し、UpsertBatch は単発で大量の INSERT ... ON CONFLICT を
 // 1 ステートメントにまとめて発行するため raw SQL を組み立てます（sqlc では多値 VALUES の
 // ON CONFLICT を 1 クエリで表現しにくいため）。
-type candleDBRepository struct {
+type dbRepository struct {
 	db *sql.DB
 	q  *candlessqlc.Queries
 }
 
-var _ CandleRepository = (*candleDBRepository)(nil)
+var _ Repository = (*dbRepository)(nil)
 
-// NewCandleRepository は指定された *sql.DB で candleDBRepository の新しいインスタンスを生成します。
-func NewCandleRepository(db *sql.DB) *candleDBRepository {
-	return &candleDBRepository{db: db, q: candlessqlc.New(db)}
+// NewRepository は指定された *sql.DB で dbRepository の新しいインスタンスを生成します。
+func NewRepository(db *sql.DB) *dbRepository {
+	return &dbRepository{db: db, q: candlessqlc.New(db)}
 }
 
 const upsertCandleConflict = `
@@ -36,7 +36,7 @@ SET open = EXCLUDED.open,
 // UpsertBatch はローソク足データをバッチで挿入または更新します。
 // (symbol_code, interval, time) の複合 UNIQUE をキーに ON CONFLICT DO UPDATE で
 // OHLCV を上書きします。1 ステートメントで全件処理するため round-trip は 1 回です。
-func (r *candleDBRepository) UpsertBatch(ctx context.Context, candles []Candle) error {
+func (r *dbRepository) UpsertBatch(ctx context.Context, candles []Candle) error {
 	if len(candles) == 0 {
 		return nil
 	}
@@ -66,7 +66,7 @@ func (r *candleDBRepository) UpsertBatch(ctx context.Context, candles []Candle) 
 
 // Find は指定された銘柄とインターバルのローソク足データを取得します。
 // 結果は時間の降順でソートされ、outputsize > 0 のときのみ件数で制限されます。
-func (r *candleDBRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
+func (r *dbRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 	if outputsize > 0 {
 		rows, err := r.q.FindCandlesLimit(ctx, candlessqlc.FindCandlesLimitParams{
 			SymbolCode: symbol,

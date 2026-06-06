@@ -18,7 +18,7 @@ import (
 	"stock_backend/internal/feature/logodetection/logodetectionhttp"
 )
 
-// mockLogoDetectionUsecase はLogoDetectionUsecaseインターフェースのモック実装です。
+// mockLogoDetectionUsecase はUsecaseインターフェースのモック実装です。
 type mockLogoDetectionUsecase struct {
 	DetectLogosFunc    func(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error)
 	AnalyzeCompanyFunc func(ctx context.Context, companyName string) (*logodetection.CompanyAnalysis, error)
@@ -115,7 +115,7 @@ func TestLogoDetectionHandler_DetectLogos(t *testing.T) {
 				DetectLogosFunc: tt.mockFunc,
 			}
 
-			h := logodetectionhttp.NewLogoDetectionHandler(mockUC)
+			h := logodetectionhttp.NewHandler(mockUC)
 
 			router := gin.New()
 			router.POST("/logo/detect", h.DetectLogos)
@@ -183,7 +183,7 @@ func TestLogoDetectionHandler_AnalyzeCompany(t *testing.T) {
 				AnalyzeCompanyFunc: tt.mockFunc,
 			}
 
-			h := logodetectionhttp.NewLogoDetectionHandler(mockUC)
+			h := logodetectionhttp.NewHandler(mockUC)
 
 			router := gin.New()
 			router.POST("/logo/analyze", h.AnalyzeCompany)

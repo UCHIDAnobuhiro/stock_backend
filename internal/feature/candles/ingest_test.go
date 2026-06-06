@@ -14,7 +14,7 @@ var ErrDB = errors.New("database error")
 // ErrMarketAPI はマーケットAPIのセンチネルエラーです。
 var ErrMarketAPI = errors.New("market API error")
 
-// mockCandleWriteRepository はCandleWriteRepositoryインターフェースのモック実装です。
+// mockCandleWriteRepository はWriteRepositoryインターフェースのモック実装です。
 type mockCandleWriteRepository struct {
 	UpsertBatchFunc func(ctx context.Context, candles []Candle) error
 }
@@ -242,7 +242,7 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 			expectedErr: ErrMarketAPI,
 		},
 		{
-			name:            "error: CandleRepository returns error",
+			name:            "error: Repository returns error",
 			inputSymbol:     "MSFT",
 			inputOutputsize: 5000,
 			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {

@@ -10,7 +10,7 @@ import (
 	"github.com/go-redis/redismock/v9"
 )
 
-// mockCandleRepo はテスト用のCandleRepositoryモック実装です。
+// mockCandleRepo はテスト用のRepositoryモック実装です。
 type mockCandleRepo struct {
 	findFn        func(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error)
 	upsertBatchFn func(ctx context.Context, candles []Candle) error
@@ -70,7 +70,7 @@ func TestNewCachingCandleRepository_Defaults(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			repo := NewCachingCandleRepository(nil, tt.ttl, &mockCandleRepo{}, tt.namespace)
+			repo := NewCachingRepository(nil, tt.ttl, &mockCandleRepo{}, tt.namespace)
 
 			if repo.ttl != tt.expectedTTL {
 				t.Errorf("expected TTL %v, got %v", tt.expectedTTL, repo.ttl)
@@ -97,7 +97,7 @@ func TestCachingCandleRepository_Find_NilRedis(t *testing.T) {
 	}
 
 	// Redis is nil - should bypass cache and call inner directly
-	repo := NewCachingCandleRepository(nil, 5*time.Minute, inner, "candles")
+	repo := NewCachingRepository(nil, 5*time.Minute, inner, "candles")
 
 	candles, err := repo.Find(context.Background(), "AAPL", "1day", 100)
 	if err != nil {
@@ -131,7 +131,7 @@ func TestCachingCandleRepository_Find_CacheHit(t *testing.T) {
 		},
 	}
 
-	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
+	repo := NewCachingRepository(rdb, 5*time.Minute, inner, "candles")
 	candles, err := repo.Find(context.Background(), "AAPL", "1day", 100)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -167,7 +167,7 @@ func TestCachingCandleRepository_Find_CacheHit_Slices(t *testing.T) {
 	mock.ExpectGet("candles:AAPL:1day").SetVal(string(cachedJSON))
 
 	inner := &mockCandleRepo{}
-	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
+	repo := NewCachingRepository(rdb, 5*time.Minute, inner, "candles")
 
 	// outputsize=3 を指定 → 先頭3件のみ返る
 	candles, err := repo.Find(context.Background(), "AAPL", "1day", 3)
@@ -209,7 +209,7 @@ func TestCachingCandleRepository_Find_CacheMiss(t *testing.T) {
 		},
 	}
 
-	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
+	repo := NewCachingRepository(rdb, 5*time.Minute, inner, "candles")
 	candles, err := repo.Find(context.Background(), "AAPL", "1day", 100)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -239,7 +239,7 @@ func TestCachingCandleRepository_Find_InnerError(t *testing.T) {
 		},
 	}
 
-	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
+	repo := NewCachingRepository(rdb, 5*time.Minute, inner, "candles")
 	_, err := repo.Find(context.Background(), "AAPL", "1day", 100)
 
 	if err == nil {
@@ -275,7 +275,7 @@ func TestCachingCandleRepository_Find_CorruptedCache(t *testing.T) {
 		},
 	}
 
-	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
+	repo := NewCachingRepository(rdb, 5*time.Minute, inner, "candles")
 	candles, err := repo.Find(context.Background(), "AAPL", "1day", 100)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -300,7 +300,7 @@ func TestCachingCandleRepository_UpsertBatch_NilRedis(t *testing.T) {
 		},
 	}
 
-	repo := NewCachingCandleRepository(nil, 5*time.Minute, inner, "candles")
+	repo := NewCachingRepository(nil, 5*time.Minute, inner, "candles")
 	err := repo.UpsertBatch(context.Background(), []Candle{
 		{SymbolCode: "AAPL", Interval: "1day"},
 	})
@@ -323,7 +323,7 @@ func TestCachingCandleRepository_UpsertBatch_InnerError(t *testing.T) {
 		},
 	}
 
-	repo := NewCachingCandleRepository(nil, 5*time.Minute, inner, "candles")
+	repo := NewCachingRepository(nil, 5*time.Minute, inner, "candles")
 	err := repo.UpsertBatch(context.Background(), []Candle{
 		{SymbolCode: "AAPL", Interval: "1day"},
 	})
@@ -346,7 +346,7 @@ func TestCachingCandleRepository_UpsertBatch_EmptyCandles(t *testing.T) {
 		},
 	}
 
-	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
+	repo := NewCachingRepository(rdb, 5*time.Minute, inner, "candles")
 	err := repo.UpsertBatch(context.Background(), []Candle{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -378,7 +378,7 @@ func TestCachingCandleRepository_UpsertBatch_CacheWarmUp(t *testing.T) {
 	mock.ExpectDel("candles:AAPL:1day").SetVal(1)
 	mock.ExpectSet("candles:AAPL:1day", warmJSON, 5*time.Minute).SetVal("OK")
 
-	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
+	repo := NewCachingRepository(rdb, 5*time.Minute, inner, "candles")
 	err := repo.UpsertBatch(context.Background(), []Candle{
 		{SymbolCode: "AAPL", Interval: "1day"},
 	})
@@ -417,7 +417,7 @@ func TestCachingCandleRepository_UpsertBatch_DeduplicatesWarmUp(t *testing.T) {
 	mock.ExpectDel("candles:AAPL:1day").SetVal(1)
 	mock.ExpectSet("candles:AAPL:1day", warmJSON, 5*time.Minute).SetVal("OK")
 
-	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
+	repo := NewCachingRepository(rdb, 5*time.Minute, inner, "candles")
 	err := repo.UpsertBatch(context.Background(), []Candle{
 		{SymbolCode: "AAPL", Interval: "1day", Time: time.Now()},
 		{SymbolCode: "AAPL", Interval: "1day", Time: time.Now().Add(-24 * time.Hour)},

@@ -19,31 +19,31 @@ const maxCacheOutputSize = 5000
 // この値はフォールバックとしてのみ機能する。
 const DefaultCacheTTL = 7 * 24 * time.Hour
 
-// candleRepository はCachingCandleRepositoryが内部で必要とする読み書きインターフェースです。
-type candleRepository interface {
+// repository はCachingRepositoryが内部で必要とする読み書きインターフェースです。
+type repository interface {
 	Find(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error)
 	UpsertBatch(ctx context.Context, candles []Candle) error
 }
 
-// CachingCandleRepository はCandleRepositoryにRedisキャッシュをデコレータパターンで追加します。
+// CachingRepository はRepositoryにRedisキャッシュをデコレータパターンで追加します。
 // 基盤となるリポジトリを変更せずに、透過的にキャッシュを追加します。
-type CachingCandleRepository struct {
-	inner     candleRepository
+type CachingRepository struct {
+	inner     repository
 	rdb       *redis.Client
 	ttl       time.Duration
 	namespace string
 }
 
-// NewCachingCandleRepository はCandleRepositoryにRedisキャッシュを追加するデコレータを生成します。
+// NewCachingRepository はRepositoryにRedisキャッシュを追加するデコレータを生成します。
 // ttlが0の場合はデフォルト5分、namespaceが空の場合は"candles"を使用します。
-func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner candleRepository, namespace string) *CachingCandleRepository {
+func NewCachingRepository(rdb *redis.Client, ttl time.Duration, inner repository, namespace string) *CachingRepository {
 	if ttl <= 0 {
 		ttl = 5 * time.Minute
 	}
 	if namespace == "" {
 		namespace = "candles"
 	}
-	return &CachingCandleRepository{
+	return &CachingRepository{
 		inner:     inner,
 		rdb:       rdb,
 		ttl:       ttl,
@@ -52,7 +52,7 @@ func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner cand
 }
 
 // UpsertBatch はローソク足データを挿入または更新し、キャッシュを最新データで更新します。
-func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []Candle) error {
+func (c *CachingRepository) UpsertBatch(ctx context.Context, candles []Candle) error {
 	// まず基盤リポジトリにUpsert
 	if err := c.inner.UpsertBatch(ctx, candles); err != nil {
 		return err
@@ -90,7 +90,7 @@ func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []Can
 
 // Find はローソク足データを取得します。まずキャッシュを確認し、なければデータベースにフォールバックします。
 // キャッシュには全データ（最大maxCacheOutputSize件）を保存し、outputsize件にスライスして返します。
-func (c *CachingCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
+func (c *CachingRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 	// Redisが未設定の場合はキャッシュをバイパス
 	if c.rdb == nil {
 		return c.inner.Find(ctx, symbol, interval, outputsize)
@@ -131,7 +131,7 @@ func sliceCandles(all []Candle, outputsize int) []Candle {
 }
 
 // cacheKey はキャッシュキーを生成します。
-func (c *CachingCandleRepository) cacheKey(symbol, interval string) string {
+func (c *CachingRepository) cacheKey(symbol, interval string) string {
 	return fmt.Sprintf("%s:%s:%s",
 		c.namespace,
 		safeCacheKey(symbol),

@@ -18,7 +18,7 @@ func strPtr(s string) *string {
 	return &s
 }
 
-// mockSymbolUsecase はSymbolUsecaseインターフェースのモック実装です。
+// mockSymbolUsecase はUsecaseインターフェースのモック実装です。
 type mockSymbolUsecase struct {
 	ListActiveSymbolsFunc func(ctx context.Context) ([]symbollist.Symbol, error)
 }
@@ -31,12 +31,12 @@ func (m *mockSymbolUsecase) ListActiveSymbols(ctx context.Context) ([]symbollist
 	return nil, nil
 }
 
-// TestNewSymbolHandler はNewSymbolHandlerコンストラクタが正しくインスタンスを生成することを検証します。
+// TestNewSymbolHandler はNewHandlerコンストラクタが正しくインスタンスを生成することを検証します。
 func TestNewSymbolHandler(t *testing.T) {
 	t.Parallel()
 
 	mockUC := &mockSymbolUsecase{}
-	h := symbollisthttp.NewSymbolHandler(mockUC)
+	h := symbollisthttp.NewHandler(mockUC)
 
 	assert.NotNil(t, h, "handler should not be nil")
 }
@@ -105,7 +105,7 @@ func TestSymbolHandler_List(t *testing.T) {
 			mockUC := &mockSymbolUsecase{
 				ListActiveSymbolsFunc: tt.mockListActiveFunc,
 			}
-			h := symbollisthttp.NewSymbolHandler(mockUC)
+			h := symbollisthttp.NewHandler(mockUC)
 
 			router := gin.New()
 			router.GET("/symbols", h.List)
@@ -141,7 +141,7 @@ func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 			}, nil
 		},
 	}
-	h := symbollisthttp.NewSymbolHandler(mockUC)
+	h := symbollisthttp.NewHandler(mockUC)
 
 	router := gin.New()
 	router.GET("/symbols", h.List)

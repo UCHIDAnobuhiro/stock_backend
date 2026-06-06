@@ -51,7 +51,7 @@ type userIDs struct {
 func TestWatchlistRepository_Add_and_ListByUser(t *testing.T) {
 	t.Parallel()
 	db, ids := setupTestDB(t)
-	repo := NewWatchlistRepository(db)
+	repo := NewRepository(db)
 
 	require.NoError(t, repo.Add(context.Background(), UserSymbol{
 		UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0,
@@ -72,7 +72,7 @@ func TestWatchlistRepository_Add_and_ListByUser(t *testing.T) {
 func TestWatchlistRepository_Add_DuplicateEntry(t *testing.T) {
 	t.Parallel()
 	db, ids := setupTestDB(t)
-	repo := NewWatchlistRepository(db)
+	repo := NewRepository(db)
 
 	require.NoError(t, repo.Add(context.Background(), UserSymbol{
 		UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0,
@@ -86,7 +86,7 @@ func TestWatchlistRepository_Add_DuplicateEntry(t *testing.T) {
 func TestWatchlistRepository_Add_UnknownSymbol(t *testing.T) {
 	t.Parallel()
 	db, ids := setupTestDB(t)
-	repo := NewWatchlistRepository(db)
+	repo := NewRepository(db)
 
 	err := repo.Add(context.Background(), UserSymbol{
 		UserID: ids.u1, SymbolCode: "UNKNOWN", SortKey: 0,
@@ -97,7 +97,7 @@ func TestWatchlistRepository_Add_UnknownSymbol(t *testing.T) {
 func TestWatchlistRepository_Remove(t *testing.T) {
 	t.Parallel()
 	db, ids := setupTestDB(t)
-	repo := NewWatchlistRepository(db)
+	repo := NewRepository(db)
 
 	require.NoError(t, repo.Add(context.Background(), UserSymbol{
 		UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0,
@@ -112,7 +112,7 @@ func TestWatchlistRepository_Remove(t *testing.T) {
 func TestWatchlistRepository_Remove_NotFound(t *testing.T) {
 	t.Parallel()
 	db, ids := setupTestDB(t)
-	repo := NewWatchlistRepository(db)
+	repo := NewRepository(db)
 
 	err := repo.Remove(context.Background(), ids.u1, "AAPL")
 	assert.ErrorIs(t, err, ErrNotInWatchlist)
@@ -121,7 +121,7 @@ func TestWatchlistRepository_Remove_NotFound(t *testing.T) {
 func TestWatchlistRepository_AddWithNextSortKey(t *testing.T) {
 	t.Parallel()
 	db, ids := setupTestDB(t)
-	repo := NewWatchlistRepository(db)
+	repo := NewRepository(db)
 
 	require.NoError(t, repo.AddWithNextSortKey(context.Background(), ids.u1, "AAPL"))
 	require.NoError(t, repo.AddWithNextSortKey(context.Background(), ids.u1, "GOOGL"))
@@ -141,7 +141,7 @@ func TestWatchlistRepository_AddWithNextSortKey(t *testing.T) {
 func TestWatchlistRepository_AddWithNextSortKey_FirstEntry(t *testing.T) {
 	t.Parallel()
 	db, ids := setupTestDB(t)
-	repo := NewWatchlistRepository(db)
+	repo := NewRepository(db)
 
 	require.NoError(t, repo.AddWithNextSortKey(context.Background(), ids.u1, "AAPL"))
 
@@ -154,7 +154,7 @@ func TestWatchlistRepository_AddWithNextSortKey_FirstEntry(t *testing.T) {
 func TestWatchlistRepository_AddWithNextSortKey_DuplicateSymbol(t *testing.T) {
 	t.Parallel()
 	db, ids := setupTestDB(t)
-	repo := NewWatchlistRepository(db)
+	repo := NewRepository(db)
 
 	require.NoError(t, repo.AddWithNextSortKey(context.Background(), ids.u1, "AAPL"))
 	err := repo.AddWithNextSortKey(context.Background(), ids.u1, "AAPL")
@@ -164,7 +164,7 @@ func TestWatchlistRepository_AddWithNextSortKey_DuplicateSymbol(t *testing.T) {
 func TestWatchlistRepository_UpdateSortKeys(t *testing.T) {
 	t.Parallel()
 	db, ids := setupTestDB(t)
-	repo := NewWatchlistRepository(db)
+	repo := NewRepository(db)
 	ctx := context.Background()
 
 	require.NoError(t, repo.Add(ctx, UserSymbol{UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0}))
@@ -189,7 +189,7 @@ func TestWatchlistRepository_UpdateSortKeys(t *testing.T) {
 func TestWatchlistRepository_ListByUser_Isolation(t *testing.T) {
 	t.Parallel()
 	db, ids := setupTestDB(t)
-	repo := NewWatchlistRepository(db)
+	repo := NewRepository(db)
 	ctx := context.Background()
 
 	require.NoError(t, repo.Add(ctx, UserSymbol{UserID: ids.u1, SymbolCode: "AAPL", SortKey: 0}))
