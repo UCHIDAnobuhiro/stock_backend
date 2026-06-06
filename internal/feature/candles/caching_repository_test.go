@@ -1,4 +1,4 @@
-package adapters
+package candles
 
 import (
 	"context"
@@ -8,18 +8,16 @@ import (
 	"time"
 
 	"github.com/go-redis/redismock/v9"
-
-	"stock_backend/internal/feature/candles/domain/entity"
 )
 
 // mockCandleRepo はテスト用のCandleRepositoryモック実装です。
 type mockCandleRepo struct {
-	findFn        func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
-	upsertBatchFn func(ctx context.Context, candles []entity.Candle) error
+	findFn        func(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error)
+	upsertBatchFn func(ctx context.Context, candles []Candle) error
 }
 
 // Find はモックのFind関数を呼び出します。
-func (m *mockCandleRepo) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+func (m *mockCandleRepo) Find(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 	if m.findFn != nil {
 		return m.findFn(ctx, symbol, interval, outputsize)
 	}
@@ -27,7 +25,7 @@ func (m *mockCandleRepo) Find(ctx context.Context, symbol, interval string, outp
 }
 
 // UpsertBatch はモックのUpsertBatch関数を呼び出します。
-func (m *mockCandleRepo) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
+func (m *mockCandleRepo) UpsertBatch(ctx context.Context, candles []Candle) error {
 	if m.upsertBatchFn != nil {
 		return m.upsertBatchFn(ctx, candles)
 	}
@@ -88,12 +86,12 @@ func TestNewCachingCandleRepository_Defaults(t *testing.T) {
 func TestCachingCandleRepository_Find_NilRedis(t *testing.T) {
 	t.Parallel()
 
-	expectedCandles := []entity.Candle{
+	expectedCandles := []Candle{
 		{SymbolCode: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
 	}
 
 	inner := &mockCandleRepo{
-		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 			return expectedCandles, nil
 		},
 	}
@@ -117,7 +115,7 @@ func TestCachingCandleRepository_Find_CacheHit(t *testing.T) {
 	rdb, mock := redismock.NewClientMock()
 	defer func() { _ = rdb.Close() }()
 
-	cachedCandles := []entity.Candle{
+	cachedCandles := []Candle{
 		{SymbolCode: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
 	}
 	cachedJSON, _ := json.Marshal(cachedCandles)
@@ -127,7 +125,7 @@ func TestCachingCandleRepository_Find_CacheHit(t *testing.T) {
 
 	innerCalled := false
 	inner := &mockCandleRepo{
-		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 			innerCalled = true
 			return nil, nil
 		},
@@ -157,7 +155,7 @@ func TestCachingCandleRepository_Find_CacheHit_Slices(t *testing.T) {
 	defer func() { _ = rdb.Close() }()
 
 	// キャッシュには5件保存されている
-	cachedCandles := []entity.Candle{
+	cachedCandles := []Candle{
 		{SymbolCode: "AAPL", Interval: "1day", Open: 100.0},
 		{SymbolCode: "AAPL", Interval: "1day", Open: 101.0},
 		{SymbolCode: "AAPL", Interval: "1day", Open: 102.0},
@@ -191,7 +189,7 @@ func TestCachingCandleRepository_Find_CacheMiss(t *testing.T) {
 	rdb, mock := redismock.NewClientMock()
 	defer func() { _ = rdb.Close() }()
 
-	expectedCandles := []entity.Candle{
+	expectedCandles := []Candle{
 		{SymbolCode: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
 	}
 	expectedJSON, _ := json.Marshal(expectedCandles)
@@ -202,7 +200,7 @@ func TestCachingCandleRepository_Find_CacheMiss(t *testing.T) {
 	mock.ExpectSet("candles:AAPL:1day", expectedJSON, 5*time.Minute).SetVal("OK")
 
 	inner := &mockCandleRepo{
-		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 			// maxCacheOutputSize(5000) で呼ばれることを検証
 			if outputsize != maxCacheOutputSize {
 				t.Errorf("expected outputsize %d, got %d", maxCacheOutputSize, outputsize)
@@ -236,7 +234,7 @@ func TestCachingCandleRepository_Find_InnerError(t *testing.T) {
 	mock.ExpectGet("candles:AAPL:1day").RedisNil()
 
 	inner := &mockCandleRepo{
-		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 			return nil, expectedErr
 		},
 	}
@@ -259,7 +257,7 @@ func TestCachingCandleRepository_Find_CorruptedCache(t *testing.T) {
 	rdb, mock := redismock.NewClientMock()
 	defer func() { _ = rdb.Close() }()
 
-	expectedCandles := []entity.Candle{
+	expectedCandles := []Candle{
 		{SymbolCode: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
 	}
 	expectedJSON, _ := json.Marshal(expectedCandles)
@@ -272,7 +270,7 @@ func TestCachingCandleRepository_Find_CorruptedCache(t *testing.T) {
 	mock.ExpectSet("candles:AAPL:1day", expectedJSON, 5*time.Minute).SetVal("OK")
 
 	inner := &mockCandleRepo{
-		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 			return expectedCandles, nil
 		},
 	}
@@ -296,14 +294,14 @@ func TestCachingCandleRepository_UpsertBatch_NilRedis(t *testing.T) {
 
 	innerCalled := false
 	inner := &mockCandleRepo{
-		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
+		upsertBatchFn: func(ctx context.Context, candles []Candle) error {
 			innerCalled = true
 			return nil
 		},
 	}
 
 	repo := NewCachingCandleRepository(nil, 5*time.Minute, inner, "candles")
-	err := repo.UpsertBatch(context.Background(), []entity.Candle{
+	err := repo.UpsertBatch(context.Background(), []Candle{
 		{SymbolCode: "AAPL", Interval: "1day"},
 	})
 	if err != nil {
@@ -320,13 +318,13 @@ func TestCachingCandleRepository_UpsertBatch_InnerError(t *testing.T) {
 
 	expectedErr := errors.New("upsert error")
 	inner := &mockCandleRepo{
-		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
+		upsertBatchFn: func(ctx context.Context, candles []Candle) error {
 			return expectedErr
 		},
 	}
 
 	repo := NewCachingCandleRepository(nil, 5*time.Minute, inner, "candles")
-	err := repo.UpsertBatch(context.Background(), []entity.Candle{
+	err := repo.UpsertBatch(context.Background(), []Candle{
 		{SymbolCode: "AAPL", Interval: "1day"},
 	})
 
@@ -343,13 +341,13 @@ func TestCachingCandleRepository_UpsertBatch_EmptyCandles(t *testing.T) {
 	defer func() { _ = rdb.Close() }()
 
 	inner := &mockCandleRepo{
-		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
+		upsertBatchFn: func(ctx context.Context, candles []Candle) error {
 			return nil
 		},
 	}
 
 	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
-	err := repo.UpsertBatch(context.Background(), []entity.Candle{})
+	err := repo.UpsertBatch(context.Background(), []Candle{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -362,16 +360,16 @@ func TestCachingCandleRepository_UpsertBatch_CacheWarmUp(t *testing.T) {
 	rdb, mock := redismock.NewClientMock()
 	defer func() { _ = rdb.Close() }()
 
-	warmCandles := []entity.Candle{
+	warmCandles := []Candle{
 		{SymbolCode: "AAPL", Interval: "1day", Open: 150.0, Close: 155.0},
 	}
 	warmJSON, _ := json.Marshal(warmCandles)
 
 	inner := &mockCandleRepo{
-		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
+		upsertBatchFn: func(ctx context.Context, candles []Candle) error {
 			return nil
 		},
-		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 			return warmCandles, nil
 		},
 	}
@@ -381,7 +379,7 @@ func TestCachingCandleRepository_UpsertBatch_CacheWarmUp(t *testing.T) {
 	mock.ExpectSet("candles:AAPL:1day", warmJSON, 5*time.Minute).SetVal("OK")
 
 	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
-	err := repo.UpsertBatch(context.Background(), []entity.Candle{
+	err := repo.UpsertBatch(context.Background(), []Candle{
 		{SymbolCode: "AAPL", Interval: "1day"},
 	})
 	if err != nil {
@@ -399,17 +397,17 @@ func TestCachingCandleRepository_UpsertBatch_DeduplicatesWarmUp(t *testing.T) {
 	rdb, mock := redismock.NewClientMock()
 	defer func() { _ = rdb.Close() }()
 
-	warmCandles := []entity.Candle{
+	warmCandles := []Candle{
 		{SymbolCode: "AAPL", Interval: "1day", Open: 150.0},
 	}
 	warmJSON, _ := json.Marshal(warmCandles)
 
 	findCallCount := 0
 	inner := &mockCandleRepo{
-		upsertBatchFn: func(ctx context.Context, candles []entity.Candle) error {
+		upsertBatchFn: func(ctx context.Context, candles []Candle) error {
 			return nil
 		},
-		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 			findCallCount++
 			return warmCandles, nil
 		},
@@ -420,7 +418,7 @@ func TestCachingCandleRepository_UpsertBatch_DeduplicatesWarmUp(t *testing.T) {
 	mock.ExpectSet("candles:AAPL:1day", warmJSON, 5*time.Minute).SetVal("OK")
 
 	repo := NewCachingCandleRepository(rdb, 5*time.Minute, inner, "candles")
-	err := repo.UpsertBatch(context.Background(), []entity.Candle{
+	err := repo.UpsertBatch(context.Background(), []Candle{
 		{SymbolCode: "AAPL", Interval: "1day", Time: time.Now()},
 		{SymbolCode: "AAPL", Interval: "1day", Time: time.Now().Add(-24 * time.Hour)},
 		{SymbolCode: "AAPL", Interval: "1day", Time: time.Now().Add(-48 * time.Hour)},

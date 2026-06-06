@@ -8,8 +8,7 @@ import (
 	redisv9 "github.com/redis/go-redis/v9"
 
 	"stock_backend/internal/app/di"
-	candlesadapters "stock_backend/internal/feature/candles/adapters"
-	candlesusecase "stock_backend/internal/feature/candles/usecase"
+	"stock_backend/internal/feature/candles"
 	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
 	"stock_backend/internal/platform/db"
 	infraredis "stock_backend/internal/platform/redis"
@@ -29,7 +28,7 @@ func runCandleIngest() int {
 		}
 	}()
 	marketRepo := di.NewMarket()
-	candleRepo := candlesadapters.NewCandleRepository(sqlDB)
+	candleRepo := candles.NewCandleRepository(sqlDB)
 	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
 	ingestSymbolRepo := di.NewIngestSymbolAdapter(symbolRepo)
 	rateLimiter := clientratelimit.NewRateLimiter(rateLimitPerMinute, time.Minute)
@@ -48,9 +47,9 @@ func runCandleIngest() int {
 	}
 
 	// TTLはingest連続失敗時のセーフティネット、通常は UpsertBatch で日次上書き
-	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, candlesadapters.DefaultCacheTTL, candleRepo, "candles")
+	cachedCandleRepo := candles.NewCachingCandleRepository(rdb, candles.DefaultCacheTTL, candleRepo, "candles")
 
-	uc := candlesusecase.NewIngestUsecase(marketRepo, cachedCandleRepo, ingestSymbolRepo, rateLimiter)
+	uc := candles.NewIngestUsecase(marketRepo, cachedCandleRepo, ingestSymbolRepo, rateLimiter)
 
 	timeoutHours := parseTimeoutHours("INGEST_TIMEOUT_HOURS", 3)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutHours)*time.Hour)

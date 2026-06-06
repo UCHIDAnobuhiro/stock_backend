@@ -1,12 +1,10 @@
-package usecase
+package candles
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
 	"time"
-
-	"stock_backend/internal/feature/candles/domain/entity"
 )
 
 const (
@@ -17,7 +15,7 @@ const (
 // Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
 type CandleWriteRepository interface {
 	// UpsertBatch は（symbol, interval, time）をユニークキーとしてUpsert操作を行います。
-	UpsertBatch(ctx context.Context, candles []entity.Candle) error
+	UpsertBatch(ctx context.Context, candles []Candle) error
 }
 
 // MarketRepository は株式市場データ取得のリポジトリインターフェースを定義します。
@@ -26,7 +24,7 @@ type CandleWriteRepository interface {
 type MarketRepository interface {
 	// GetTimeSeries は loc を解釈ロケールとして、外部APIのタイムスタンプ文字列を
 	// 取引所ローカル時刻として時系列データを返します。
-	GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error)
+	GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error)
 }
 
 // ActiveSymbol は ingest 対象銘柄のコードとタイムゾーン情報を保持します。
@@ -115,7 +113,7 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, sym ActiveSymbol, output
 		monthly[i].Interval = "1month"
 	}
 
-	all := make([]entity.Candle, 0, len(daily)+len(weekly)+len(monthly))
+	all := make([]Candle, 0, len(daily)+len(weekly)+len(monthly))
 	all = append(all, daily...)
 	all = append(all, weekly...)
 	all = append(all, monthly...)
@@ -126,9 +124,9 @@ func (iu *IngestUsecase) ingestOne(ctx context.Context, sym ActiveSymbol, output
 // dedupCandles は (symbol, interval, time) の組み合わせが重複するエントリを除去します。
 // TwelveData API が重複タイムスタンプを返した場合に ON CONFLICT DO UPDATE が
 // 同一バッチ内で同じ行を2回更新しようとする PostgreSQL エラー (SQLSTATE 21000) を防ぎます。
-func dedupCandles(candles []entity.Candle) []entity.Candle {
+func dedupCandles(candles []Candle) []Candle {
 	seen := make(map[string]struct{}, len(candles))
-	out := make([]entity.Candle, 0, len(candles))
+	out := make([]Candle, 0, len(candles))
 	for _, c := range candles {
 		key := fmt.Sprintf("%s|%s|%d", c.SymbolCode, c.Interval, c.Time.Unix())
 		if _, ok := seen[key]; !ok {

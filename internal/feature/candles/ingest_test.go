@@ -1,4 +1,4 @@
-package usecase
+package candles
 
 import (
 	"context"
@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"stock_backend/internal/feature/candles/domain/entity"
 )
 
 // ErrDB はデータベースのセンチネルエラーです。
@@ -18,11 +16,11 @@ var ErrMarketAPI = errors.New("market API error")
 
 // mockCandleWriteRepository はCandleWriteRepositoryインターフェースのモック実装です。
 type mockCandleWriteRepository struct {
-	UpsertBatchFunc func(ctx context.Context, candles []entity.Candle) error
+	UpsertBatchFunc func(ctx context.Context, candles []Candle) error
 }
 
 // UpsertBatch はUpsertBatchFuncが設定されていればそれを呼び出します。
-func (m *mockCandleWriteRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
+func (m *mockCandleWriteRepository) UpsertBatch(ctx context.Context, candles []Candle) error {
 	if m.UpsertBatchFunc != nil {
 		return m.UpsertBatchFunc(ctx, candles)
 	}
@@ -31,11 +29,11 @@ func (m *mockCandleWriteRepository) UpsertBatch(ctx context.Context, candles []e
 
 // mockMarketRepository はMarketRepositoryインターフェースのモック実装です。
 type mockMarketRepository struct {
-	GetTimeSeriesFunc  func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error)
+	GetTimeSeriesFunc  func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error)
 	GetTimeSeriesCalls int
 }
 
-func (m *mockMarketRepository) GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+func (m *mockMarketRepository) GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 	m.GetTimeSeriesCalls++
 	if m.GetTimeSeriesFunc != nil {
 		return m.GetTimeSeriesFunc(ctx, symbol, interval, outputsize, loc)
@@ -87,13 +85,13 @@ func TestDedupCandles(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		input    []entity.Candle
+		input    []Candle
 		wantLen  int
 		wantKeys []string // "symbol|interval|unix" 形式で期待するキー一覧
 	}{
 		{
 			name: "重複なしの場合は全件返す",
-			input: []entity.Candle{
+			input: []Candle{
 				{SymbolCode: "AAPL", Interval: "1day", Time: base},
 				{SymbolCode: "AAPL", Interval: "1day", Time: base.AddDate(0, 0, 1)},
 			},
@@ -101,7 +99,7 @@ func TestDedupCandles(t *testing.T) {
 		},
 		{
 			name: "同一タイムスタンプの重複は1件に絞る",
-			input: []entity.Candle{
+			input: []Candle{
 				{SymbolCode: "AAPL", Interval: "1day", Time: base},
 				{SymbolCode: "AAPL", Interval: "1day", Time: base},
 			},
@@ -109,7 +107,7 @@ func TestDedupCandles(t *testing.T) {
 		},
 		{
 			name: "symbolが異なれば別エントリとして扱う",
-			input: []entity.Candle{
+			input: []Candle{
 				{SymbolCode: "AAPL", Interval: "1day", Time: base},
 				{SymbolCode: "GOOG", Interval: "1day", Time: base},
 			},
@@ -117,7 +115,7 @@ func TestDedupCandles(t *testing.T) {
 		},
 		{
 			name: "intervalが異なれば別エントリとして扱う",
-			input: []entity.Candle{
+			input: []Candle{
 				{SymbolCode: "AAPL", Interval: "1day", Time: base},
 				{SymbolCode: "AAPL", Interval: "1week", Time: base},
 			},
@@ -125,12 +123,12 @@ func TestDedupCandles(t *testing.T) {
 		},
 		{
 			name:    "空スライスは空スライスを返す",
-			input:   []entity.Candle{},
+			input:   []Candle{},
 			wantLen: 0,
 		},
 		{
 			name: "元スライスを変更しない（backing array 非共有）",
-			input: []entity.Candle{
+			input: []Candle{
 				{SymbolCode: "AAPL", Interval: "1day", Time: base, Close: 100},
 				{SymbolCode: "AAPL", Interval: "1day", Time: base, Close: 200}, // 重複
 				{SymbolCode: "AAPL", Interval: "1day", Time: base.AddDate(0, 0, 1), Close: 300},
@@ -142,7 +140,7 @@ func TestDedupCandles(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// 元スライスのコピーを保持して変更されていないか確認
-			original := make([]entity.Candle, len(tc.input))
+			original := make([]Candle, len(tc.input))
 			copy(original, tc.input)
 
 			got := dedupCandles(tc.input)
@@ -176,7 +174,7 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 	ctx := context.Background()
 	// 2022-12-31（土）と 2023-01-01（日）は同一 ISO 週（2022-W52）かつ異なる月
 	testTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
-	mockDailyCandles := []entity.Candle{
+	mockDailyCandles := []Candle{
 		{Time: testTime, Open: 100, High: 110, Low: 90, Close: 105},
 		{Time: testTime.AddDate(0, 0, -1), Open: 95, High: 105, Low: 85, Close: 100},
 	}
@@ -185,16 +183,16 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 		name                  string
 		inputSymbol           string
 		inputOutputsize       int
-		mockGetTimeSeriesFunc func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error)
-		mockUpsertBatchFunc   func(ctx context.Context, candles []entity.Candle) error
+		mockGetTimeSeriesFunc func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error)
+		mockUpsertBatchFunc   func(ctx context.Context, candles []Candle) error
 		expectedErr           error
-		verifyCandles         func(t *testing.T, candles []entity.Candle)
+		verifyCandles         func(t *testing.T, candles []Candle)
 	}{
 		{
 			name:            "success: data fetch and save succeed",
 			inputSymbol:     "AAPL",
 			inputOutputsize: 5000,
-			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 				if symbol != "AAPL" {
 					t.Errorf("GetTimeSeries called with unexpected symbol: got %s, want AAPL", symbol)
 				}
@@ -203,7 +201,7 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 				}
 				return mockDailyCandles, nil
 			},
-			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
+			mockUpsertBatchFunc: func(ctx context.Context, candles []Candle) error {
 				return nil
 			},
 			expectedErr: nil,
@@ -211,7 +209,7 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 			// + 0週足（2022-12-31 は土曜 = 不完全な先頭バケットを除外）
 			// + 1月足（2022-12 は 31日開始 = 不完全で除外、2023-01 は 1日開始で保持）
 			// = 3件
-			verifyCandles: func(t *testing.T, candles []entity.Candle) {
+			verifyCandles: func(t *testing.T, candles []Candle) {
 				counts := map[string]int{}
 				for _, c := range candles {
 					if c.SymbolCode != "AAPL" {
@@ -234,10 +232,10 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 			name:            "error: MarketRepository returns error",
 			inputSymbol:     "GOOG",
 			inputOutputsize: 5000,
-			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 				return nil, ErrMarketAPI
 			},
-			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
+			mockUpsertBatchFunc: func(ctx context.Context, candles []Candle) error {
 				t.Error("UpsertBatch should not be called")
 				return nil
 			},
@@ -247,10 +245,10 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 			name:            "error: CandleRepository returns error",
 			inputSymbol:     "MSFT",
 			inputOutputsize: 5000,
-			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 				return mockDailyCandles, nil
 			},
-			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
+			mockUpsertBatchFunc: func(ctx context.Context, candles []Candle) error {
 				return ErrDB
 			},
 			expectedErr: ErrDB,
@@ -259,12 +257,12 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var capturedCandles []entity.Candle
+			var capturedCandles []Candle
 			mockMarket := &mockMarketRepository{
 				GetTimeSeriesFunc: tc.mockGetTimeSeriesFunc,
 			}
 			mockCandle := &mockCandleWriteRepository{
-				UpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
+				UpsertBatchFunc: func(ctx context.Context, candles []Candle) error {
 					capturedCandles = candles
 					return tc.mockUpsertBatchFunc(ctx, candles)
 				},
@@ -298,7 +296,7 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 func TestIngestUsecase_IngestAll(t *testing.T) {
 	ctx := context.Background()
 	testTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
-	mockCandles := []entity.Candle{
+	mockCandles := []Candle{
 		{Time: testTime, Open: 100, High: 110, Low: 90, Close: 105},
 	}
 
@@ -306,8 +304,8 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 		name                       string
 		inputSymbols               []string
 		listActiveCodesErr         error
-		mockGetTimeSeriesFunc      func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error)
-		mockUpsertBatchFunc        func(ctx context.Context, candles []entity.Candle) error
+		mockGetTimeSeriesFunc      func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error)
+		mockUpsertBatchFunc        func(ctx context.Context, candles []Candle) error
 		expectedErr                error
 		expectedResult             IngestResult
 		expectedGetTimeSeriesCalls int
@@ -316,10 +314,10 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 		{
 			name:         "success: fetch all symbols",
 			inputSymbols: []string{"AAPL", "GOOG"},
-			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 				return mockCandles, nil
 			},
-			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
+			mockUpsertBatchFunc: func(ctx context.Context, candles []Candle) error {
 				return nil
 			},
 			expectedErr:    nil,
@@ -330,10 +328,10 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 		{
 			name:         "success: single symbol fetch succeeds",
 			inputSymbols: []string{"TSLA"},
-			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 				return mockCandles, nil
 			},
-			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
+			mockUpsertBatchFunc: func(ctx context.Context, candles []Candle) error {
 				return nil
 			},
 			expectedErr:    nil,
@@ -344,11 +342,11 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 		{
 			name:         "success: empty symbol list",
 			inputSymbols: []string{},
-			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 				t.Error("GetTimeSeries should not be called")
 				return nil, errors.New("should not be called")
 			},
-			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
+			mockUpsertBatchFunc: func(ctx context.Context, candles []Candle) error {
 				t.Error("UpsertBatch should not be called")
 				return nil
 			},
@@ -359,13 +357,13 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 		{
 			name:         "partial failure: continues processing and aggregates errors",
 			inputSymbols: []string{"AAPL", "INVALID", "GOOG"},
-			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 				if symbol == "INVALID" {
 					return nil, ErrMarketAPI
 				}
 				return mockCandles, nil
 			},
-			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
+			mockUpsertBatchFunc: func(ctx context.Context, candles []Candle) error {
 				return nil
 			},
 			expectedErr:    nil, // 銘柄単位の失敗は IngestResult に集約され、error は返らない
@@ -376,10 +374,10 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 		{
 			name:         "partial failure: UpsertBatch failure is aggregated",
 			inputSymbols: []string{"AAPL", "GOOG"},
-			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 				return mockCandles, nil
 			},
-			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
+			mockUpsertBatchFunc: func(ctx context.Context, candles []Candle) error {
 				if len(candles) > 0 && candles[0].SymbolCode == "AAPL" {
 					return ErrDB
 				}
@@ -393,10 +391,10 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 		{
 			name:         "success: only fetches 1day interval from API",
 			inputSymbols: []string{"AAPL", "GOOG"},
-			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+			mockGetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 				return mockCandles, nil
 			},
-			mockUpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error {
+			mockUpsertBatchFunc: func(ctx context.Context, candles []Candle) error {
 				return nil
 			},
 			expectedErr:                nil,
@@ -424,7 +422,7 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var calledIntervals []string
 			mockMarket := &mockMarketRepository{
-				GetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+				GetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 					calledIntervals = append(calledIntervals, interval)
 					return tc.mockGetTimeSeriesFunc(ctx, symbol, interval, outputsize, loc)
 				},
@@ -478,7 +476,7 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 // （ctx キャンセル、rateLimiter 失敗）が部分集計と共に error を返すことを検証します。
 func TestIngestUsecase_IngestAll_MidLoopFatal(t *testing.T) {
 	testTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
-	mockCandles := []entity.Candle{
+	mockCandles := []Candle{
 		{Time: testTime, Open: 100, High: 110, Low: 90, Close: 105},
 	}
 
@@ -487,7 +485,7 @@ func TestIngestUsecase_IngestAll_MidLoopFatal(t *testing.T) {
 
 		var processedCount int
 		mockMarket := &mockMarketRepository{
-			GetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+			GetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 				processedCount++
 				if processedCount == 1 {
 					// 1銘柄目の処理完了後に ctx をキャンセルし、2銘柄目のループ先頭で検出させる
@@ -497,7 +495,7 @@ func TestIngestUsecase_IngestAll_MidLoopFatal(t *testing.T) {
 			},
 		}
 		mockCandle := &mockCandleWriteRepository{
-			UpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error { return nil },
+			UpsertBatchFunc: func(ctx context.Context, candles []Candle) error { return nil },
 		}
 		mockSymbol := &mockSymbolRepository{
 			ListActiveSymbolsFunc: func(ctx context.Context) ([]ActiveSymbol, error) {
@@ -533,12 +531,12 @@ func TestIngestUsecase_IngestAll_MidLoopFatal(t *testing.T) {
 		errRateLimit := errors.New("rate limit exceeded")
 
 		mockMarket := &mockMarketRepository{
-			GetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+			GetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 				return mockCandles, nil
 			},
 		}
 		mockCandle := &mockCandleWriteRepository{
-			UpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error { return nil },
+			UpsertBatchFunc: func(ctx context.Context, candles []Candle) error { return nil },
 		}
 		mockSymbol := &mockSymbolRepository{
 			ListActiveSymbolsFunc: func(ctx context.Context) ([]ActiveSymbol, error) {
@@ -598,13 +596,13 @@ func TestIngestUsecase_ingestOne_PassesLocation(t *testing.T) {
 
 	var gotLoc *time.Location
 	mockMarket := &mockMarketRepository{
-		GetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+		GetTimeSeriesFunc: func(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]Candle, error) {
 			gotLoc = loc
 			return nil, nil
 		},
 	}
 	mockCandle := &mockCandleWriteRepository{
-		UpsertBatchFunc: func(ctx context.Context, candles []entity.Candle) error { return nil },
+		UpsertBatchFunc: func(ctx context.Context, candles []Candle) error { return nil },
 	}
 	mockSymbol := &mockSymbolRepository{}
 	mockRL := &mockRateLimiter{}

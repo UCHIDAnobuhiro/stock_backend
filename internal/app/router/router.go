@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	authhandler "stock_backend/internal/feature/auth/transport/handler"
-	candleshandler "stock_backend/internal/feature/candles/transport/handler"
+	candleshttp "stock_backend/internal/feature/candles/transport"
 	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
 	watchlisthttp "stock_backend/internal/feature/watchlist/transport"
@@ -23,7 +23,7 @@ import (
 // 公開ルート（signup, login）とJWT認証ミドルウェア付きの保護ルート（candles, symbols, logo, watchlist）を設定します。
 // oauthHandler が nil の場合はOAuthルートを登録しません。
 func NewRouter(authHandler *authhandler.AuthHandler, oauthHandler *authhandler.OAuthHandler,
-	candles *candleshandler.CandlesHandler,
+	candles *candleshttp.CandlesHandler,
 	symbol *symbollisthandler.SymbolHandler, logo *logohandler.LogoDetectionHandler,
 	watchlist *watchlisthttp.WatchlistHandler,
 	limiter *httpratelimit.Limiter,

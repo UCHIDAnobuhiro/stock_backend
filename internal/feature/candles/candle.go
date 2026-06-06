@@ -1,5 +1,4 @@
-// Package entity はcandlesフィーチャーのドメインモデルを定義します。
-package entity
+package candles
 
 import "time"
 

@@ -1,4 +1,4 @@
-package adapters
+package candles
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"stock_backend/internal/feature/candles/domain/entity"
 	"stock_backend/internal/platform/db/dbtest"
 )
 
@@ -71,13 +70,13 @@ func TestCandleRepository_UpsertBatch(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		candles      []entity.Candle
+		candles      []Candle
 		setupFunc    func(t *testing.T, db *sql.DB)
 		validateFunc func(t *testing.T, db *sql.DB)
 	}{
 		{
 			name: "success: insert single candle",
-			candles: []entity.Candle{
+			candles: []Candle{
 				{SymbolCode: "AAPL", Interval: "1day", Time: baseTime, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 			},
 			validateFunc: func(t *testing.T, db *sql.DB) {
@@ -86,7 +85,7 @@ func TestCandleRepository_UpsertBatch(t *testing.T) {
 		},
 		{
 			name: "success: insert multiple candles",
-			candles: []entity.Candle{
+			candles: []Candle{
 				{SymbolCode: "AAPL", Interval: "1day", Time: baseTime, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 				{SymbolCode: "AAPL", Interval: "1day", Time: baseTime.AddDate(0, 0, 1), Open: 105, High: 115, Low: 95, Close: 110, Volume: 1500},
 			},
@@ -96,14 +95,14 @@ func TestCandleRepository_UpsertBatch(t *testing.T) {
 		},
 		{
 			name:    "success: empty slice",
-			candles: []entity.Candle{},
+			candles: []Candle{},
 			validateFunc: func(t *testing.T, db *sql.DB) {
 				assert.Equal(t, int64(0), candleCount(t, db))
 			},
 		},
 		{
 			name: "success: upsert updates existing candle",
-			candles: []entity.Candle{
+			candles: []Candle{
 				{SymbolCode: "AAPL", Interval: "1day", Time: baseTime, Open: 200, High: 220, Low: 180, Close: 210, Volume: 2000},
 			},
 			setupFunc: func(t *testing.T, db *sql.DB) {
@@ -124,7 +123,7 @@ func TestCandleRepository_UpsertBatch(t *testing.T) {
 		},
 		{
 			name: "success: upsert with mixed insert and update",
-			candles: []entity.Candle{
+			candles: []Candle{
 				{SymbolCode: "AAPL", Interval: "1day", Time: baseTime, Open: 200, High: 220, Low: 180, Close: 210, Volume: 2000},
 				{SymbolCode: "AAPL", Interval: "1day", Time: baseTime.AddDate(0, 0, 1), Open: 210, High: 230, Low: 190, Close: 220, Volume: 2500},
 			},
@@ -163,7 +162,7 @@ func TestCandleRepository_Find(t *testing.T) {
 		interval     string
 		outputsize   int
 		setupFunc    func(t *testing.T, db *sql.DB)
-		validateFunc func(t *testing.T, candles []entity.Candle)
+		validateFunc func(t *testing.T, candles []Candle)
 	}{
 		{
 			name: "success: find candles by symbol and interval", symbol: "AAPL", interval: "1day", outputsize: 10,
@@ -171,13 +170,13 @@ func TestCandleRepository_Find(t *testing.T) {
 				seedCandle(t, db, "AAPL", "1day", baseTime)
 				seedCandle(t, db, "AAPL", "1day", baseTime.AddDate(0, 0, 1))
 			},
-			validateFunc: func(t *testing.T, candles []entity.Candle) {
+			validateFunc: func(t *testing.T, candles []Candle) {
 				assert.Len(t, candles, 2)
 			},
 		},
 		{
 			name: "success: empty result when no matching candles", symbol: "NOTFOUND", interval: "1day", outputsize: 10,
-			validateFunc: func(t *testing.T, candles []entity.Candle) {
+			validateFunc: func(t *testing.T, candles []Candle) {
 				assert.Empty(t, candles)
 			},
 		},
@@ -187,7 +186,7 @@ func TestCandleRepository_Find(t *testing.T) {
 				seedCandle(t, db, "AAPL", "1day", baseTime)
 				seedCandle(t, db, "GOOGL", "1day", baseTime)
 			},
-			validateFunc: func(t *testing.T, candles []entity.Candle) {
+			validateFunc: func(t *testing.T, candles []Candle) {
 				assert.Len(t, candles, 1)
 				assert.Equal(t, "AAPL", candles[0].SymbolCode)
 			},
@@ -198,7 +197,7 @@ func TestCandleRepository_Find(t *testing.T) {
 				seedCandle(t, db, "AAPL", "1day", baseTime)
 				seedCandle(t, db, "AAPL", "1week", baseTime)
 			},
-			validateFunc: func(t *testing.T, candles []entity.Candle) {
+			validateFunc: func(t *testing.T, candles []Candle) {
 				assert.Len(t, candles, 1)
 				assert.Equal(t, "1day", candles[0].Interval)
 			},
@@ -210,7 +209,7 @@ func TestCandleRepository_Find(t *testing.T) {
 					seedCandle(t, db, "AAPL", "1day", baseTime.AddDate(0, 0, i))
 				}
 			},
-			validateFunc: func(t *testing.T, candles []entity.Candle) {
+			validateFunc: func(t *testing.T, candles []Candle) {
 				assert.Len(t, candles, 2)
 			},
 		},
@@ -221,7 +220,7 @@ func TestCandleRepository_Find(t *testing.T) {
 					seedCandle(t, db, "AAPL", "1day", baseTime.AddDate(0, 0, i))
 				}
 			},
-			validateFunc: func(t *testing.T, candles []entity.Candle) {
+			validateFunc: func(t *testing.T, candles []Candle) {
 				assert.Len(t, candles, 5)
 			},
 		},
@@ -232,7 +231,7 @@ func TestCandleRepository_Find(t *testing.T) {
 				seedCandle(t, db, "AAPL", "1day", baseTime.AddDate(0, 0, 2))
 				seedCandle(t, db, "AAPL", "1day", baseTime.AddDate(0, 0, 1))
 			},
-			validateFunc: func(t *testing.T, candles []entity.Candle) {
+			validateFunc: func(t *testing.T, candles []Candle) {
 				assert.Len(t, candles, 3)
 				assert.True(t, candles[0].Time.After(candles[1].Time))
 				assert.True(t, candles[1].Time.After(candles[2].Time))

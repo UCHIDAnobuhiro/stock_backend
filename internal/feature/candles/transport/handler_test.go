@@ -1,4 +1,4 @@
-package handler_test
+package candleshttp_test
 
 import (
 	"bytes"
@@ -13,16 +13,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/feature/candles/transport/handler"
+	"stock_backend/internal/feature/candles"
+	"stock_backend/internal/feature/candles/transport"
 )
 
 // mockCandlesUsecase はcandlesUsecaseインターフェースのモック実装です。
 type mockCandlesUsecase struct {
-	GetCandlesFunc func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+	GetCandlesFunc func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error)
 }
 
-func (m *mockCandlesUsecase) GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+func (m *mockCandlesUsecase) GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 	return m.GetCandlesFunc(ctx, symbol, interval, outputsize)
 }
 
@@ -36,18 +36,18 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 	tests := []struct {
 		name           string
 		url            string
-		mockGetCandles func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+		mockGetCandles func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error)
 		expectedStatus int
 		expectedBody   string // JSON文字列として比較
 	}{
 		{
 			name: "success: all parameters specified",
 			url:  "/candles/7203.T?interval=1day&outputsize=10",
-			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 				assert.Equal(t, "7203.T", symbol)
 				assert.Equal(t, "1day", interval)
 				assert.Equal(t, 10, outputsize)
-				return []entity.Candle{
+				return []candles.Candle{
 					{Time: testTime, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 				}, nil
 			},
@@ -57,11 +57,11 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 		{
 			name: "success: default parameter values",
 			url:  "/candles/7203.T",
-			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 				assert.Equal(t, "7203.T", symbol)
 				assert.Equal(t, "1day", interval) // デフォルト値
 				assert.Equal(t, 200, outputsize)  // デフォルト値
-				return []entity.Candle{}, nil
+				return []candles.Candle{}, nil
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `[]`,
@@ -69,7 +69,7 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 		{
 			name: "error: usecase returns error",
 			url:  "/candles/9999.T",
-			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 				return nil, errors.New("internal server error")
 			},
 			expectedStatus: http.StatusBadGateway,
@@ -91,7 +91,7 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 				GetCandlesFunc: tt.mockGetCandles,
 			}
 
-			h := handler.NewCandlesHandler(mockUC)
+			h := candleshttp.NewCandlesHandler(mockUC)
 
 			router := gin.New()
 			router.GET("/candles/:code", h.GetCandlesHandler)

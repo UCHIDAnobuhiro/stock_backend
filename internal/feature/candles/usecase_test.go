@@ -1,4 +1,4 @@
-package usecase_test
+package candles_test
 
 import (
 	"context"
@@ -7,8 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/feature/candles/usecase"
+	"stock_backend/internal/feature/candles"
 )
 
 // ErrDB はモックと期待値の間で共有されるセンチネルエラーです。
@@ -16,12 +15,12 @@ var ErrDB = errors.New("database error")
 
 // mockCandleRepository はCandleRepositoryインターフェースのモック実装です。
 type mockCandleRepository struct {
-	FindFunc  func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+	FindFunc  func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error)
 	FindCalls int
 }
 
 // Find はFindFuncが設定されていればそれを呼び出し、呼び出し回数を記録します。
-func (m *mockCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+func (m *mockCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 	m.FindCalls++
 	if m.FindFunc != nil {
 		return m.FindFunc(ctx, symbol, interval, outputsize)
@@ -32,7 +31,7 @@ func (m *mockCandleRepository) Find(ctx context.Context, symbol, interval string
 // TestCandlesUsecase_GetCandles はGetCandlesメソッドのパラメータ処理とリポジトリ呼び出しをテストします。
 func TestCandlesUsecase_GetCandles(t *testing.T) {
 	ctx := context.Background()
-	expectedCandles := []entity.Candle{
+	expectedCandles := []candles.Candle{
 		{Time: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), Open: 100, High: 110, Low: 90, Close: 105},
 	}
 
@@ -41,8 +40,8 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 		inputSymbol        string
 		inputInterval      string
 		inputOutputsize    int
-		mockFindFunc       func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
-		expectedCandles    []entity.Candle
+		mockFindFunc       func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error)
+		expectedCandles    []candles.Candle
 		expectedErr        error
 		expectedInterval   string // モックに渡されるべきインターバル
 		expectedOutputsize int    // モックに渡されるべきoutputsize
@@ -52,7 +51,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 			inputSymbol:     "AAPL",
 			inputInterval:   "1week",
 			inputOutputsize: 50,
-			mockFindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+			mockFindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 				return expectedCandles, nil
 			},
 			expectedCandles:    expectedCandles,
@@ -65,7 +64,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 			inputSymbol:     "GOOG",
 			inputInterval:   "",
 			inputOutputsize: 100,
-			mockFindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+			mockFindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 				return expectedCandles, nil
 			},
 			expectedCandles:    expectedCandles,
@@ -78,7 +77,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 			inputSymbol:     "MSFT",
 			inputInterval:   "1month",
 			inputOutputsize: 0,
-			mockFindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+			mockFindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 				return expectedCandles, nil
 			},
 			expectedCandles:    expectedCandles,
@@ -91,7 +90,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 			inputSymbol:     "TSLA",
 			inputInterval:   "1day",
 			inputOutputsize: 5001,
-			mockFindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+			mockFindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 				return expectedCandles, nil
 			},
 			expectedCandles:    expectedCandles,
@@ -104,7 +103,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 			inputSymbol:     "AMZN",
 			inputInterval:   "1day",
 			inputOutputsize: 10,
-			mockFindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+			mockFindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 				return nil, ErrDB
 			},
 			expectedCandles:    nil,
@@ -117,7 +116,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockRepo := &mockCandleRepository{
-				FindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+				FindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 					// ユースケースが正しいパラメータでリポジトリを呼び出すことを検証
 					if symbol != tc.inputSymbol || interval != tc.expectedInterval || outputsize != tc.expectedOutputsize {
 						t.Errorf("Find called with unexpected params: got symbol=%s, interval=%s, outputsize=%d, want symbol=%s, interval=%s, outputsize=%d",
@@ -126,7 +125,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 					return tc.mockFindFunc(ctx, symbol, interval, outputsize)
 				},
 			}
-			uc := usecase.NewCandlesUsecase(mockRepo)
+			uc := candles.NewCandlesUsecase(mockRepo)
 
 			candles, err := uc.GetCandles(ctx, tc.inputSymbol, tc.inputInterval, tc.inputOutputsize)
 

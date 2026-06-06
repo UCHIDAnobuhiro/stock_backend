@@ -15,9 +15,8 @@ import (
 	authadapters "stock_backend/internal/feature/auth/adapters"
 	authhandler "stock_backend/internal/feature/auth/transport/handler"
 	authusecase "stock_backend/internal/feature/auth/usecase"
-	candlesadapters "stock_backend/internal/feature/candles/adapters"
-	candleshandler "stock_backend/internal/feature/candles/transport/handler"
-	candlesusecase "stock_backend/internal/feature/candles/usecase"
+	"stock_backend/internal/feature/candles"
+	candleshttp "stock_backend/internal/feature/candles/transport"
 	logogemini "stock_backend/internal/feature/logodetection/adapters/gemini"
 	logovision "stock_backend/internal/feature/logodetection/adapters/vision"
 	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
@@ -197,11 +196,11 @@ func run() int {
 	// 全 feature が sqlc 化済み。
 	userRepo := authadapters.NewUserRepository(sqlDB)
 	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
-	candleRepo := candlesadapters.NewCandleRepository(sqlDB)
+	candleRepo := candles.NewCandleRepository(sqlDB)
 	watchlistRepo := watchlist.NewWatchlistRepository(sqlDB)
 
 	// Redisキャッシュでラップ（TTLはingest連続失敗時のセーフティネット、通常は日次ingestで上書き）
-	cachedCandleRepo := candlesadapters.NewCachingCandleRepository(rdb, candlesadapters.DefaultCacheTTL, candleRepo, "candles")
+	cachedCandleRepo := candles.NewCachingCandleRepository(rdb, candles.DefaultCacheTTL, candleRepo, "candles")
 
 	// JWTジェネレータ
 	jwtGen := jwtmw.NewGenerator(cfg.jwtSecret, 1*time.Hour)
@@ -230,7 +229,7 @@ func run() int {
 	// ユースケース
 	authUC := authusecase.NewAuthUsecase(userRepo, jwtGen, cfg.passwordPepper)
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
-	candlesUC := candlesusecase.NewCandlesUsecase(cachedCandleRepo)
+	candlesUC := candles.NewCandlesUsecase(cachedCandleRepo)
 	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
 	watchlistUC := watchlist.NewWatchlistUsecase(watchlistRepo, symbolRepo)
 
@@ -273,7 +272,7 @@ func run() int {
 	// ハンドラー
 	authH := authhandler.NewAuthHandler(authUC, rateLimiter, cfg.secureCookie, watchlistUC)
 	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
-	candlesH := candleshandler.NewCandlesHandler(candlesUC)
+	candlesH := candleshttp.NewCandlesHandler(candlesUC)
 	logoH := logohandler.NewLogoDetectionHandler(logoUC)
 	watchlistH := watchlisthttp.NewWatchlistHandler(watchlistUC)
 

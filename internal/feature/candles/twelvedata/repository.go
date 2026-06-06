@@ -13,8 +13,7 @@ import (
 	"strconv"
 	"time"
 
-	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/feature/candles/usecase"
+	"stock_backend/internal/feature/candles"
 )
 
 // TwelveDataMarket はTwelve Data外部APIから株価データを取得するMarketRepository実装です。
@@ -24,7 +23,7 @@ type TwelveDataMarket struct {
 }
 
 // TwelveDataMarketがMarketRepositoryを実装していることをコンパイル時に検証します。
-var _ usecase.MarketRepository = (*TwelveDataMarket)(nil)
+var _ candles.MarketRepository = (*TwelveDataMarket)(nil)
 
 // NewTwelveDataMarket は指定された設定とHTTPクライアントでTwelveDataMarketの新しいインスタンスを生成します。
 func NewTwelveDataMarket(cfg Config, client *http.Client) *TwelveDataMarket {
@@ -34,7 +33,7 @@ func NewTwelveDataMarket(cfg Config, client *http.Client) *TwelveDataMarket {
 // GetTimeSeries はTwelve Data APIから時系列株価データを取得し、
 // domain.Candleのスライスとして返します。
 // loc は外部 API レスポンスの datetime（取引所ローカル時刻）を解釈するロケーションです。
-func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]entity.Candle, error) {
+func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval string, outputsize int, loc *time.Location) ([]candles.Candle, error) {
 	if loc == nil {
 		return nil, fmt.Errorf("twelvedata: loc must not be nil")
 	}
@@ -67,7 +66,7 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 		return nil, fmt.Errorf("twelvedata: %s", body.Message)
 	}
 
-	candles := make([]entity.Candle, 0, len(body.Values))
+	result := make([]candles.Candle, 0, len(body.Values))
 	for _, v := range body.Values {
 
 		// タイムスタンプを取引所ローカル時刻として解釈
@@ -105,7 +104,7 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 		}
 
 		// ドメインエンティティに変換
-		candles = append(candles, entity.Candle{
+		result = append(result, candles.Candle{
 			Time:   tm,
 			Open:   o,
 			High:   h,
@@ -114,7 +113,7 @@ func (t *TwelveDataMarket) GetTimeSeries(ctx context.Context, symbol, interval s
 			Volume: vol64,
 		})
 	}
-	return candles, nil
+	return result, nil
 }
 
 // doRequestWithRetry は指定された HTTP リクエストを実行し、

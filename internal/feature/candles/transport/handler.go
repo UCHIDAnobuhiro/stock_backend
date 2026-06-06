@@ -1,5 +1,4 @@
-// Package handler はcandlesフィーチャーのHTTPハンドラーを提供します。
-package handler
+package candleshttp
 
 import (
 	"context"
@@ -9,13 +8,13 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"stock_backend/internal/api"
-	"stock_backend/internal/feature/candles/domain/entity"
+	"stock_backend/internal/feature/candles"
 )
 
 // CandlesUsecase はローソク足データ操作のユースケースインターフェースを定義します。
 // Goの慣例に従い、インターフェースは利用者（handler）側で定義します。
 type CandlesUsecase interface {
-	GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+	GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error)
 }
 
 // CandlesHandler はローソク足データのHTTPリクエストを処理します。

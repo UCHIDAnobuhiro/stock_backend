@@ -1,5 +1,4 @@
-// Package adapters はcandlesフィーチャーのリポジトリ実装を提供します。
-package adapters
+package candles
 
 import (
 	"context"
@@ -7,9 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"stock_backend/internal/feature/candles/adapters/sqlc"
-	"stock_backend/internal/feature/candles/domain/entity"
-	"stock_backend/internal/feature/candles/usecase"
+	"stock_backend/internal/feature/candles/sqlc"
 )
 
 // candleDBRepository は CandleRepository / CandleWriteRepository の sqlc + 生 SQL 実装です。
@@ -21,7 +18,7 @@ type candleDBRepository struct {
 	q  *candlessqlc.Queries
 }
 
-var _ usecase.CandleRepository = (*candleDBRepository)(nil)
+var _ CandleRepository = (*candleDBRepository)(nil)
 
 // NewCandleRepository は指定された *sql.DB で candleDBRepository の新しいインスタンスを生成します。
 func NewCandleRepository(db *sql.DB) *candleDBRepository {
@@ -39,7 +36,7 @@ SET open = EXCLUDED.open,
 // UpsertBatch はローソク足データをバッチで挿入または更新します。
 // (symbol_code, interval, time) の複合 UNIQUE をキーに ON CONFLICT DO UPDATE で
 // OHLCV を上書きします。1 ステートメントで全件処理するため round-trip は 1 回です。
-func (r *candleDBRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
+func (r *candleDBRepository) UpsertBatch(ctx context.Context, candles []Candle) error {
 	if len(candles) == 0 {
 		return nil
 	}
@@ -69,7 +66,7 @@ func (r *candleDBRepository) UpsertBatch(ctx context.Context, candles []entity.C
 
 // Find は指定された銘柄とインターバルのローソク足データを取得します。
 // 結果は時間の降順でソートされ、outputsize > 0 のときのみ件数で制限されます。
-func (r *candleDBRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+func (r *candleDBRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 	if outputsize > 0 {
 		rows, err := r.q.FindCandlesLimit(ctx, candlessqlc.FindCandlesLimitParams{
 			SymbolCode: symbol,
@@ -79,9 +76,9 @@ func (r *candleDBRepository) Find(ctx context.Context, symbol, interval string, 
 		if err != nil {
 			return nil, err
 		}
-		out := make([]entity.Candle, 0, len(rows))
+		out := make([]Candle, 0, len(rows))
 		for _, row := range rows {
-			out = append(out, entity.Candle{
+			out = append(out, Candle{
 				SymbolCode: row.SymbolCode,
 				Interval:   row.Interval,
 				Time:       row.Time,
@@ -101,9 +98,9 @@ func (r *candleDBRepository) Find(ctx context.Context, symbol, interval string, 
 	if err != nil {
 		return nil, err
 	}
-	out := make([]entity.Candle, 0, len(rows))
+	out := make([]Candle, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, entity.Candle{
+		out = append(out, Candle{
 			SymbolCode: row.SymbolCode,
 			Interval:   row.Interval,
 			Time:       row.Time,

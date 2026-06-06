@@ -1,31 +1,29 @@
-package usecase
+package candles
 
 import (
 	"fmt"
 	"sort"
 	"time"
-
-	"stock_backend/internal/feature/candles/domain/entity"
 )
 
 // aggregateWeekly はISO週ごとに日足ローソク足を集計して週足を生成します。
 // 入力は任意の順序でよく、出力は時刻昇順で返されます。
 // loc は週境界の判定および代表タイムスタンプ生成に使う取引所ローカルのロケーションです。
-func aggregateWeekly(daily []entity.Candle, loc *time.Location) []entity.Candle {
+func aggregateWeekly(daily []Candle, loc *time.Location) []Candle {
 	return aggregate(daily, weekKeyFn(loc), weekStartFn(loc))
 }
 
 // aggregateMonthly は月ごとに日足ローソク足を集計して月足を生成します。
 // 入力は任意の順序でよく、出力は時刻昇順で返されます。
 // loc は月境界の判定および代表タイムスタンプ生成に使う取引所ローカルのロケーションです。
-func aggregateMonthly(daily []entity.Candle, loc *time.Location) []entity.Candle {
+func aggregateMonthly(daily []Candle, loc *time.Location) []Candle {
 	return aggregate(daily, monthKeyFn(loc), monthStartFn(loc))
 }
 
 // trimIncompleteFirstBucket は最古の日足がバケット開始日でない場合、最初の集計バケットを除外します。
 // 取得データの先頭が週・月の途中から始まる場合に、不完全なバケットで既存の完全なレコードを
 // 上書きすることを防ぎます。isBucketStart は与えられた時刻がバケット（週・月）の開始日かどうかを返します。
-func trimIncompleteFirstBucket(result []entity.Candle, daily []entity.Candle, isBucketStart func(time.Time) bool) []entity.Candle {
+func trimIncompleteFirstBucket(result []Candle, daily []Candle, isBucketStart func(time.Time) bool) []Candle {
 	if len(result) == 0 || len(daily) == 0 {
 		return result
 	}
@@ -44,16 +42,16 @@ func trimIncompleteFirstBucket(result []entity.Candle, daily []entity.Candle, is
 // aggregate は日足スライスを keyFn で定義したバケットに集計します。
 // startFn はバケットの代表タイムスタンプ（週月の開始日）を返します。
 func aggregate(
-	daily []entity.Candle,
+	daily []Candle,
 	keyFn func(time.Time) string,
 	startFn func(time.Time) time.Time,
-) []entity.Candle {
+) []Candle {
 	if len(daily) == 0 {
 		return nil
 	}
 
 	// APIは最新順で返すため時刻昇順にソート（Open=初日, Close=末日 を正しく取るため）
-	sorted := make([]entity.Candle, len(daily))
+	sorted := make([]Candle, len(daily))
 	copy(sorted, daily)
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].Time.Before(sorted[j].Time)
@@ -97,10 +95,10 @@ func aggregate(
 		}
 	}
 
-	out := make([]entity.Candle, 0, len(keyOrder))
+	out := make([]Candle, 0, len(keyOrder))
 	for _, k := range keyOrder {
 		b := buckets[k]
-		out = append(out, entity.Candle{
+		out = append(out, Candle{
 			// SymbolCode と Interval は呼び出し元（ingestOne）でセットする
 			Time:   b.time,
 			Open:   b.open,

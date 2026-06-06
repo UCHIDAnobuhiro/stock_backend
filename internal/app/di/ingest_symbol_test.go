@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	candlesusecase "stock_backend/internal/feature/candles/usecase"
+	"stock_backend/internal/feature/candles"
 	"stock_backend/internal/feature/symbollist/domain/entity"
 )
 
@@ -33,7 +33,7 @@ func TestIngestSymbolAdapter_ListActiveSymbols(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	want := []candlesusecase.ActiveSymbol{
+	want := []candles.ActiveSymbol{
 		{Code: "AAPL", Timezone: "America/New_York"},
 		{Code: "7203.T", Timezone: "Asia/Tokyo"},
 	}

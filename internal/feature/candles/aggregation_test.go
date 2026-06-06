@@ -1,10 +1,8 @@
-package usecase
+package candles
 
 import (
 	"testing"
 	"time"
-
-	"stock_backend/internal/feature/candles/domain/entity"
 )
 
 func mustDate(year int, month time.Month, day int) time.Time {
@@ -14,43 +12,43 @@ func mustDate(year int, month time.Month, day int) time.Time {
 func TestAggregateWeekly(t *testing.T) {
 	testCases := []struct {
 		name     string
-		input    []entity.Candle
-		expected []entity.Candle
+		input    []Candle
+		expected []Candle
 	}{
 		{
 			name:     "empty input returns nil",
-			input:    []entity.Candle{},
+			input:    []Candle{},
 			expected: nil,
 		},
 		{
 			name: "single candle: correct week start and OHLCV",
 			// 2023-06-15 は木曜日 → 週開始は 2023-06-12（月曜）
-			input: []entity.Candle{
+			input: []Candle{
 				{Time: mustDate(2023, 6, 15), Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 			},
-			expected: []entity.Candle{
+			expected: []Candle{
 				{Time: mustDate(2023, 6, 12), Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 			},
 		},
 		{
 			name: "Sunday maps to preceding Monday",
 			// 2023-06-18 は日曜 → ISO week 開始は 2023-06-12（月曜）
-			input: []entity.Candle{
+			input: []Candle{
 				{Time: mustDate(2023, 6, 18), Open: 200, High: 220, Low: 190, Close: 210, Volume: 500},
 			},
-			expected: []entity.Candle{
+			expected: []Candle{
 				{Time: mustDate(2023, 6, 12), Open: 200, High: 220, Low: 190, Close: 210, Volume: 500},
 			},
 		},
 		{
 			name: "multiple candles in same week aggregate correctly",
 			// 2023-06-12（月）〜 2023-06-14（水）は同一週
-			input: []entity.Candle{
+			input: []Candle{
 				{Time: mustDate(2023, 6, 12), Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 				{Time: mustDate(2023, 6, 13), Open: 105, High: 115, Low: 95, Close: 112, Volume: 1200},
 				{Time: mustDate(2023, 6, 14), Open: 112, High: 108, Low: 88, Close: 100, Volume: 900},
 			},
-			expected: []entity.Candle{
+			expected: []Candle{
 				{
 					Time:   mustDate(2023, 6, 12),
 					Open:   100,  // 最初の日
@@ -64,11 +62,11 @@ func TestAggregateWeekly(t *testing.T) {
 		{
 			name: "candles spanning two weeks produce two results in chronological order",
 			// 2023-06-09（金）: ISO W23 / 2023-06-12（月）: ISO W24
-			input: []entity.Candle{
+			input: []Candle{
 				{Time: mustDate(2023, 6, 12), Open: 200, High: 210, Low: 195, Close: 205, Volume: 2000},
 				{Time: mustDate(2023, 6, 9), Open: 100, High: 115, Low: 95, Close: 110, Volume: 1000},
 			},
-			expected: []entity.Candle{
+			expected: []Candle{
 				{Time: mustDate(2023, 6, 5), Open: 100, High: 115, Low: 95, Close: 110, Volume: 1000},   // W23 開始
 				{Time: mustDate(2023, 6, 12), Open: 200, High: 210, Low: 195, Close: 205, Volume: 2000}, // W24 開始
 			},
@@ -76,12 +74,12 @@ func TestAggregateWeekly(t *testing.T) {
 		{
 			name: "newest-first input still produces correct aggregation",
 			// 入力が最新順（APIのデフォルト）でも正しく集計される
-			input: []entity.Candle{
+			input: []Candle{
 				{Time: mustDate(2023, 6, 14), Open: 112, High: 108, Low: 88, Close: 100, Volume: 900},
 				{Time: mustDate(2023, 6, 13), Open: 105, High: 115, Low: 95, Close: 112, Volume: 1200},
 				{Time: mustDate(2023, 6, 12), Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 			},
-			expected: []entity.Candle{
+			expected: []Candle{
 				{
 					Time:   mustDate(2023, 6, 12),
 					Open:   100, // 昇順で最初の日（2023-06-12）の Open
@@ -95,11 +93,11 @@ func TestAggregateWeekly(t *testing.T) {
 		{
 			name: "year-boundary ISO week: 2023-01-01 is in ISO week 2022-W52",
 			// 2023-01-01（日）と 2022-12-31（土）は ISO 2022-W52
-			input: []entity.Candle{
+			input: []Candle{
 				{Time: mustDate(2023, 1, 1), Open: 100, High: 110, Low: 90, Close: 105, Volume: 500},
 				{Time: mustDate(2022, 12, 31), Open: 95, High: 105, Low: 85, Close: 100, Volume: 600},
 			},
-			expected: []entity.Candle{
+			expected: []Candle{
 				{
 					Time:   mustDate(2022, 12, 26), // ISO 2022-W52 の月曜
 					Open:   95,
@@ -123,31 +121,31 @@ func TestAggregateWeekly(t *testing.T) {
 func TestAggregateMonthly(t *testing.T) {
 	testCases := []struct {
 		name     string
-		input    []entity.Candle
-		expected []entity.Candle
+		input    []Candle
+		expected []Candle
 	}{
 		{
 			name:     "empty input returns nil",
-			input:    []entity.Candle{},
+			input:    []Candle{},
 			expected: nil,
 		},
 		{
 			name: "single candle: correct month start and OHLCV",
-			input: []entity.Candle{
+			input: []Candle{
 				{Time: mustDate(2023, 6, 15), Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 			},
-			expected: []entity.Candle{
+			expected: []Candle{
 				{Time: mustDate(2023, 6, 1), Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 			},
 		},
 		{
 			name: "multiple candles in same month aggregate correctly",
-			input: []entity.Candle{
+			input: []Candle{
 				{Time: mustDate(2023, 6, 1), Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 				{Time: mustDate(2023, 6, 15), Open: 105, High: 120, Low: 95, Close: 115, Volume: 2000},
 				{Time: mustDate(2023, 6, 30), Open: 115, High: 112, Low: 88, Close: 110, Volume: 1500},
 			},
-			expected: []entity.Candle{
+			expected: []Candle{
 				{
 					Time:   mustDate(2023, 6, 1),
 					Open:   100,
@@ -160,22 +158,22 @@ func TestAggregateMonthly(t *testing.T) {
 		},
 		{
 			name: "candles spanning two months produce two results in chronological order",
-			input: []entity.Candle{
+			input: []Candle{
 				{Time: mustDate(2023, 7, 1), Open: 200, High: 210, Low: 195, Close: 205, Volume: 2000},
 				{Time: mustDate(2023, 6, 30), Open: 100, High: 115, Low: 95, Close: 110, Volume: 1000},
 			},
-			expected: []entity.Candle{
+			expected: []Candle{
 				{Time: mustDate(2023, 6, 1), Open: 100, High: 115, Low: 95, Close: 110, Volume: 1000},
 				{Time: mustDate(2023, 7, 1), Open: 200, High: 210, Low: 195, Close: 205, Volume: 2000},
 			},
 		},
 		{
 			name: "year boundary: December and January produce separate monthly candles",
-			input: []entity.Candle{
+			input: []Candle{
 				{Time: mustDate(2023, 1, 1), Open: 100, High: 110, Low: 90, Close: 105, Volume: 500},
 				{Time: mustDate(2022, 12, 31), Open: 95, High: 105, Low: 85, Close: 100, Volume: 600},
 			},
-			expected: []entity.Candle{
+			expected: []Candle{
 				{Time: mustDate(2022, 12, 1), Open: 95, High: 105, Low: 85, Close: 100, Volume: 600},
 				{Time: mustDate(2023, 1, 1), Open: 100, High: 110, Low: 90, Close: 105, Volume: 500},
 			},
@@ -201,7 +199,7 @@ func TestAggregateMonthly_LocaleBoundary(t *testing.T) {
 	dec31ET := time.Date(2024, 12, 31, 21, 0, 0, 0, ny)
 	jan1ET := time.Date(2025, 1, 1, 9, 30, 0, 0, ny)
 
-	input := []entity.Candle{
+	input := []Candle{
 		{Time: dec31ET, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 		{Time: jan1ET, Open: 105, High: 115, Low: 100, Close: 112, Volume: 2000},
 	}
@@ -236,7 +234,7 @@ func TestAggregateWeekly_LocaleBoundary(t *testing.T) {
 	mon := time.Date(2024, 3, 11, 9, 30, 0, 0, ny) // 月曜
 	wed := time.Date(2024, 3, 13, 9, 30, 0, 0, ny) // 水曜（同週）
 
-	input := []entity.Candle{
+	input := []Candle{
 		{Time: mon, Open: 100, High: 110, Low: 90, Close: 105, Volume: 1000},
 		{Time: wed, Open: 106, High: 120, Low: 95, Close: 115, Volume: 1500},
 	}
@@ -252,7 +250,7 @@ func TestAggregateWeekly_LocaleBoundary(t *testing.T) {
 }
 
 // assertCandlesEqual は2つの Candle スライスを比較します（SymbolCode/Interval は無視）。
-func assertCandlesEqual(t *testing.T, got, want []entity.Candle) {
+func assertCandlesEqual(t *testing.T, got, want []Candle) {
 	t.Helper()
 	if want == nil {
 		if got != nil {

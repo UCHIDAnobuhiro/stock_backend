@@ -1,4 +1,4 @@
-package adapters
+package candles
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-
-	"stock_backend/internal/feature/candles/domain/entity"
 )
 
 // maxCacheOutputSize はキャッシュに保存する最大ローソク足件数です。
@@ -23,8 +21,8 @@ const DefaultCacheTTL = 7 * 24 * time.Hour
 
 // candleRepository はCachingCandleRepositoryが内部で必要とする読み書きインターフェースです。
 type candleRepository interface {
-	Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
-	UpsertBatch(ctx context.Context, candles []entity.Candle) error
+	Find(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error)
+	UpsertBatch(ctx context.Context, candles []Candle) error
 }
 
 // CachingCandleRepository はCandleRepositoryにRedisキャッシュをデコレータパターンで追加します。
@@ -54,7 +52,7 @@ func NewCachingCandleRepository(rdb *redis.Client, ttl time.Duration, inner cand
 }
 
 // UpsertBatch はローソク足データを挿入または更新し、キャッシュを最新データで更新します。
-func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []entity.Candle) error {
+func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []Candle) error {
 	// まず基盤リポジトリにUpsert
 	if err := c.inner.UpsertBatch(ctx, candles); err != nil {
 		return err
@@ -92,7 +90,7 @@ func (c *CachingCandleRepository) UpsertBatch(ctx context.Context, candles []ent
 
 // Find はローソク足データを取得します。まずキャッシュを確認し、なければデータベースにフォールバックします。
 // キャッシュには全データ（最大maxCacheOutputSize件）を保存し、outputsize件にスライスして返します。
-func (c *CachingCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+func (c *CachingCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 	// Redisが未設定の場合はキャッシュをバイパス
 	if c.rdb == nil {
 		return c.inner.Find(ctx, symbol, interval, outputsize)
@@ -102,7 +100,7 @@ func (c *CachingCandleRepository) Find(ctx context.Context, symbol, interval str
 
 	// 1) キャッシュを確認
 	if b, err := c.rdb.Get(ctx, key).Bytes(); err == nil && len(b) > 0 {
-		var all []entity.Candle
+		var all []Candle
 		if err := json.Unmarshal(b, &all); err == nil {
 			return sliceCandles(all, outputsize), nil
 		}
@@ -125,7 +123,7 @@ func (c *CachingCandleRepository) Find(ctx context.Context, symbol, interval str
 }
 
 // sliceCandles は全ローソク足データから先頭 outputsize 件を返します。
-func sliceCandles(all []entity.Candle, outputsize int) []entity.Candle {
+func sliceCandles(all []Candle, outputsize int) []Candle {
 	if outputsize <= 0 || outputsize >= len(all) {
 		return all
 	}

@@ -1,10 +1,7 @@
-// Package usecase はローソク足データ操作のビジネスロジックを実装します。
-package usecase
+package candles
 
 import (
 	"context"
-
-	"stock_backend/internal/feature/candles/domain/entity"
 )
 
 const (
@@ -20,7 +17,7 @@ const (
 // Goの慣例に従い、インターフェースは利用者（usecase）側で定義します。
 type CandleRepository interface {
 	// Find はデータベースからローソク足データを検索します。
-	Find(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error)
+	Find(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error)
 }
 
 // candlesUsecase はローソク足データ操作のユースケースを定義します。
@@ -34,7 +31,7 @@ func NewCandlesUsecase(candle CandleRepository) *candlesUsecase {
 }
 
 // GetCandles は指定された銘柄と時間間隔のローソク足データを取得します。
-func (cu *candlesUsecase) GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]entity.Candle, error) {
+func (cu *candlesUsecase) GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 	if interval == "" {
 		interval = DefaultInterval
 	}
