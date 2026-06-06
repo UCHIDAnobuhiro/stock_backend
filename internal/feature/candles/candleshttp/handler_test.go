@@ -17,12 +17,12 @@ import (
 	"stock_backend/internal/feature/candles/candleshttp"
 )
 
-// mockCandlesUsecase はusecaseインターフェースのモック実装です。
-type mockCandlesUsecase struct {
+// mockUsecase はusecaseインターフェースのモック実装です。
+type mockUsecase struct {
 	GetCandlesFunc func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error)
 }
 
-func (m *mockCandlesUsecase) GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
+func (m *mockUsecase) GetCandles(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 	return m.GetCandlesFunc(ctx, symbol, interval, outputsize)
 }
 
@@ -87,7 +87,7 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// モックusecaseのインスタンスを生成
-			mockUC := &mockCandlesUsecase{
+			mockUC := &mockUsecase{
 				GetCandlesFunc: tt.mockGetCandles,
 			}
 

@@ -13,14 +13,14 @@ import (
 // ErrDB はモックと期待値の間で共有されるセンチネルエラーです。
 var ErrDB = errors.New("database error")
 
-// mockCandleRepository はRepositoryインターフェースのモック実装です。
-type mockCandleRepository struct {
+// mockRepository はRepositoryインターフェースのモック実装です。
+type mockRepository struct {
 	FindFunc  func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error)
 	FindCalls int
 }
 
 // Find はFindFuncが設定されていればそれを呼び出し、呼び出し回数を記録します。
-func (m *mockCandleRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
+func (m *mockRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 	m.FindCalls++
 	if m.FindFunc != nil {
 		return m.FindFunc(ctx, symbol, interval, outputsize)
@@ -115,7 +115,7 @@ func TestCandlesUsecase_GetCandles(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			mockRepo := &mockCandleRepository{
+			mockRepo := &mockRepository{
 				FindFunc: func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 					// ユースケースが正しいパラメータでリポジトリを呼び出すことを検証
 					if symbol != tc.inputSymbol || interval != tc.expectedInterval || outputsize != tc.expectedOutputsize {

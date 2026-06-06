@@ -10,13 +10,13 @@ import (
 	"stock_backend/internal/feature/symbollist"
 )
 
-// mockSymbolRepository はRepositoryインターフェースのモック実装です。
-type mockSymbolRepository struct {
+// mockRepository はRepositoryインターフェースのモック実装です。
+type mockRepository struct {
 	ListActiveFunc func(ctx context.Context) ([]symbollist.Symbol, error)
 }
 
 // ListActive はモックのListActive関数を呼び出します。
-func (m *mockSymbolRepository) ListActive(ctx context.Context) ([]symbollist.Symbol, error) {
+func (m *mockRepository) ListActive(ctx context.Context) ([]symbollist.Symbol, error) {
 	if m.ListActiveFunc != nil {
 		return m.ListActiveFunc(ctx)
 	}
@@ -27,7 +27,7 @@ func (m *mockSymbolRepository) ListActive(ctx context.Context) ([]symbollist.Sym
 func TestNewSymbolUsecase(t *testing.T) {
 	t.Parallel()
 
-	mockRepo := &mockSymbolRepository{}
+	mockRepo := &mockRepository{}
 	uc := symbollist.NewUsecase(mockRepo)
 
 	assert.NotNil(t, uc, "usecase should not be nil")
@@ -101,7 +101,7 @@ func TestSymbolUsecase_ListActiveSymbols(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockRepo := &mockSymbolRepository{
+			mockRepo := &mockRepository{
 				ListActiveFunc: tt.mockListActive,
 			}
 			uc := symbollist.NewUsecase(mockRepo)
@@ -129,7 +129,7 @@ func TestSymbolUsecase_ListActiveSymbols_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel context immediately
 
-	mockRepo := &mockSymbolRepository{
+	mockRepo := &mockRepository{
 		ListActiveFunc: func(ctx context.Context) ([]symbollist.Symbol, error) {
 			return nil, ctx.Err()
 		},

@@ -19,16 +19,16 @@ const maxCacheOutputSize = 5000
 // この値はフォールバックとしてのみ機能する。
 const DefaultCacheTTL = 7 * 24 * time.Hour
 
-// repository はCachingRepositoryが内部で必要とする読み書きインターフェースです。
-type repository interface {
-	Find(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error)
-	UpsertBatch(ctx context.Context, candles []Candle) error
+// readWriteRepository はCachingRepositoryが内部で必要とする読み書きインターフェースです。
+type readWriteRepository interface {
+	Repository      // usecase.go（Find）
+	WriteRepository // ingest.go（UpsertBatch）
 }
 
 // CachingRepository はRepositoryにRedisキャッシュをデコレータパターンで追加します。
 // 基盤となるリポジトリを変更せずに、透過的にキャッシュを追加します。
 type CachingRepository struct {
-	inner     repository
+	inner     readWriteRepository
 	rdb       *redis.Client
 	ttl       time.Duration
 	namespace string
@@ -36,7 +36,7 @@ type CachingRepository struct {
 
 // NewCachingRepository はRepositoryにRedisキャッシュを追加するデコレータを生成します。
 // ttlが0の場合はデフォルト5分、namespaceが空の場合は"candles"を使用します。
-func NewCachingRepository(rdb *redis.Client, ttl time.Duration, inner repository, namespace string) *CachingRepository {
+func NewCachingRepository(rdb *redis.Client, ttl time.Duration, inner readWriteRepository, namespace string) *CachingRepository {
 	if ttl <= 0 {
 		ttl = 5 * time.Minute
 	}
