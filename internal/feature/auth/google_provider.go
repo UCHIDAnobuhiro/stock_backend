@@ -1,5 +1,4 @@
-// Package adapters はauthフィーチャーのリポジトリ実装を提供します。
-package adapters
+package auth
 
 import (
 	"context"
@@ -10,17 +9,15 @@ import (
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-
-	"stock_backend/internal/feature/auth/usecase"
 )
 
-// GoogleProvider はusecase.OAuthProviderインターフェースのGoogle実装です。
+// GoogleProvider はOAuthProviderインターフェースのGoogle実装です。
 type GoogleProvider struct {
 	cfg *oauth2.Config
 	hc  *http.Client
 }
 
-var _ usecase.OAuthProvider = (*GoogleProvider)(nil)
+var _ OAuthProvider = (*GoogleProvider)(nil)
 
 // NewGoogleProvider はGoogleProvider の新しいインスタンスを生成します。
 func NewGoogleProvider(clientID, clientSecret, redirectURL string, hc *http.Client) *GoogleProvider {
@@ -48,7 +45,7 @@ func (p *GoogleProvider) AuthorizationURL(state, codeChallenge string) string {
 
 // ExchangeCode はauthorization codeをユーザー情報に交換します。
 // Googleの /oauth2/v3/userinfo エンドポイントでメールアドレスを取得します。
-func (p *GoogleProvider) ExchangeCode(ctx context.Context, code, codeVerifier string) (*usecase.OAuthUserInfo, error) {
+func (p *GoogleProvider) ExchangeCode(ctx context.Context, code, codeVerifier string) (*OAuthUserInfo, error) {
 	tok, err := p.cfg.Exchange(ctx, code,
 		oauth2.SetAuthURLParam("code_verifier", codeVerifier),
 	)
@@ -87,8 +84,8 @@ func (p *GoogleProvider) ExchangeCode(ctx context.Context, code, codeVerifier st
 		return nil, fmt.Errorf("google: failed to parse userinfo: %w", err)
 	}
 	if !info.EmailVerified || info.Email == "" {
-		return nil, usecase.ErrOAuthEmailUnavailable
+		return nil, ErrOAuthEmailUnavailable
 	}
 
-	return &usecase.OAuthUserInfo{ProviderUID: info.Sub, Email: info.Email}, nil
+	return &OAuthUserInfo{ProviderUID: info.Sub, Email: info.Email}, nil
 }

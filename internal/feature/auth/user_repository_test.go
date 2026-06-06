@@ -1,4 +1,4 @@
-package adapters
+package auth
 
 import (
 	"context"
@@ -10,8 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"stock_backend/internal/feature/auth/domain/entity"
-	"stock_backend/internal/feature/auth/usecase"
 	"stock_backend/internal/platform/db/dbtest"
 )
 
@@ -31,10 +29,10 @@ func setupTestDB(t *testing.T) *sql.DB {
 }
 
 // seedUser はテスト用のユーザーをデータベースに作成します。
-func seedUser(t *testing.T, db *sql.DB, email, password string) *entity.User {
+func seedUser(t *testing.T, db *sql.DB, email, password string) *User {
 	t.Helper()
 	repo := NewUserRepository(db)
-	user := &entity.User{
+	user := &User{
 		Email:    email,
 		Password: &password,
 	}
@@ -58,20 +56,20 @@ func TestUserRepository_Create(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		user         *entity.User
+		user         *User
 		wantErr      bool
 		expectedErr  error
 		setupFunc    func(t *testing.T, db *sql.DB)
-		validateFunc func(t *testing.T, user *entity.User)
+		validateFunc func(t *testing.T, user *User)
 	}{
 		{
 			name: "success: user creation",
-			user: &entity.User{
+			user: &User{
 				Email:    "test@example.com",
 				Password: ptrStr("hashed_password"),
 			},
 			wantErr: false,
-			validateFunc: func(t *testing.T, user *entity.User) {
+			validateFunc: func(t *testing.T, user *User) {
 				assert.NotZero(t, user.ID, "ID is not set")
 				assert.False(t, user.CreatedAt.IsZero(), "CreatedAt is not set")
 				assert.False(t, user.UpdatedAt.IsZero(), "UpdatedAt is not set")
@@ -79,12 +77,12 @@ func TestUserRepository_Create(t *testing.T) {
 		},
 		{
 			name: "failure: duplicate email returns ErrEmailAlreadyExists",
-			user: &entity.User{
+			user: &User{
 				Email:    "duplicate@example.com",
 				Password: ptrStr("password2"),
 			},
 			wantErr:     true,
-			expectedErr: usecase.ErrEmailAlreadyExists,
+			expectedErr: ErrEmailAlreadyExists,
 			setupFunc: func(t *testing.T, db *sql.DB) {
 				seedUser(t, db, "duplicate@example.com", "password1")
 			},
@@ -128,17 +126,17 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 		email        string
 		wantErr      bool
 		expectedErr  error
-		setupFunc    func(t *testing.T, db *sql.DB) *entity.User
-		validateFunc func(t *testing.T, expected, found *entity.User)
+		setupFunc    func(t *testing.T, db *sql.DB) *User
+		validateFunc func(t *testing.T, expected, found *User)
 	}{
 		{
 			name:    "success: find user by email",
 			email:   "find@example.com",
 			wantErr: false,
-			setupFunc: func(t *testing.T, db *sql.DB) *entity.User {
+			setupFunc: func(t *testing.T, db *sql.DB) *User {
 				return seedUser(t, db, "find@example.com", "hashed_password")
 			},
-			validateFunc: func(t *testing.T, expected, found *entity.User) {
+			validateFunc: func(t *testing.T, expected, found *User) {
 				assert.NotNil(t, found, "user is nil")
 				assert.Equal(t, expected.ID, found.ID)
 				assert.Equal(t, expected.Email, found.Email)
@@ -149,25 +147,25 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 			name:        "failure: user not found",
 			email:       "notfound@example.com",
 			wantErr:     true,
-			expectedErr: usecase.ErrUserNotFound,
+			expectedErr: ErrUserNotFound,
 		},
 		{
 			name:        "failure: empty email",
 			email:       "",
 			wantErr:     true,
-			expectedErr: usecase.ErrUserNotFound,
+			expectedErr: ErrUserNotFound,
 		},
 		{
 			name:    "success: find correct user when multiple users exist",
 			email:   "user2@example.com",
 			wantErr: false,
-			setupFunc: func(t *testing.T, db *sql.DB) *entity.User {
+			setupFunc: func(t *testing.T, db *sql.DB) *User {
 				seedUser(t, db, "user1@example.com", "pass1")
 				user2 := seedUser(t, db, "user2@example.com", "pass2")
 				seedUser(t, db, "user3@example.com", "pass3")
 				return user2
 			},
-			validateFunc: func(t *testing.T, expected, found *entity.User) {
+			validateFunc: func(t *testing.T, expected, found *User) {
 				assert.NotNil(t, found, "user is nil")
 				assert.Equal(t, expected.ID, found.ID)
 				assert.Equal(t, "user2@example.com", found.Email)
@@ -181,7 +179,7 @@ func TestUserRepository_FindByEmail(t *testing.T) {
 			t.Parallel()
 			db := setupTestDB(t)
 			repo := NewUserRepository(db)
-			var expected *entity.User
+			var expected *User
 			if tt.setupFunc != nil {
 				expected = tt.setupFunc(t, db)
 			}
@@ -210,16 +208,16 @@ func TestUserRepository_FindByID(t *testing.T) {
 		userID       int64
 		wantErr      bool
 		expectedErr  error
-		setupFunc    func(t *testing.T, db *sql.DB) *entity.User
-		validateFunc func(t *testing.T, expected, found *entity.User)
+		setupFunc    func(t *testing.T, db *sql.DB) *User
+		validateFunc func(t *testing.T, expected, found *User)
 	}{
 		{
 			name:    "success: find user by ID",
 			wantErr: false,
-			setupFunc: func(t *testing.T, db *sql.DB) *entity.User {
+			setupFunc: func(t *testing.T, db *sql.DB) *User {
 				return seedUser(t, db, "findbyid@example.com", "hashed_password")
 			},
-			validateFunc: func(t *testing.T, expected, found *entity.User) {
+			validateFunc: func(t *testing.T, expected, found *User) {
 				assert.NotNil(t, found, "user is nil")
 				assert.Equal(t, expected.ID, found.ID)
 				assert.Equal(t, expected.Email, found.Email)
@@ -230,24 +228,24 @@ func TestUserRepository_FindByID(t *testing.T) {
 			name:        "failure: user not found",
 			userID:      999,
 			wantErr:     true,
-			expectedErr: usecase.ErrUserNotFound,
+			expectedErr: ErrUserNotFound,
 		},
 		{
 			name:        "failure: ID 0",
 			userID:      0,
 			wantErr:     true,
-			expectedErr: usecase.ErrUserNotFound,
+			expectedErr: ErrUserNotFound,
 		},
 		{
 			name:    "success: find correct user when multiple users exist",
 			wantErr: false,
-			setupFunc: func(t *testing.T, db *sql.DB) *entity.User {
+			setupFunc: func(t *testing.T, db *sql.DB) *User {
 				seedUser(t, db, "user1@example.com", "pass1")
 				user2 := seedUser(t, db, "user2@example.com", "pass2")
 				seedUser(t, db, "user3@example.com", "pass3")
 				return user2
 			},
-			validateFunc: func(t *testing.T, expected, found *entity.User) {
+			validateFunc: func(t *testing.T, expected, found *User) {
 				assert.NotNil(t, found, "user is nil")
 				assert.Equal(t, expected.ID, found.ID)
 				assert.Equal(t, "user2@example.com", found.Email)
@@ -261,7 +259,7 @@ func TestUserRepository_FindByID(t *testing.T) {
 			t.Parallel()
 			db := setupTestDB(t)
 			repo := NewUserRepository(db)
-			var expected *entity.User
+			var expected *User
 			var targetID int64
 			if tt.setupFunc != nil {
 				expected = tt.setupFunc(t, db)
@@ -291,7 +289,7 @@ func TestUserRepository_Timestamps(t *testing.T) {
 	db := setupTestDB(t)
 	repo := NewUserRepository(db)
 
-	user := &entity.User{
+	user := &User{
 		Email:    "timestamp@example.com",
 		Password: ptrStr("password"),
 	}
@@ -318,8 +316,8 @@ func TestUserRepository_CreateUserWithOAuthAccount(t *testing.T) {
 		db := setupTestDB(t)
 		repo := NewUserRepository(db)
 
-		user := &entity.User{Email: "oauth-new@example.com"}
-		acct := &entity.OAuthAccount{Provider: "google", ProviderUID: "sub-123"}
+		user := &User{Email: "oauth-new@example.com"}
+		acct := &OAuthAccount{Provider: "google", ProviderUID: "sub-123"}
 		err := repo.CreateUserWithOAuthAccount(context.Background(), user, acct)
 		require.NoError(t, err)
 		assert.NotZero(t, user.ID)
@@ -333,10 +331,10 @@ func TestUserRepository_CreateUserWithOAuthAccount(t *testing.T) {
 		repo := NewUserRepository(db)
 
 		seedUser(t, db, "dup-oauth@example.com", "p")
-		user := &entity.User{Email: "dup-oauth@example.com"}
-		acct := &entity.OAuthAccount{Provider: "google", ProviderUID: "sub-xyz"}
+		user := &User{Email: "dup-oauth@example.com"}
+		acct := &OAuthAccount{Provider: "google", ProviderUID: "sub-xyz"}
 		err := repo.CreateUserWithOAuthAccount(context.Background(), user, acct)
-		assert.ErrorIs(t, err, usecase.ErrEmailAlreadyExists)
+		assert.ErrorIs(t, err, ErrEmailAlreadyExists)
 		assert.Zero(t, user.ID, "user should not be persisted")
 		assert.Zero(t, acct.ID, "account should not be persisted")
 	})

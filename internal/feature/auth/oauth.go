@@ -1,5 +1,4 @@
-// Package usecase はauthフィーチャーのビジネスロジックを実装します。
-package usecase
+package auth
 
 import (
 	"context"
@@ -10,8 +9,6 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
-
-	"stock_backend/internal/feature/auth/domain/entity"
 )
 
 const oauthStateTTL = 10 * time.Minute
@@ -135,7 +132,7 @@ func (uc *oauthUsecase) findOrCreateUser(ctx context.Context, providerName strin
 
 	if user != nil {
 		// 自動リンク: 既存ユーザーにOAuthAccountを紐付け
-		if linkErr := uc.oauthAccts.Create(ctx, &entity.OAuthAccount{
+		if linkErr := uc.oauthAccts.Create(ctx, &OAuthAccount{
 			UserID:      user.ID,
 			Provider:    providerName,
 			ProviderUID: info.ProviderUID,
@@ -148,8 +145,8 @@ func (uc *oauthUsecase) findOrCreateUser(ctx context.Context, providerName strin
 	// 新規ユーザー作成（OAuth専用: Password = nil）
 	// UserとOAuthAccountをトランザクション内で原子的に作成し、
 	// 片方だけ残る不整合を防ぐ。
-	newUser := &entity.User{Email: info.Email}
-	if err := uc.creator.CreateUserWithOAuthAccount(ctx, newUser, &entity.OAuthAccount{
+	newUser := &User{Email: info.Email}
+	if err := uc.creator.CreateUserWithOAuthAccount(ctx, newUser, &OAuthAccount{
 		Provider:    providerName,
 		ProviderUID: info.ProviderUID,
 	}); err != nil {

@@ -1,4 +1,4 @@
-package usecase_test
+package auth_test
 
 import (
 	"context"
@@ -10,8 +10,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"stock_backend/internal/feature/auth/domain/entity"
-	"stock_backend/internal/feature/auth/usecase"
+	"stock_backend/internal/feature/auth"
 )
 
 const testPepper = "test-pepper-secret-32chars-long!"
@@ -30,11 +29,11 @@ func pepperPasswordForTest(password, pepper string) string {
 // テスト中のデータベース操作をシミュレートします。
 type mockUserRepository struct {
 	// CreateFunc はCreateメソッド呼び出し時に実行されます。
-	CreateFunc func(ctx context.Context, user *entity.User) error
+	CreateFunc func(ctx context.Context, user *auth.User) error
 	// FindByEmailFunc はFindByEmailメソッド呼び出し時に実行されます。
-	FindByEmailFunc func(ctx context.Context, email string) (*entity.User, error)
+	FindByEmailFunc func(ctx context.Context, email string) (*auth.User, error)
 	// FindByIDFunc はFindByIDメソッド呼び出し時に実行されます。
-	FindByIDFunc func(ctx context.Context, id int64) (*entity.User, error)
+	FindByIDFunc func(ctx context.Context, id int64) (*auth.User, error)
 }
 
 // mockJWTGenerator はJWTGeneratorインターフェースのモック実装です。
@@ -54,7 +53,7 @@ func (m *mockJWTGenerator) GenerateToken(userID int64, email string) (string, er
 }
 
 // Create はCreateメソッドのモック実装です。
-func (m *mockUserRepository) Create(ctx context.Context, user *entity.User) error {
+func (m *mockUserRepository) Create(ctx context.Context, user *auth.User) error {
 	if m.CreateFunc != nil {
 		return m.CreateFunc(ctx, user)
 	}
@@ -62,7 +61,7 @@ func (m *mockUserRepository) Create(ctx context.Context, user *entity.User) erro
 }
 
 // FindByEmail はFindByEmailメソッドのモック実装です。
-func (m *mockUserRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
+func (m *mockUserRepository) FindByEmail(ctx context.Context, email string) (*auth.User, error) {
 	if m.FindByEmailFunc != nil {
 		return m.FindByEmailFunc(ctx, email)
 	}
@@ -71,7 +70,7 @@ func (m *mockUserRepository) FindByEmail(ctx context.Context, email string) (*en
 }
 
 // FindByID はFindByIDメソッドのモック実装です。
-func (m *mockUserRepository) FindByID(ctx context.Context, id int64) (*entity.User, error) {
+func (m *mockUserRepository) FindByID(ctx context.Context, id int64) (*auth.User, error) {
 	if m.FindByIDFunc != nil {
 		return m.FindByIDFunc(ctx, id)
 	}
@@ -81,7 +80,7 @@ func (m *mockUserRepository) FindByID(ctx context.Context, id int64) (*entity.Us
 
 // createTestUser はテスト用にハッシュ化パスワードを持つテストユーザーを作成します。
 // このヘルパーはコードの重複を削減し、テストの保守性を向上させます。
-func createTestUser(t *testing.T, id int64, email, password string) *entity.User {
+func createTestUser(t *testing.T, id int64, email, password string) *auth.User {
 	t.Helper()
 	pepperedPassword := pepperPasswordForTest(password, testPepper)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(pepperedPassword), bcrypt.MinCost)
@@ -89,7 +88,7 @@ func createTestUser(t *testing.T, id int64, email, password string) *entity.User
 		t.Fatalf("failed to hash password: %v", err)
 	}
 	hashedStr := string(hashedPassword)
-	return &entity.User{
+	return &auth.User{
 		ID:       id,
 		Email:    email,
 		Password: &hashedStr,
@@ -189,7 +188,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			t.Parallel() // サブテストの並列実行を有効化
 
 			mockRepo := &mockUserRepository{
-				CreateFunc: func(ctx context.Context, user *entity.User) error {
+				CreateFunc: func(ctx context.Context, user *auth.User) error {
 					if tt.verifyBcryptHash {
 						verifyBcryptHash(t, *user.Password, tt.password)
 					}
@@ -201,7 +200,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			}
 			mockJWT := &mockJWTGenerator{}
 
-			uc := usecase.NewAuthUsecase(mockRepo, mockJWT, testPepper)
+			uc := auth.NewAuthUsecase(mockRepo, mockJWT, testPepper)
 			_, err := uc.Signup(context.Background(), tt.email, tt.password)
 
 			// Assert error expectations
@@ -226,7 +225,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 		wantErr           bool
 		errMsg            string
 		expectedToken     string
-		findByEmailResult *entity.User
+		findByEmailResult *auth.User
 		findByEmailErr    error
 		jwtGenerateErr    error
 		verifyJWTParams   bool
@@ -280,7 +279,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 			t.Parallel() // サブテストの並列実行を有効化
 
 			mockRepo := &mockUserRepository{
-				FindByEmailFunc: func(ctx context.Context, email string) (*entity.User, error) {
+				FindByEmailFunc: func(ctx context.Context, email string) (*auth.User, error) {
 					if tt.findByEmailErr != nil {
 						return nil, tt.findByEmailErr
 					}
@@ -301,7 +300,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 				},
 			}
 
-			uc := usecase.NewAuthUsecase(mockRepo, mockJWT, testPepper)
+			uc := auth.NewAuthUsecase(mockRepo, mockJWT, testPepper)
 			token, err := uc.Login(context.Background(), tt.email, tt.password)
 
 			// エラーの期待値を検証
@@ -328,7 +327,7 @@ func TestAuthUsecase_PepperApplied(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := &mockUserRepository{
-			CreateFunc: func(ctx context.Context, user *entity.User) error {
+			CreateFunc: func(ctx context.Context, user *auth.User) error {
 				// 生パスワードではハッシュが一致しないことを確認
 				err := bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte("password123"))
 				if err == nil {
@@ -344,7 +343,7 @@ func TestAuthUsecase_PepperApplied(t *testing.T) {
 		}
 		mockJWT := &mockJWTGenerator{}
 
-		uc := usecase.NewAuthUsecase(mockRepo, mockJWT, testPepper)
+		uc := auth.NewAuthUsecase(mockRepo, mockJWT, testPepper)
 		_, err := uc.Signup(context.Background(), "test@example.com", "password123")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -359,14 +358,14 @@ func TestAuthUsecase_PepperApplied(t *testing.T) {
 		var storedHash string
 
 		mockRepo := &mockUserRepository{
-			CreateFunc: func(ctx context.Context, user *entity.User) error {
+			CreateFunc: func(ctx context.Context, user *auth.User) error {
 				storedHash = *user.Password
 				return nil
 			},
 		}
 		mockJWT := &mockJWTGenerator{}
 
-		uc := usecase.NewAuthUsecase(mockRepo, mockJWT, testPepper)
+		uc := auth.NewAuthUsecase(mockRepo, mockJWT, testPepper)
 		_, err := uc.Signup(context.Background(), "test@example.com", longPassword)
 		if err != nil {
 			t.Fatalf("unexpected signup error: %v", err)

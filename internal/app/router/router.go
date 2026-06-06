@@ -7,7 +7,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
-	authhandler "stock_backend/internal/feature/auth/transport/handler"
+	authhttp "stock_backend/internal/feature/auth/transport"
 	candleshttp "stock_backend/internal/feature/candles/transport"
 	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
 	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
@@ -22,7 +22,7 @@ import (
 // NewRouter はすべてのアプリケーションルートを設定したGinルーターを生成します。
 // 公開ルート（signup, login）とJWT認証ミドルウェア付きの保護ルート（candles, symbols, logo, watchlist）を設定します。
 // oauthHandler が nil の場合はOAuthルートを登録しません。
-func NewRouter(authHandler *authhandler.AuthHandler, oauthHandler *authhandler.OAuthHandler,
+func NewRouter(authHandler *authhttp.AuthHandler, oauthHandler *authhttp.OAuthHandler,
 	candles *candleshttp.CandlesHandler,
 	symbol *symbollisthandler.SymbolHandler, logo *logohandler.LogoDetectionHandler,
 	watchlist *watchlisthttp.WatchlistHandler,

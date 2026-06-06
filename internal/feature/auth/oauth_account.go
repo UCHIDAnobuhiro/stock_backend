@@ -1,5 +1,4 @@
-// Package entity はauthフィーチャーのドメインエンティティを定義します。
-package entity
+package auth
 
 import "time"
 

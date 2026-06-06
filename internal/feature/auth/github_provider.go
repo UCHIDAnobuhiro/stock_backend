@@ -1,5 +1,4 @@
-// Package adapters はauthフィーチャーのリポジトリ実装を提供します。
-package adapters
+package auth
 
 import (
 	"context"
@@ -10,17 +9,15 @@ import (
 
 	"golang.org/x/oauth2"
 	githuboauth "golang.org/x/oauth2/github"
-
-	"stock_backend/internal/feature/auth/usecase"
 )
 
-// GitHubProvider はusecase.OAuthProviderインターフェースのGitHub実装です。
+// GitHubProvider はOAuthProviderインターフェースのGitHub実装です。
 type GitHubProvider struct {
 	cfg *oauth2.Config
 	hc  *http.Client
 }
 
-var _ usecase.OAuthProvider = (*GitHubProvider)(nil)
+var _ OAuthProvider = (*GitHubProvider)(nil)
 
 // NewGitHubProvider はGitHubProviderの新しいインスタンスを生成します。
 func NewGitHubProvider(clientID, clientSecret, redirectURL string, hc *http.Client) *GitHubProvider {
@@ -45,7 +42,7 @@ func (p *GitHubProvider) AuthorizationURL(state, _ string) string {
 
 // ExchangeCode はauthorization codeをユーザー情報に交換します。
 // GitHub APIの /user/emails で検証済みプライマリメールを、/user で数値IDを取得します。
-func (p *GitHubProvider) ExchangeCode(ctx context.Context, code, _ string) (*usecase.OAuthUserInfo, error) {
+func (p *GitHubProvider) ExchangeCode(ctx context.Context, code, _ string) (*OAuthUserInfo, error) {
 	tok, err := p.cfg.Exchange(ctx, code)
 	if err != nil {
 		return nil, fmt.Errorf("github: code exchange failed: %w", err)
@@ -61,7 +58,7 @@ func (p *GitHubProvider) ExchangeCode(ctx context.Context, code, _ string) (*use
 		return nil, err
 	}
 
-	return &usecase.OAuthUserInfo{ProviderUID: uid, Email: email}, nil
+	return &OAuthUserInfo{ProviderUID: uid, Email: email}, nil
 }
 
 func (p *GitHubProvider) fetchPrimaryEmail(ctx context.Context, token string) (string, error) {
@@ -101,7 +98,7 @@ func (p *GitHubProvider) fetchPrimaryEmail(ctx context.Context, token string) (s
 			return e.Email, nil
 		}
 	}
-	return "", usecase.ErrOAuthEmailUnavailable
+	return "", ErrOAuthEmailUnavailable
 }
 
 func (p *GitHubProvider) fetchUserID(ctx context.Context, token string) (string, error) {

@@ -1,4 +1,4 @@
-package handler_test
+package authhttp_test
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"stock_backend/internal/feature/auth/transport/handler"
+	"stock_backend/internal/feature/auth/transport"
 	"stock_backend/internal/platform/httpratelimit"
 )
 
@@ -160,7 +160,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 			t.Parallel()
 
 			mockUC := &mockAuthUsecase{SignupFunc: tt.mockSignupFunc}
-			h := handler.NewAuthHandler(mockUC, nil, false)
+			h := authhttp.NewAuthHandler(mockUC, nil, false)
 
 			router := gin.New()
 			router.POST("/signup", h.Signup)
@@ -193,7 +193,7 @@ func TestAuthHandler_Login_RateLimited(t *testing.T) {
 			return "", errors.New("should not be called")
 		},
 	}
-	h := handler.NewAuthHandler(mockUC, limiter, false)
+	h := authhttp.NewAuthHandler(mockUC, limiter, false)
 
 	router := gin.New()
 	router.POST("/login", h.Login)
@@ -285,7 +285,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			t.Parallel()
 
 			mockUC := &mockAuthUsecase{LoginFunc: tt.mockLoginFunc}
-			h := handler.NewAuthHandler(mockUC, nil, tt.secureCookie)
+			h := authhttp.NewAuthHandler(mockUC, nil, tt.secureCookie)
 
 			router := gin.New()
 			router.POST("/login", h.Login)
@@ -315,7 +315,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := handler.NewAuthHandler(&mockAuthUsecase{}, nil, tt.secureCookie)
+			h := authhttp.NewAuthHandler(&mockAuthUsecase{}, nil, tt.secureCookie)
 
 			router := gin.New()
 			router.DELETE("/logout", h.Logout)

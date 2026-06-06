@@ -12,9 +12,8 @@ import (
 
 	"stock_backend/internal/app/config"
 	"stock_backend/internal/app/router"
-	authadapters "stock_backend/internal/feature/auth/adapters"
-	authhandler "stock_backend/internal/feature/auth/transport/handler"
-	authusecase "stock_backend/internal/feature/auth/usecase"
+	"stock_backend/internal/feature/auth"
+	authhttp "stock_backend/internal/feature/auth/transport"
 	"stock_backend/internal/feature/candles"
 	candleshttp "stock_backend/internal/feature/candles/transport"
 	logogemini "stock_backend/internal/feature/logodetection/adapters/gemini"
@@ -64,9 +63,9 @@ func loadServerConfig() (serverConfig, error) {
 		return serverConfig{}, fmt.Errorf("%s is required", jwtmw.EnvKeyJWTSecret)
 	}
 
-	passwordPepper := os.Getenv(authusecase.EnvKeyPasswordPepper)
+	passwordPepper := os.Getenv(auth.EnvKeyPasswordPepper)
 	if passwordPepper == "" {
-		return serverConfig{}, fmt.Errorf("%s is required", authusecase.EnvKeyPasswordPepper)
+		return serverConfig{}, fmt.Errorf("%s is required", auth.EnvKeyPasswordPepper)
 	}
 
 	// COOKIE_SECURE を優先し、未設定なら APP_ENV=production をフォールバックとして使用
@@ -194,7 +193,7 @@ func run() int {
 	}
 
 	// 全 feature が sqlc 化済み。
-	userRepo := authadapters.NewUserRepository(sqlDB)
+	userRepo := auth.NewUserRepository(sqlDB)
 	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
 	candleRepo := candles.NewCandleRepository(sqlDB)
 	watchlistRepo := watchlist.NewWatchlistRepository(sqlDB)
@@ -227,22 +226,22 @@ func run() int {
 	rateLimiter := httpratelimit.NewLimiter(rdb)
 
 	// ユースケース
-	authUC := authusecase.NewAuthUsecase(userRepo, jwtGen, cfg.passwordPepper)
+	authUC := auth.NewAuthUsecase(userRepo, jwtGen, cfg.passwordPepper)
 	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
 	candlesUC := candles.NewCandlesUsecase(cachedCandleRepo)
 	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
 	watchlistUC := watchlist.NewWatchlistUsecase(watchlistRepo, symbolRepo)
 
 	// OAuth ハンドラー（cfg.oauth が nil の場合はOAuth機能なしで起動）
-	var oauthH *authhandler.OAuthHandler
+	var oauthH *authhttp.OAuthHandler
 	if cfg.oauth != nil {
 		if rdb == nil {
 			slog.Error("OAuth requires Redis but Redis is unavailable")
 			return 1
 		}
-		oauthProviders := map[string]authusecase.OAuthProvider{}
+		oauthProviders := map[string]auth.OAuthProvider{}
 		if cfg.oauth.google != nil {
-			oauthProviders["google"] = authadapters.NewGoogleProvider(
+			oauthProviders["google"] = auth.NewGoogleProvider(
 				cfg.oauth.google.clientID,
 				cfg.oauth.google.clientSecret,
 				cfg.oauth.google.redirectURL,
@@ -250,27 +249,27 @@ func run() int {
 			)
 		}
 		if cfg.oauth.github != nil {
-			oauthProviders["github"] = authadapters.NewGitHubProvider(
+			oauthProviders["github"] = auth.NewGitHubProvider(
 				cfg.oauth.github.clientID,
 				cfg.oauth.github.clientSecret,
 				cfg.oauth.github.redirectURL,
 				&http.Client{Timeout: 10 * time.Second},
 			)
 		}
-		oauthUC := authusecase.NewOAuthUsecase(
+		oauthUC := auth.NewOAuthUsecase(
 			userRepo,
-			authadapters.NewOAuthAccountRepository(sqlDB),
+			auth.NewOAuthAccountRepository(sqlDB),
 			userRepo,
-			authadapters.NewRedisOAuthStateStore(rdb),
+			auth.NewRedisOAuthStateStore(rdb),
 			jwtGen,
 			oauthProviders,
 			watchlistUC,
 		)
-		oauthH = authhandler.NewOAuthHandler(oauthUC, cfg.secureCookie, cfg.oauth.frontendURL)
+		oauthH = authhttp.NewOAuthHandler(oauthUC, cfg.secureCookie, cfg.oauth.frontendURL)
 	}
 
 	// ハンドラー
-	authH := authhandler.NewAuthHandler(authUC, rateLimiter, cfg.secureCookie, watchlistUC)
+	authH := authhttp.NewAuthHandler(authUC, rateLimiter, cfg.secureCookie, watchlistUC)
 	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
 	candlesH := candleshttp.NewCandlesHandler(candlesUC)
 	logoH := logohandler.NewLogoDetectionHandler(logoUC)

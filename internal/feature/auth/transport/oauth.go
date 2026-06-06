@@ -1,5 +1,4 @@
-// Package handler はauthフィーチャーのHTTPハンドラーを提供します。
-package handler
+package authhttp
 
 import (
 	"context"
@@ -10,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"stock_backend/internal/api"
-	"stock_backend/internal/feature/auth/usecase"
+	"stock_backend/internal/feature/auth"
 	"stock_backend/internal/platform/csrf"
 )
 
@@ -65,11 +64,11 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 
 	token, err := h.oauth.HandleCallback(c.Request.Context(), provider, code, state)
 	if err != nil {
-		if errors.Is(err, usecase.ErrStateNotFound) {
+		if errors.Is(err, auth.ErrStateNotFound) {
 			c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "invalid or expired state"})
-		} else if errors.Is(err, usecase.ErrOAuthEmailUnavailable) {
+		} else if errors.Is(err, auth.ErrOAuthEmailUnavailable) {
 			c.JSON(http.StatusBadGateway, api.ErrorResponse{Error: "cannot obtain verified email from provider"})
-		} else if errors.Is(err, usecase.ErrUnknownProvider) {
+		} else if errors.Is(err, auth.ErrUnknownProvider) {
 			c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "unsupported provider"})
 		} else {
 			slog.Error("oauth callback failed", "provider", provider, "error", err)

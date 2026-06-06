@@ -1,5 +1,4 @@
-// Package usecase はauthフィーチャーのビジネスロジックを実装します。
-package usecase
+package auth
 
 import (
 	"context"
@@ -10,8 +9,6 @@ import (
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
-
-	"stock_backend/internal/feature/auth/domain/entity"
 )
 
 const (
@@ -55,16 +52,16 @@ type OAuthStateStore interface {
 // OAuthAccountRepository はoauth_accountsテーブルの永続化を抽象化します。
 type OAuthAccountRepository interface {
 	// FindByProvider はプロバイダー名とプロバイダーUIDでOAuthAccountを検索します。
-	FindByProvider(ctx context.Context, provider, providerUID string) (*entity.OAuthAccount, error)
+	FindByProvider(ctx context.Context, provider, providerUID string) (*OAuthAccount, error)
 	// Create はOAuthAccountを新規作成します。
-	Create(ctx context.Context, account *entity.OAuthAccount) error
+	Create(ctx context.Context, account *OAuthAccount) error
 }
 
 // OAuthUserCreator はOAuth新規ユーザー作成時にUserとOAuthAccountを
 // トランザクション内で原子的に作成します。
 // 実装はadapters層がDB固有のトランザクション処理を担います。
 type OAuthUserCreator interface {
-	CreateUserWithOAuthAccount(ctx context.Context, user *entity.User, account *entity.OAuthAccount) error
+	CreateUserWithOAuthAccount(ctx context.Context, user *User, account *OAuthAccount) error
 }
 
 // UserRepository はユーザーエンティティの永続化層を抽象化します。
@@ -72,15 +69,15 @@ type OAuthUserCreator interface {
 type UserRepository interface {
 	// Create は新しいユーザーをストレージに永続化します。
 	// 同じメールアドレスのユーザーが既に存在する場合、エラーを返します。
-	Create(ctx context.Context, user *entity.User) error
+	Create(ctx context.Context, user *User) error
 
 	// FindByEmail は指定されたメールアドレスに一致するユーザーを取得します。
 	// ユーザーが存在しない場合、エラーを返します。
-	FindByEmail(ctx context.Context, email string) (*entity.User, error)
+	FindByEmail(ctx context.Context, email string) (*User, error)
 
 	// FindByID は指定されたIDに一致するユーザーを取得します。
 	// ユーザーが存在しない場合、エラーを返します。
-	FindByID(ctx context.Context, id int64) (*entity.User, error)
+	FindByID(ctx context.Context, id int64) (*User, error)
 }
 
 // JWTGenerator はJWTトークン生成のインターフェースを定義します。
@@ -145,7 +142,7 @@ func (u *authUsecase) Signup(ctx context.Context, email, password string) (int64
 		return 0, fmt.Errorf("failed to hash password: %w", err)
 	}
 	hashedStr := string(hashed)
-	user := &entity.User{Email: email, Password: &hashedStr}
+	user := &User{Email: email, Password: &hashedStr}
 	if err := u.users.Create(ctx, user); err != nil {
 		return 0, err
 	}

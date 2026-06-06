@@ -1,5 +1,4 @@
-// Package handler はauthフィーチャーのHTTPハンドラーを提供します。
-package handler
+package authhttp
 
 import (
 	"context"

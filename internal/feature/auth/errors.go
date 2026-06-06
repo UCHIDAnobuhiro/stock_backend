@@ -1,5 +1,4 @@
-// Package usecase はauthフィーチャーのビジネスロジックを実装します。
-package usecase
+package auth
 
 import "errors"
 

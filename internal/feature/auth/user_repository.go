@@ -1,5 +1,4 @@
-// Package adapters はauthフィーチャーのリポジトリ実装を提供します。
-package adapters
+package auth
 
 import (
 	"context"
@@ -9,9 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"stock_backend/internal/feature/auth/adapters/sqlc"
-	"stock_backend/internal/feature/auth/domain/entity"
-	"stock_backend/internal/feature/auth/usecase"
+	"stock_backend/internal/feature/auth/sqlc"
 )
 
 // pgErrUniqueViolation は PostgreSQL のユニーク制約違反コードです。
@@ -24,8 +21,8 @@ type userRepository struct {
 }
 
 var (
-	_ usecase.UserRepository   = (*userRepository)(nil)
-	_ usecase.OAuthUserCreator = (*userRepository)(nil)
+	_ UserRepository   = (*userRepository)(nil)
+	_ OAuthUserCreator = (*userRepository)(nil)
 )
 
 // NewUserRepository は指定された *sql.DB で userRepository の新しいインスタンスを生成します。
@@ -34,8 +31,8 @@ func NewUserRepository(db *sql.DB) *userRepository {
 }
 
 // Create はユーザーをデータベースに追加します。
-// 同じメールアドレスのユーザーが既に存在する場合、usecase.ErrEmailAlreadyExists を返します。
-func (r *userRepository) Create(ctx context.Context, u *entity.User) error {
+// 同じメールアドレスのユーザーが既に存在する場合、ErrEmailAlreadyExists を返します。
+func (r *userRepository) Create(ctx context.Context, u *User) error {
 	if u == nil {
 		return errors.New("user is nil")
 	}
@@ -51,12 +48,12 @@ func (r *userRepository) Create(ctx context.Context, u *entity.User) error {
 }
 
 // FindByEmail はメールアドレスでユーザーを取得します。
-// ユーザーが存在しない場合、usecase.ErrUserNotFound を返します。
-func (r *userRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
+// ユーザーが存在しない場合、ErrUserNotFound を返します。
+func (r *userRepository) FindByEmail(ctx context.Context, email string) (*User, error) {
 	row, err := r.q.FindUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, usecase.ErrUserNotFound
+			return nil, ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -65,12 +62,12 @@ func (r *userRepository) FindByEmail(ctx context.Context, email string) (*entity
 }
 
 // FindByID は ID でユーザーを取得します。
-// ユーザーが存在しない場合、usecase.ErrUserNotFound を返します。
-func (r *userRepository) FindByID(ctx context.Context, id int64) (*entity.User, error) {
+// ユーザーが存在しない場合、ErrUserNotFound を返します。
+func (r *userRepository) FindByID(ctx context.Context, id int64) (*User, error) {
 	row, err := r.q.FindUserByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, usecase.ErrUserNotFound
+			return nil, ErrUserNotFound
 		}
 		return nil, err
 	}
@@ -79,7 +76,7 @@ func (r *userRepository) FindByID(ctx context.Context, id int64) (*entity.User, 
 }
 
 // CreateUserWithOAuthAccount は User と OAuthAccount をトランザクション内で原子的に作成します。
-func (r *userRepository) CreateUserWithOAuthAccount(ctx context.Context, user *entity.User, account *entity.OAuthAccount) error {
+func (r *userRepository) CreateUserWithOAuthAccount(ctx context.Context, user *User, account *OAuthAccount) error {
 	if user == nil || account == nil {
 		return errors.New("user or account is nil")
 	}
@@ -123,13 +120,13 @@ func (r *userRepository) CreateUserWithOAuthAccount(ctx context.Context, user *e
 }
 
 // userFromSQLC は sqlc 生成モデルをドメインエンティティに変換します。
-func userFromSQLC(m authsqlc.User) entity.User {
+func userFromSQLC(m authsqlc.User) User {
 	var pwd *string
 	if m.Password.Valid {
 		s := m.Password.String
 		pwd = &s
 	}
-	return entity.User{
+	return User{
 		ID:        m.ID,
 		Email:     m.Email,
 		Password:  pwd,
@@ -139,8 +136,8 @@ func userFromSQLC(m authsqlc.User) entity.User {
 }
 
 // oauthAccountFromSQLC は sqlc 生成モデルをドメインエンティティに変換します。
-func oauthAccountFromSQLC(m authsqlc.OauthAccount) entity.OAuthAccount {
-	return entity.OAuthAccount{
+func oauthAccountFromSQLC(m authsqlc.OauthAccount) OAuthAccount {
+	return OAuthAccount{
 		ID:          m.ID,
 		UserID:      m.UserID,
 		Provider:    m.Provider,
@@ -157,11 +154,11 @@ func toNullString(s *string) sql.NullString {
 	return sql.NullString{String: *s, Valid: true}
 }
 
-// mapEmailUniqueErr は PostgreSQL のユニーク制約違反を usecase.ErrEmailAlreadyExists にマッピングします。
+// mapEmailUniqueErr は PostgreSQL のユニーク制約違反を ErrEmailAlreadyExists にマッピングします。
 func mapEmailUniqueErr(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == pgErrUniqueViolation {
-		return usecase.ErrEmailAlreadyExists
+		return ErrEmailAlreadyExists
 	}
 	return err
 }
