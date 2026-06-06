@@ -370,7 +370,7 @@ docker compose -f docker/docker-compose.yml -p stock run --rm --no-deps candles
 ### バッチプロセスの起動（ロゴURL取得）
 
 ```bash
-docker compose -f docker/docker-compose.yml -p stock --profile on-demand run --rm logo
+docker compose -f docker/docker-compose.yml -p stock run --rm --no-deps logo
 ```
 
 ### ER 図・テーブル定義書の生成（tbls）
