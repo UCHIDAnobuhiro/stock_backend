@@ -81,6 +81,14 @@ func TestLoadServerConfig(t *testing.T) {
 	})
 }
 
+func TestRun_ReturnsTwoWhenConfigInvalid(t *testing.T) {
+	clearEnv(t) // JWT_SECRET 未設定 → loadServerConfig が失敗する
+
+	if got := run(); got != 2 {
+		t.Errorf("run() = %d, want 2", got)
+	}
+}
+
 func TestRun_ReturnsOneWhenDBConfigInvalid(t *testing.T) {
 	clearEnv(t)
 	t.Setenv(jwt.EnvKeyJWTSecret, "secret")
@@ -143,10 +151,10 @@ func TestLoadOAuthConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if cfg == nil || cfg.google == nil {
+		if cfg == nil || cfg.Google == nil {
 			t.Fatalf("expected google config, got %+v", cfg)
 		}
-		if cfg.github != nil {
+		if cfg.GitHub != nil {
 			t.Error("github should be nil when not configured")
 		}
 	})
@@ -175,7 +183,7 @@ func TestLoadOAuthConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if cfg == nil || cfg.google == nil || cfg.github == nil {
+		if cfg == nil || cfg.Google == nil || cfg.GitHub == nil {
 			t.Fatalf("expected both providers, got %+v", cfg)
 		}
 	})
