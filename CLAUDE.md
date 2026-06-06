@@ -10,7 +10,7 @@
 docker compose -f docker/docker-compose.yml -p stock up backend
 
 # バッチデータ取り込み実行（外部APIから株価データを取得）
-docker compose -f docker/docker-compose.yml -p stock run --rm --no-deps ingest
+docker compose -f docker/docker-compose.yml -p stock run --rm --no-deps candles
 
 # ログ確認
 docker logs -f stock-backend

@@ -1,4 +1,4 @@
-package main
+package batch
 
 import (
 	"testing"
@@ -108,8 +108,8 @@ func TestRunInvalidJobID(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := run(tc.args); got != tc.want {
-				t.Errorf("run(%v)=%d, want %d", tc.args, got, tc.want)
+			if got := Run(tc.args); got != tc.want {
+				t.Errorf("Run(%v)=%d, want %d", tc.args, got, tc.want)
 			}
 		})
 	}
@@ -120,8 +120,8 @@ func TestRun_ReturnsOneWhenDBConfigInvalid(t *testing.T) {
 
 	for _, jobID := range []string{"candles", "logo"} {
 		t.Run(jobID, func(t *testing.T) {
-			if got := run([]string{jobID}); got != 1 {
-				t.Errorf("run(%q) = %d, want 1", jobID, got)
+			if got := Run([]string{jobID}); got != 1 {
+				t.Errorf("Run(%q) = %d, want 1", jobID, got)
 			}
 		})
 	}
