@@ -1,4 +1,4 @@
-package usecase
+package symbollist
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"stock_backend/internal/feature/symbollist/domain/entity"
 )
 
 type mockLogoProvider struct {
@@ -24,7 +22,7 @@ func (m *mockLogoProvider) GetLogoURL(ctx context.Context, symbol string) (strin
 }
 
 type mockLogoSymbolRepository struct {
-	symbols           []entity.Symbol
+	symbols           []Symbol
 	listActiveErr     error
 	updateLogoURLFunc func(ctx context.Context, code, logoURL string, updatedAt time.Time) error
 	updates           []logoUpdate
@@ -36,7 +34,7 @@ type logoUpdate struct {
 	updatedAt time.Time
 }
 
-func (m *mockLogoSymbolRepository) ListActive(ctx context.Context) ([]entity.Symbol, error) {
+func (m *mockLogoSymbolRepository) ListActive(ctx context.Context) ([]Symbol, error) {
 	if m.listActiveErr != nil {
 		return nil, m.listActiveErr
 	}
@@ -71,7 +69,7 @@ func TestLogoIngestUsecase_IngestAll_Success(t *testing.T) {
 
 	now := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
 	repo := &mockLogoSymbolRepository{
-		symbols: []entity.Symbol{
+		symbols: []Symbol{
 			{Code: "AAPL", IsActive: true},
 			{Code: "MSFT", IsActive: true},
 		},
@@ -101,7 +99,7 @@ func TestLogoIngestUsecase_IngestAll_ContinuesOnFetchFailure(t *testing.T) {
 	t.Parallel()
 
 	repo := &mockLogoSymbolRepository{
-		symbols: []entity.Symbol{
+		symbols: []Symbol{
 			{Code: "AAPL", IsActive: true},
 			{Code: "MSFT", IsActive: true},
 		},
@@ -128,7 +126,7 @@ func TestLogoIngestUsecase_IngestAll_UpdateFailureDoesNotStopBatch(t *testing.T)
 	t.Parallel()
 
 	repo := &mockLogoSymbolRepository{
-		symbols: []entity.Symbol{
+		symbols: []Symbol{
 			{Code: "AAPL", IsActive: true},
 			{Code: "MSFT", IsActive: true},
 		},
@@ -169,7 +167,7 @@ func TestLogoIngestUsecase_IngestAll_ContextCancelled(t *testing.T) {
 	t.Parallel()
 
 	repo := &mockLogoSymbolRepository{
-		symbols: []entity.Symbol{
+		symbols: []Symbol{
 			{Code: "AAPL", IsActive: true},
 			{Code: "MSFT", IsActive: true},
 		},

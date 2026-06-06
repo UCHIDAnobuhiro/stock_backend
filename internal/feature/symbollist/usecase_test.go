@@ -1,4 +1,4 @@
-package usecase_test
+package symbollist_test
 
 import (
 	"context"
@@ -7,17 +7,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"stock_backend/internal/feature/symbollist/domain/entity"
-	"stock_backend/internal/feature/symbollist/usecase"
+	"stock_backend/internal/feature/symbollist"
 )
 
 // mockSymbolRepository はSymbolRepositoryインターフェースのモック実装です。
 type mockSymbolRepository struct {
-	ListActiveFunc func(ctx context.Context) ([]entity.Symbol, error)
+	ListActiveFunc func(ctx context.Context) ([]symbollist.Symbol, error)
 }
 
 // ListActive はモックのListActive関数を呼び出します。
-func (m *mockSymbolRepository) ListActive(ctx context.Context) ([]entity.Symbol, error) {
+func (m *mockSymbolRepository) ListActive(ctx context.Context) ([]symbollist.Symbol, error) {
 	if m.ListActiveFunc != nil {
 		return m.ListActiveFunc(ctx)
 	}
@@ -29,7 +28,7 @@ func TestNewSymbolUsecase(t *testing.T) {
 	t.Parallel()
 
 	mockRepo := &mockSymbolRepository{}
-	uc := usecase.NewSymbolUsecase(mockRepo)
+	uc := symbollist.NewSymbolUsecase(mockRepo)
 
 	assert.NotNil(t, uc, "usecase should not be nil")
 }
@@ -40,20 +39,20 @@ func TestSymbolUsecase_ListActiveSymbols(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		mockListActive  func(ctx context.Context) ([]entity.Symbol, error)
-		expectedSymbols []entity.Symbol
+		mockListActive  func(ctx context.Context) ([]symbollist.Symbol, error)
+		expectedSymbols []symbollist.Symbol
 		wantErr         bool
 		errMsg          string
 	}{
 		{
 			name: "success: returns list of active symbols",
-			mockListActive: func(ctx context.Context) ([]entity.Symbol, error) {
-				return []entity.Symbol{
+			mockListActive: func(ctx context.Context) ([]symbollist.Symbol, error) {
+				return []symbollist.Symbol{
 					{ID: 1, Code: "7203.T", Name: "Toyota Motor", Market: "TSE", IsActive: true},
 					{ID: 2, Code: "6758.T", Name: "Sony Group", Market: "TSE", IsActive: true},
 				}, nil
 			},
-			expectedSymbols: []entity.Symbol{
+			expectedSymbols: []symbollist.Symbol{
 				{ID: 1, Code: "7203.T", Name: "Toyota Motor", Market: "TSE", IsActive: true},
 				{ID: 2, Code: "6758.T", Name: "Sony Group", Market: "TSE", IsActive: true},
 			},
@@ -61,15 +60,15 @@ func TestSymbolUsecase_ListActiveSymbols(t *testing.T) {
 		},
 		{
 			name: "success: returns empty list when no active symbols",
-			mockListActive: func(ctx context.Context) ([]entity.Symbol, error) {
-				return []entity.Symbol{}, nil
+			mockListActive: func(ctx context.Context) ([]symbollist.Symbol, error) {
+				return []symbollist.Symbol{}, nil
 			},
-			expectedSymbols: []entity.Symbol{},
+			expectedSymbols: []symbollist.Symbol{},
 			wantErr:         false,
 		},
 		{
 			name: "success: returns nil when repository returns nil",
-			mockListActive: func(ctx context.Context) ([]entity.Symbol, error) {
+			mockListActive: func(ctx context.Context) ([]symbollist.Symbol, error) {
 				return nil, nil
 			},
 			expectedSymbols: nil,
@@ -77,7 +76,7 @@ func TestSymbolUsecase_ListActiveSymbols(t *testing.T) {
 		},
 		{
 			name: "failure: repository returns error",
-			mockListActive: func(ctx context.Context) ([]entity.Symbol, error) {
+			mockListActive: func(ctx context.Context) ([]symbollist.Symbol, error) {
 				return nil, errors.New("database connection failed")
 			},
 			expectedSymbols: nil,
@@ -86,12 +85,12 @@ func TestSymbolUsecase_ListActiveSymbols(t *testing.T) {
 		},
 		{
 			name: "success: returns single symbol",
-			mockListActive: func(ctx context.Context) ([]entity.Symbol, error) {
-				return []entity.Symbol{
+			mockListActive: func(ctx context.Context) ([]symbollist.Symbol, error) {
+				return []symbollist.Symbol{
 					{ID: 1, Code: "9984.T", Name: "SoftBank Group", Market: "TSE", IsActive: true},
 				}, nil
 			},
-			expectedSymbols: []entity.Symbol{
+			expectedSymbols: []symbollist.Symbol{
 				{ID: 1, Code: "9984.T", Name: "SoftBank Group", Market: "TSE", IsActive: true},
 			},
 			wantErr: false,
@@ -105,7 +104,7 @@ func TestSymbolUsecase_ListActiveSymbols(t *testing.T) {
 			mockRepo := &mockSymbolRepository{
 				ListActiveFunc: tt.mockListActive,
 			}
-			uc := usecase.NewSymbolUsecase(mockRepo)
+			uc := symbollist.NewSymbolUsecase(mockRepo)
 
 			symbols, err := uc.ListActiveSymbols(context.Background())
 
@@ -131,11 +130,11 @@ func TestSymbolUsecase_ListActiveSymbols_ContextCancellation(t *testing.T) {
 	cancel() // Cancel context immediately
 
 	mockRepo := &mockSymbolRepository{
-		ListActiveFunc: func(ctx context.Context) ([]entity.Symbol, error) {
+		ListActiveFunc: func(ctx context.Context) ([]symbollist.Symbol, error) {
 			return nil, ctx.Err()
 		},
 	}
-	uc := usecase.NewSymbolUsecase(mockRepo)
+	uc := symbollist.NewSymbolUsecase(mockRepo)
 
 	symbols, err := uc.ListActiveSymbols(ctx)
 

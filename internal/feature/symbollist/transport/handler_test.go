@@ -1,4 +1,4 @@
-package handler_test
+package symbollisthttp_test
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"stock_backend/internal/feature/symbollist/domain/entity"
-	"stock_backend/internal/feature/symbollist/transport/handler"
+	"stock_backend/internal/feature/symbollist"
+	"stock_backend/internal/feature/symbollist/transport"
 )
 
 func strPtr(s string) *string {
@@ -20,11 +20,11 @@ func strPtr(s string) *string {
 
 // mockSymbolUsecase はSymbolUsecaseインターフェースのモック実装です。
 type mockSymbolUsecase struct {
-	ListActiveSymbolsFunc func(ctx context.Context) ([]entity.Symbol, error)
+	ListActiveSymbolsFunc func(ctx context.Context) ([]symbollist.Symbol, error)
 }
 
 // ListActiveSymbols はモックのListActiveSymbols関数を呼び出します。
-func (m *mockSymbolUsecase) ListActiveSymbols(ctx context.Context) ([]entity.Symbol, error) {
+func (m *mockSymbolUsecase) ListActiveSymbols(ctx context.Context) ([]symbollist.Symbol, error) {
 	if m.ListActiveSymbolsFunc != nil {
 		return m.ListActiveSymbolsFunc(ctx)
 	}
@@ -36,7 +36,7 @@ func TestNewSymbolHandler(t *testing.T) {
 	t.Parallel()
 
 	mockUC := &mockSymbolUsecase{}
-	h := handler.NewSymbolHandler(mockUC)
+	h := symbollisthttp.NewSymbolHandler(mockUC)
 
 	assert.NotNil(t, h, "handler should not be nil")
 }
@@ -47,14 +47,14 @@ func TestSymbolHandler_List(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		mockListActiveFunc func(ctx context.Context) ([]entity.Symbol, error)
+		mockListActiveFunc func(ctx context.Context) ([]symbollist.Symbol, error)
 		expectedStatus     int
 		expectedBody       string
 	}{
 		{
 			name: "success: returns list of symbols",
-			mockListActiveFunc: func(ctx context.Context) ([]entity.Symbol, error) {
-				return []entity.Symbol{
+			mockListActiveFunc: func(ctx context.Context) ([]symbollist.Symbol, error) {
+				return []symbollist.Symbol{
 					{ID: 1, Code: "7203.T", Name: "Toyota Motor", Market: "TSE", LogoURL: strPtr("https://api.twelvedata.com/logo/toyota.com"), IsActive: true},
 					{ID: 2, Code: "6758.T", Name: "Sony Group", Market: "TSE", IsActive: true},
 				}, nil
@@ -64,16 +64,16 @@ func TestSymbolHandler_List(t *testing.T) {
 		},
 		{
 			name: "success: returns empty list when no symbols",
-			mockListActiveFunc: func(ctx context.Context) ([]entity.Symbol, error) {
-				return []entity.Symbol{}, nil
+			mockListActiveFunc: func(ctx context.Context) ([]symbollist.Symbol, error) {
+				return []symbollist.Symbol{}, nil
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `[]`,
 		},
 		{
 			name: "success: returns single symbol",
-			mockListActiveFunc: func(ctx context.Context) ([]entity.Symbol, error) {
-				return []entity.Symbol{
+			mockListActiveFunc: func(ctx context.Context) ([]symbollist.Symbol, error) {
+				return []symbollist.Symbol{
 					{ID: 1, Code: "9984.T", Name: "SoftBank Group", Market: "TSE", IsActive: true},
 				}, nil
 			},
@@ -82,7 +82,7 @@ func TestSymbolHandler_List(t *testing.T) {
 		},
 		{
 			name: "failure: usecase returns error",
-			mockListActiveFunc: func(ctx context.Context) ([]entity.Symbol, error) {
+			mockListActiveFunc: func(ctx context.Context) ([]symbollist.Symbol, error) {
 				return nil, errors.New("database connection failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -90,7 +90,7 @@ func TestSymbolHandler_List(t *testing.T) {
 		},
 		{
 			name: "success: returns nil from usecase",
-			mockListActiveFunc: func(ctx context.Context) ([]entity.Symbol, error) {
+			mockListActiveFunc: func(ctx context.Context) ([]symbollist.Symbol, error) {
 				return nil, nil
 			},
 			expectedStatus: http.StatusOK,
@@ -105,7 +105,7 @@ func TestSymbolHandler_List(t *testing.T) {
 			mockUC := &mockSymbolUsecase{
 				ListActiveSymbolsFunc: tt.mockListActiveFunc,
 			}
-			h := handler.NewSymbolHandler(mockUC)
+			h := symbollisthttp.NewSymbolHandler(mockUC)
 
 			router := gin.New()
 			router.GET("/symbols", h.List)
@@ -128,8 +128,8 @@ func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 
 	// レスポンスに公開DTOフィールドのみが含まれることを検証（ID、Market、IsActiveは含まれない）
 	mockUC := &mockSymbolUsecase{
-		ListActiveSymbolsFunc: func(ctx context.Context) ([]entity.Symbol, error) {
-			return []entity.Symbol{
+		ListActiveSymbolsFunc: func(ctx context.Context) ([]symbollist.Symbol, error) {
+			return []symbollist.Symbol{
 				{
 					ID:       999,
 					Code:     "TEST.T",
@@ -141,7 +141,7 @@ func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 			}, nil
 		},
 	}
-	h := handler.NewSymbolHandler(mockUC)
+	h := symbollisthttp.NewSymbolHandler(mockUC)
 
 	router := gin.New()
 	router.GET("/symbols", h.List)

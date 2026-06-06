@@ -9,7 +9,7 @@ import (
 
 	"stock_backend/internal/app/di"
 	"stock_backend/internal/feature/candles"
-	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
+	"stock_backend/internal/feature/symbollist"
 	"stock_backend/internal/platform/db"
 	infraredis "stock_backend/internal/platform/redis"
 	"stock_backend/internal/shared/clientratelimit"
@@ -29,7 +29,7 @@ func runCandleIngest() int {
 	}()
 	marketRepo := di.NewMarket()
 	candleRepo := candles.NewCandleRepository(sqlDB)
-	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
+	symbolRepo := symbollist.NewSymbolRepository(sqlDB)
 	ingestSymbolRepo := di.NewIngestSymbolAdapter(symbolRepo)
 	rateLimiter := clientratelimit.NewRateLimiter(rateLimitPerMinute, time.Minute)
 

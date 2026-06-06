@@ -6,15 +6,15 @@ import (
 	"testing"
 
 	"stock_backend/internal/feature/candles"
-	"stock_backend/internal/feature/symbollist/domain/entity"
+	"stock_backend/internal/feature/symbollist"
 )
 
 type stubSymbolLister struct {
-	syms []entity.Symbol
+	syms []symbollist.Symbol
 	err  error
 }
 
-func (s *stubSymbolLister) ListActive(ctx context.Context) ([]entity.Symbol, error) {
+func (s *stubSymbolLister) ListActive(ctx context.Context) ([]symbollist.Symbol, error) {
 	return s.syms, s.err
 }
 
@@ -22,7 +22,7 @@ func TestIngestSymbolAdapter_ListActiveSymbols(t *testing.T) {
 	t.Parallel()
 
 	stub := &stubSymbolLister{
-		syms: []entity.Symbol{
+		syms: []symbollist.Symbol{
 			{Code: "AAPL", Timezone: "America/New_York"},
 			{Code: "7203.T", Timezone: "Asia/Tokyo"},
 		},
@@ -65,7 +65,7 @@ func TestIngestSymbolAdapter_ListActiveSymbols_PropagatesError(t *testing.T) {
 func TestIngestSymbolAdapter_ListActiveSymbols_Empty(t *testing.T) {
 	t.Parallel()
 
-	stub := &stubSymbolLister{syms: []entity.Symbol{}}
+	stub := &stubSymbolLister{syms: []symbollist.Symbol{}}
 
 	got, err := NewIngestSymbolAdapter(stub).ListActiveSymbols(context.Background())
 	if err != nil {

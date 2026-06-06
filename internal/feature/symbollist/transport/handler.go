@@ -1,5 +1,4 @@
-// Package handler はsymbollistフィーチャーのHTTPハンドラーを提供します。
-package handler
+package symbollisthttp
 
 import (
 	"context"
@@ -8,13 +7,13 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"stock_backend/internal/api"
-	"stock_backend/internal/feature/symbollist/domain/entity"
+	"stock_backend/internal/feature/symbollist"
 )
 
 // SymbolUsecase は銘柄（株式コード）操作のユースケースインターフェースを定義します。
 // Goの慣例に従い、インターフェースは利用者（handler）側で定義します。
 type SymbolUsecase interface {
-	ListActiveSymbols(ctx context.Context) ([]entity.Symbol, error)
+	ListActiveSymbols(ctx context.Context) ([]symbollist.Symbol, error)
 }
 
 // SymbolHandler は銘柄情報に関連するHTTPリクエストを処理します。

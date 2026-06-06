@@ -1,5 +1,4 @@
-// Package adapters はsymbollistフィーチャーのリポジトリ実装を提供します。
-package adapters
+package symbollist
 
 import (
 	"context"
@@ -7,9 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"stock_backend/internal/feature/symbollist/adapters/sqlc"
-	"stock_backend/internal/feature/symbollist/domain/entity"
-	"stock_backend/internal/feature/symbollist/usecase"
+	"stock_backend/internal/feature/symbollist/sqlc"
 )
 
 // symbolRepository は SymbolRepository / LogoSymbolRepository の sqlc ベース実装です。
@@ -19,8 +16,8 @@ type symbolRepository struct {
 }
 
 var (
-	_ usecase.SymbolRepository     = (*symbolRepository)(nil)
-	_ usecase.LogoSymbolRepository = (*symbolRepository)(nil)
+	_ SymbolRepository     = (*symbolRepository)(nil)
+	_ LogoSymbolRepository = (*symbolRepository)(nil)
 )
 
 // NewSymbolRepository は指定された *sql.DB で symbolRepository の新しいインスタンスを生成します。
@@ -29,12 +26,12 @@ func NewSymbolRepository(db *sql.DB) *symbolRepository {
 }
 
 // ListActive はコード昇順にすべてのアクティブな銘柄を返します。
-func (r *symbolRepository) ListActive(ctx context.Context) ([]entity.Symbol, error) {
+func (r *symbolRepository) ListActive(ctx context.Context) ([]Symbol, error) {
 	rows, err := r.q.ListActiveSymbols(ctx)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]entity.Symbol, 0, len(rows))
+	out := make([]Symbol, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, symbolFromSQLC(row))
 	}
@@ -69,7 +66,7 @@ func (r *symbolRepository) UpdateLogoURL(ctx context.Context, code, logoURL stri
 }
 
 // symbolFromSQLC は sqlc 生成モデルをドメインエンティティに変換します。
-func symbolFromSQLC(m symbollistsqlc.Symbol) entity.Symbol {
+func symbolFromSQLC(m symbollistsqlc.Symbol) Symbol {
 	var logoURL *string
 	if m.LogoUrl.Valid {
 		s := m.LogoUrl.String
@@ -80,7 +77,7 @@ func symbolFromSQLC(m symbollistsqlc.Symbol) entity.Symbol {
 		t := m.LogoUpdatedAt.Time
 		logoUpdatedAt = &t
 	}
-	return entity.Symbol{
+	return Symbol{
 		ID:            m.ID,
 		Code:          m.Code,
 		Name:          m.Name,

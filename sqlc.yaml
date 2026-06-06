@@ -17,11 +17,11 @@ sql:
         emit_pointers_for_null_types: false
   - engine: "postgresql"
     schema: "db/migrations"
-    queries: "internal/feature/symbollist/adapters/sqlc/queries.sql"
+    queries: "internal/feature/symbollist/sqlc/queries.sql"
     gen:
       go:
         package: "symbollistsqlc"
-        out: "internal/feature/symbollist/adapters/sqlc"
+        out: "internal/feature/symbollist/sqlc"
         sql_package: "database/sql"
         emit_json_tags: false
         emit_db_tags: false

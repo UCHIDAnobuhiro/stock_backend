@@ -1,5 +1,4 @@
-// Package entity はsymbollistフィーチャーのドメインモデルを定義します。
-package entity
+package symbollist
 
 import "time"
 

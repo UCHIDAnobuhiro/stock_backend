@@ -20,9 +20,8 @@ import (
 	logovision "stock_backend/internal/feature/logodetection/adapters/vision"
 	logohandler "stock_backend/internal/feature/logodetection/transport/handler"
 	logousecase "stock_backend/internal/feature/logodetection/usecase"
-	symbollistadapters "stock_backend/internal/feature/symbollist/adapters"
-	symbollisthandler "stock_backend/internal/feature/symbollist/transport/handler"
-	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
+	"stock_backend/internal/feature/symbollist"
+	symbollisthttp "stock_backend/internal/feature/symbollist/transport"
 	"stock_backend/internal/feature/watchlist"
 	watchlisthttp "stock_backend/internal/feature/watchlist/transport"
 	infradb "stock_backend/internal/platform/db"
@@ -194,7 +193,7 @@ func run() int {
 
 	// 全 feature が sqlc 化済み。
 	userRepo := auth.NewUserRepository(sqlDB)
-	symbolRepo := symbollistadapters.NewSymbolRepository(sqlDB)
+	symbolRepo := symbollist.NewSymbolRepository(sqlDB)
 	candleRepo := candles.NewCandleRepository(sqlDB)
 	watchlistRepo := watchlist.NewWatchlistRepository(sqlDB)
 
@@ -227,7 +226,7 @@ func run() int {
 
 	// ユースケース
 	authUC := auth.NewAuthUsecase(userRepo, jwtGen, cfg.passwordPepper)
-	symbolUC := symbollistusecase.NewSymbolUsecase(symbolRepo)
+	symbolUC := symbollist.NewSymbolUsecase(symbolRepo)
 	candlesUC := candles.NewCandlesUsecase(cachedCandleRepo)
 	logoUC := logousecase.NewLogoDetectionUsecase(visionDetector, geminiAnalyzer)
 	watchlistUC := watchlist.NewWatchlistUsecase(watchlistRepo, symbolRepo)
@@ -270,7 +269,7 @@ func run() int {
 
 	// ハンドラー
 	authH := authhttp.NewAuthHandler(authUC, rateLimiter, cfg.secureCookie, watchlistUC)
-	symbolH := symbollisthandler.NewSymbolHandler(symbolUC)
+	symbolH := symbollisthttp.NewSymbolHandler(symbolUC)
 	candlesH := candleshttp.NewCandlesHandler(candlesUC)
 	logoH := logohandler.NewLogoDetectionHandler(logoUC)
 	watchlistH := watchlisthttp.NewWatchlistHandler(watchlistUC)

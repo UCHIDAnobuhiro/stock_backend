@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"stock_backend/internal/feature/candles"
-	symbollistusecase "stock_backend/internal/feature/symbollist/usecase"
+	"stock_backend/internal/feature/symbollist"
 )
 
 // TestShouldFailExit はしきい値判定の境界条件を検証します。
@@ -61,25 +61,25 @@ func TestShouldFailExit(t *testing.T) {
 		},
 		{
 			name:      "logo: 全銘柄成功 → exit 0",
-			result:    symbollistusecase.LogoIngestResult{Total: 10, Succeeded: 10, Failed: 0},
+			result:    symbollist.LogoIngestResult{Total: 10, Succeeded: 10, Failed: 0},
 			threshold: 0.2,
 			want:      false,
 		},
 		{
 			name:      "logo: 失敗率がしきい値ちょうど → exit 0（許容）",
-			result:    symbollistusecase.LogoIngestResult{Total: 10, Succeeded: 8, Failed: 2},
+			result:    symbollist.LogoIngestResult{Total: 10, Succeeded: 8, Failed: 2},
 			threshold: 0.2,
 			want:      false,
 		},
 		{
 			name:      "logo: 失敗率がしきい値超過 → exit 1",
-			result:    symbollistusecase.LogoIngestResult{Total: 10, Succeeded: 7, Failed: 3},
+			result:    symbollist.LogoIngestResult{Total: 10, Succeeded: 7, Failed: 3},
 			threshold: 0.2,
 			want:      true,
 		},
 		{
 			name:      "logo: Total=0（symbol 空） → exit 0",
-			result:    symbollistusecase.LogoIngestResult{Total: 0},
+			result:    symbollist.LogoIngestResult{Total: 0},
 			threshold: 0.2,
 			want:      false,
 		},

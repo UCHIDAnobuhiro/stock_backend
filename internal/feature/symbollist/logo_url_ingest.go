@@ -1,11 +1,9 @@
-package usecase
+package symbollist
 
 import (
 	"context"
 	"log/slog"
 	"time"
-
-	"stock_backend/internal/feature/symbollist/domain/entity"
 )
 
 // LogoProvider は外部APIからロゴURLを取得するリポジトリを抽象化します。
@@ -15,7 +13,7 @@ type LogoProvider interface {
 
 // LogoSymbolRepository はロゴURL取得バッチで使う銘柄リポジトリを抽象化します。
 type LogoSymbolRepository interface {
-	ListActive(ctx context.Context) ([]entity.Symbol, error)
+	ListActive(ctx context.Context) ([]Symbol, error)
 	UpdateLogoURL(ctx context.Context, code, logoURL string, updatedAt time.Time) error
 }
 

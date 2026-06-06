@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"stock_backend/internal/feature/candles"
-	"stock_backend/internal/feature/symbollist/domain/entity"
+	"stock_backend/internal/feature/symbollist"
 )
 
 // SymbolLister は symbollist リポジトリが提供するアクティブ銘柄取得インターフェースです。
 // 直接 *symbolRepository に依存せず、symbollist フィーチャーから ingest 側へのデータ受け渡しを抽象化します。
 type SymbolLister interface {
-	ListActive(ctx context.Context) ([]entity.Symbol, error)
+	ListActive(ctx context.Context) ([]symbollist.Symbol, error)
 }
 
 // ingestSymbolAdapter は symbollist の Symbol を candles.ActiveSymbol へ詰め替えます。

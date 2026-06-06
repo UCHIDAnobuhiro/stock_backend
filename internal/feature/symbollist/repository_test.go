@@ -1,4 +1,4 @@
-package adapters
+package symbollist
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"stock_backend/internal/feature/symbollist/domain/entity"
 	"stock_backend/internal/platform/db/dbtest"
 )
 
@@ -29,7 +28,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 }
 
 // seedSymbol はテスト用の銘柄データをデータベースに作成し、ID 付きで返します。
-func seedSymbol(t *testing.T, db *sql.DB, code, name, market string, isActive bool) *entity.Symbol {
+func seedSymbol(t *testing.T, db *sql.DB, code, name, market string, isActive bool) *Symbol {
 	t.Helper()
 	row := db.QueryRowContext(context.Background(),
 		`INSERT INTO symbols (code, name, market, timezone, is_active)
@@ -37,7 +36,7 @@ func seedSymbol(t *testing.T, db *sql.DB, code, name, market string, isActive bo
 		 RETURNING id, created_at, updated_at`,
 		code, name, market, isActive,
 	)
-	s := &entity.Symbol{
+	s := &Symbol{
 		Code:     code,
 		Name:     name,
 		Market:   market,
@@ -51,7 +50,7 @@ func seedSymbol(t *testing.T, db *sql.DB, code, name, market string, isActive bo
 }
 
 // seedSymbolFull はロゴ情報付きで銘柄をシードします。
-func seedSymbolFull(t *testing.T, db *sql.DB, s *entity.Symbol) {
+func seedSymbolFull(t *testing.T, db *sql.DB, s *Symbol) {
 	t.Helper()
 	var logoURL sql.NullString
 	if s.LogoURL != nil {
@@ -73,7 +72,7 @@ func seedSymbolFull(t *testing.T, db *sql.DB, s *entity.Symbol) {
 }
 
 // updateSymbolActive は銘柄の is_active フィールドを更新します。
-func updateSymbolActive(t *testing.T, db *sql.DB, symbol *entity.Symbol, isActive bool) {
+func updateSymbolActive(t *testing.T, db *sql.DB, symbol *Symbol, isActive bool) {
 	t.Helper()
 	_, err := db.ExecContext(context.Background(),
 		`UPDATE symbols SET is_active = $1 WHERE id = $2`, isActive, symbol.ID)
@@ -255,7 +254,7 @@ func TestSymbolRepository_ListActive_LogoURL(t *testing.T) {
 
 	logoURL := "https://api.twelvedata.com/logo/apple.com"
 	logoUpdatedAt := time.Date(2026, 5, 3, 12, 0, 0, 0, time.UTC)
-	s := &entity.Symbol{
+	s := &Symbol{
 		Code:          "AAPL",
 		Name:          "Apple Inc.",
 		Market:        "NASDAQ",
