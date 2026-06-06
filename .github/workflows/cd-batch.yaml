@@ -24,7 +24,7 @@ jobs:
         strategy:
             matrix:
                 include:
-                    - job_name: ingest
+                    - job_name: candles
                       batch_arg: candles
                     - job_name: logo
                       batch_arg: logo
@@ -51,7 +51,7 @@ jobs:
               run: |
                   set -euo pipefail
                   # 統合バイナリの単一イメージ。job_id はジョブ設定の --args で切り替えるため
-                  # ingest / logo のジョブは同一イメージを共有する（同一タグへの再 push は冪等）。
+                  # candles / logo のジョブは同一イメージを共有する（同一タグへの再 push は冪等）。
                   IMAGE=${{ env.REGISTRY }}/batch:${{ env.IMAGE_TAG }}
                   DOCKER_BUILDKIT=1 docker build -t "$IMAGE" -f "${{ env.DOCKERFILE_PATH }}" "${{ env.BUILD_CONTEXT }}"
                   docker push "$IMAGE"
