@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"stock_backend/internal/feature/logodetection"
-	"stock_backend/internal/feature/logodetection/transport"
+	"stock_backend/internal/feature/logodetection/logodetectionhttp"
 )
 
 // mockLogoDetectionUsecase はLogoDetectionUsecaseインターフェースのモック実装です。

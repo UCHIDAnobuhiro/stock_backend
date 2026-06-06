@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"stock_backend/internal/feature/candles"
-	"stock_backend/internal/feature/candles/transport"
+	"stock_backend/internal/feature/candles/candleshttp"
 )
 
 // mockCandlesUsecase はcandlesUsecaseインターフェースのモック実装です。

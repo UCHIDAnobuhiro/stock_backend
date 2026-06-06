@@ -18,24 +18,24 @@ components:
   candles:            { in: internal/feature/candles }
   candles-sqlc:       { in: internal/feature/candles/sqlc }
   candles-twelvedata: { in: internal/feature/candles/twelvedata }
-  candles-http:       { in: internal/feature/candles/transport }
+  candles-http:       { in: internal/feature/candles/candleshttp }
   # --- auth ---
   auth:      { in: internal/feature/auth }
   auth-sqlc: { in: internal/feature/auth/sqlc }
-  auth-http: { in: internal/feature/auth/transport }
+  auth-http: { in: internal/feature/auth/authhttp }
   # --- symbollist ---
   symbollist:      { in: internal/feature/symbollist }
   symbollist-sqlc: { in: internal/feature/symbollist/sqlc }
-  symbollist-http: { in: internal/feature/symbollist/transport }
+  symbollist-http: { in: internal/feature/symbollist/symbollisthttp }
   # --- watchlist ---
   watchlist:      { in: internal/feature/watchlist }
   watchlist-sqlc: { in: internal/feature/watchlist/sqlc }
-  watchlist-http: { in: internal/feature/watchlist/transport }
+  watchlist-http: { in: internal/feature/watchlist/watchlisthttp }
   # --- logodetection ---
   logodetection:        { in: internal/feature/logodetection }
   logodetection-gemini: { in: internal/feature/logodetection/gemini }
   logodetection-vision: { in: internal/feature/logodetection/vision }
-  logodetection-http:   { in: internal/feature/logodetection/transport }
+  logodetection-http:   { in: internal/feature/logodetection/logodetectionhttp }
   # --- 共通基盤 ---
   platform: { in: internal/platform/** }
   shared:   { in: internal/shared/** }

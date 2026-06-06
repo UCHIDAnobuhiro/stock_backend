@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"stock_backend/internal/feature/auth/transport"
+	"stock_backend/internal/feature/auth/authhttp"
 	"stock_backend/internal/platform/httpratelimit"
 )
 

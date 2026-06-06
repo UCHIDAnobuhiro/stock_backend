@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"stock_backend/internal/feature/symbollist"
-	"stock_backend/internal/feature/symbollist/transport"
+	"stock_backend/internal/feature/symbollist/symbollisthttp"
 )
 
 func strPtr(s string) *string {
