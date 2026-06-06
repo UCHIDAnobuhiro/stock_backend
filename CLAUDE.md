@@ -88,7 +88,10 @@ api/
 internal/
 ├── api/              # OpenAPIから自動生成された型定義（types.gen.go）
 ├── app/
+│   ├── batch/        # バッチ実行ロジック（job_id ディスパッチ: candles / logo）
+│   ├── config/       # 環境変数パースの純粋関数ヘルパー
 │   ├── di/           # 依存性注入ファクトリ
+│   ├── migrate/      # マイグレーション実行ロジック（goose サブコマンドディスパッチ）
 │   └── router/       # HTTPルーター設定
 ├── feature/          # フィーチャーモジュール（垂直スライス）
 │   ├── auth/

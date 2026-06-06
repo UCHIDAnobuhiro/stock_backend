@@ -1,4 +1,4 @@
-package main
+package migrate
 
 import (
 	"io"
@@ -7,7 +7,7 @@ import (
 )
 
 // TestRun_RejectsUnsupportedCommand は allowedCommands に含まれないサブコマンドを
-// run() が拒否し、終了コード 2 を返すことを検証します。
+// Run() が拒否し、終了コード 2 を返すことを検証します。
 // OpenSQL を呼ぶ前に弾かれるため、DB なしで実行可能です。
 func TestRun_RejectsUnsupportedCommand(t *testing.T) {
 	tests := []struct {
@@ -21,9 +21,9 @@ func TestRun_RejectsUnsupportedCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := run(tt.args)
+			got := Run(tt.args)
 			if got != 2 {
-				t.Errorf("run(%v) = %d, want 2", tt.args, got)
+				t.Errorf("Run(%v) = %d, want 2", tt.args, got)
 			}
 		})
 	}
@@ -38,8 +38,8 @@ func TestRun_DoesNotChangeDefaultLogger(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	slog.SetDefault(logger)
 
-	if got := run([]string{"no-such"}); got != 2 {
-		t.Fatalf("run() = %d, want 2", got)
+	if got := Run([]string{"no-such"}); got != 2 {
+		t.Fatalf("Run() = %d, want 2", got)
 	}
 	if got := slog.Default(); got != logger {
 		t.Errorf("slog.Default() = %p, want %p", got, logger)
@@ -77,7 +77,7 @@ func TestAllowedCommands_ContainsExpectedSet(t *testing.T) {
 func TestRun_ReturnsOneWhenDBConfigInvalid(t *testing.T) {
 	t.Setenv("DB_USER", "")
 
-	if got := run(nil); got != 1 {
-		t.Errorf("run(nil) = %d, want 1", got)
+	if got := Run(nil); got != 1 {
+		t.Errorf("Run(nil) = %d, want 1", got)
 	}
 }
