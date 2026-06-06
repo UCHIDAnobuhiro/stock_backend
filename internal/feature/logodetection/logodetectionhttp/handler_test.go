@@ -18,17 +18,17 @@ import (
 	"stock_backend/internal/feature/logodetection/logodetectionhttp"
 )
 
-// mockLogoDetectionUsecase はUsecaseインターフェースのモック実装です。
-type mockLogoDetectionUsecase struct {
+// mockUsecase はUsecaseインターフェースのモック実装です。
+type mockUsecase struct {
 	DetectLogosFunc    func(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error)
 	AnalyzeCompanyFunc func(ctx context.Context, companyName string) (*logodetection.CompanyAnalysis, error)
 }
 
-func (m *mockLogoDetectionUsecase) DetectLogos(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error) {
+func (m *mockUsecase) DetectLogos(ctx context.Context, imageData []byte) ([]logodetection.DetectedLogo, error) {
 	return m.DetectLogosFunc(ctx, imageData)
 }
 
-func (m *mockLogoDetectionUsecase) AnalyzeCompany(ctx context.Context, companyName string) (*logodetection.CompanyAnalysis, error) {
+func (m *mockUsecase) AnalyzeCompany(ctx context.Context, companyName string) (*logodetection.CompanyAnalysis, error) {
 	return m.AnalyzeCompanyFunc(ctx, companyName)
 }
 
@@ -111,7 +111,7 @@ func TestLogoDetectionHandler_DetectLogos(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUC := &mockLogoDetectionUsecase{
+			mockUC := &mockUsecase{
 				DetectLogosFunc: tt.mockFunc,
 			}
 
@@ -179,7 +179,7 @@ func TestLogoDetectionHandler_AnalyzeCompany(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockUC := &mockLogoDetectionUsecase{
+			mockUC := &mockUsecase{
 				AnalyzeCompanyFunc: tt.mockFunc,
 			}
 

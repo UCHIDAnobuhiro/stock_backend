@@ -14,13 +14,13 @@ var ErrDB = errors.New("database error")
 // ErrMarketAPI はマーケットAPIのセンチネルエラーです。
 var ErrMarketAPI = errors.New("market API error")
 
-// mockCandleWriteRepository はWriteRepositoryインターフェースのモック実装です。
-type mockCandleWriteRepository struct {
+// mockWriteRepository はWriteRepositoryインターフェースのモック実装です。
+type mockWriteRepository struct {
 	UpsertBatchFunc func(ctx context.Context, candles []Candle) error
 }
 
 // UpsertBatch はUpsertBatchFuncが設定されていればそれを呼び出します。
-func (m *mockCandleWriteRepository) UpsertBatch(ctx context.Context, candles []Candle) error {
+func (m *mockWriteRepository) UpsertBatch(ctx context.Context, candles []Candle) error {
 	if m.UpsertBatchFunc != nil {
 		return m.UpsertBatchFunc(ctx, candles)
 	}
@@ -261,7 +261,7 @@ func TestIngestUsecase_ingestOne(t *testing.T) {
 			mockMarket := &mockMarketRepository{
 				GetTimeSeriesFunc: tc.mockGetTimeSeriesFunc,
 			}
-			mockCandle := &mockCandleWriteRepository{
+			mockCandle := &mockWriteRepository{
 				UpsertBatchFunc: func(ctx context.Context, candles []Candle) error {
 					capturedCandles = candles
 					return tc.mockUpsertBatchFunc(ctx, candles)
@@ -427,7 +427,7 @@ func TestIngestUsecase_IngestAll(t *testing.T) {
 					return tc.mockGetTimeSeriesFunc(ctx, symbol, interval, outputsize, loc)
 				},
 			}
-			mockCandle := &mockCandleWriteRepository{
+			mockCandle := &mockWriteRepository{
 				UpsertBatchFunc: tc.mockUpsertBatchFunc,
 			}
 			mockSymbol := &mockSymbolRepository{
@@ -494,7 +494,7 @@ func TestIngestUsecase_IngestAll_MidLoopFatal(t *testing.T) {
 				return mockCandles, nil
 			},
 		}
-		mockCandle := &mockCandleWriteRepository{
+		mockCandle := &mockWriteRepository{
 			UpsertBatchFunc: func(ctx context.Context, candles []Candle) error { return nil },
 		}
 		mockSymbol := &mockSymbolRepository{
@@ -535,7 +535,7 @@ func TestIngestUsecase_IngestAll_MidLoopFatal(t *testing.T) {
 				return mockCandles, nil
 			},
 		}
-		mockCandle := &mockCandleWriteRepository{
+		mockCandle := &mockWriteRepository{
 			UpsertBatchFunc: func(ctx context.Context, candles []Candle) error { return nil },
 		}
 		mockSymbol := &mockSymbolRepository{
@@ -574,7 +574,7 @@ func TestIngestUsecase_IngestAll_MidLoopFatal(t *testing.T) {
 func TestIngestUsecase_ingestOne_InvalidTimezone(t *testing.T) {
 	ctx := context.Background()
 	mockMarket := &mockMarketRepository{}
-	mockCandle := &mockCandleWriteRepository{}
+	mockCandle := &mockWriteRepository{}
 	mockSymbol := &mockSymbolRepository{}
 	mockRL := &mockRateLimiter{}
 
@@ -601,7 +601,7 @@ func TestIngestUsecase_ingestOne_PassesLocation(t *testing.T) {
 			return nil, nil
 		},
 	}
-	mockCandle := &mockCandleWriteRepository{
+	mockCandle := &mockWriteRepository{
 		UpsertBatchFunc: func(ctx context.Context, candles []Candle) error { return nil },
 	}
 	mockSymbol := &mockSymbolRepository{}

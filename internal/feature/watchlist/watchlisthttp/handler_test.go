@@ -19,36 +19,36 @@ import (
 
 const testUserID int64 = 1
 
-// mockWatchlistUsecase は Usecase インターフェースのモック実装です。
-type mockWatchlistUsecase struct {
+// mockUsecase は Usecase インターフェースのモック実装です。
+type mockUsecase struct {
 	ListUserSymbolsFunc func(ctx context.Context, userID int64) ([]watchlist.UserSymbol, error)
 	AddSymbolFunc       func(ctx context.Context, userID int64, symbolCode string) error
 	RemoveSymbolFunc    func(ctx context.Context, userID int64, symbolCode string) error
 	ReorderSymbolsFunc  func(ctx context.Context, userID int64, orderedCodes []string) error
 }
 
-func (m *mockWatchlistUsecase) ListUserSymbols(ctx context.Context, userID int64) ([]watchlist.UserSymbol, error) {
+func (m *mockUsecase) ListUserSymbols(ctx context.Context, userID int64) ([]watchlist.UserSymbol, error) {
 	if m.ListUserSymbolsFunc != nil {
 		return m.ListUserSymbolsFunc(ctx, userID)
 	}
 	return nil, nil
 }
 
-func (m *mockWatchlistUsecase) AddSymbol(ctx context.Context, userID int64, symbolCode string) error {
+func (m *mockUsecase) AddSymbol(ctx context.Context, userID int64, symbolCode string) error {
 	if m.AddSymbolFunc != nil {
 		return m.AddSymbolFunc(ctx, userID, symbolCode)
 	}
 	return nil
 }
 
-func (m *mockWatchlistUsecase) RemoveSymbol(ctx context.Context, userID int64, symbolCode string) error {
+func (m *mockUsecase) RemoveSymbol(ctx context.Context, userID int64, symbolCode string) error {
 	if m.RemoveSymbolFunc != nil {
 		return m.RemoveSymbolFunc(ctx, userID, symbolCode)
 	}
 	return nil
 }
 
-func (m *mockWatchlistUsecase) ReorderSymbols(ctx context.Context, userID int64, orderedCodes []string) error {
+func (m *mockUsecase) ReorderSymbols(ctx context.Context, userID int64, orderedCodes []string) error {
 	if m.ReorderSymbolsFunc != nil {
 		return m.ReorderSymbolsFunc(ctx, userID, orderedCodes)
 	}
@@ -110,7 +110,7 @@ func TestWatchlistHandler_List(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockUC := &mockWatchlistUsecase{ListUserSymbolsFunc: tt.mockList}
+			mockUC := &mockUsecase{ListUserSymbolsFunc: tt.mockList}
 			h := watchlisthttp.NewHandler(mockUC)
 			router := newRouter(t, func(r *gin.Engine) {
 				r.GET("/watchlist", h.List)
@@ -187,7 +187,7 @@ func TestWatchlistHandler_Add(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockUC := &mockWatchlistUsecase{AddSymbolFunc: tt.mockAdd}
+			mockUC := &mockUsecase{AddSymbolFunc: tt.mockAdd}
 			h := watchlisthttp.NewHandler(mockUC)
 			router := newRouter(t, func(r *gin.Engine) {
 				r.POST("/watchlist", h.Add)
@@ -251,7 +251,7 @@ func TestWatchlistHandler_Remove(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockUC := &mockWatchlistUsecase{RemoveSymbolFunc: tt.mockRemove}
+			mockUC := &mockUsecase{RemoveSymbolFunc: tt.mockRemove}
 			h := watchlisthttp.NewHandler(mockUC)
 			router := newRouter(t, func(r *gin.Engine) {
 				r.DELETE("/watchlist/:code", h.Remove)
@@ -312,7 +312,7 @@ func TestWatchlistHandler_Reorder(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockUC := &mockWatchlistUsecase{ReorderSymbolsFunc: tt.mockReorder}
+			mockUC := &mockUsecase{ReorderSymbolsFunc: tt.mockReorder}
 			h := watchlisthttp.NewHandler(mockUC)
 			router := newRouter(t, func(r *gin.Engine) {
 				r.PUT("/watchlist/reorder", h.Reorder)

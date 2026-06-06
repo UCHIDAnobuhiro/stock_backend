@@ -19,14 +19,14 @@ import (
 	"stock_backend/internal/platform/httpratelimit"
 )
 
-// mockAuthUsecase はUsecaseインターフェースのモック実装です。
-type mockAuthUsecase struct {
+// mockUsecase はUsecaseインターフェースのモック実装です。
+type mockUsecase struct {
 	SignupFunc func(ctx context.Context, email, password string) (int64, error)
 	LoginFunc  func(ctx context.Context, email, password string) (string, error)
 }
 
 // Signup はSignupメソッドのモック実装です。
-func (m *mockAuthUsecase) Signup(ctx context.Context, email, password string) (int64, error) {
+func (m *mockUsecase) Signup(ctx context.Context, email, password string) (int64, error) {
 	if m.SignupFunc != nil {
 		return m.SignupFunc(ctx, email, password)
 	}
@@ -34,7 +34,7 @@ func (m *mockAuthUsecase) Signup(ctx context.Context, email, password string) (i
 }
 
 // Login はLoginメソッドのモック実装です。
-func (m *mockAuthUsecase) Login(ctx context.Context, email, password string) (string, error) {
+func (m *mockUsecase) Login(ctx context.Context, email, password string) (string, error) {
 	if m.LoginFunc != nil {
 		return m.LoginFunc(ctx, email, password)
 	}
@@ -159,7 +159,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockUC := &mockAuthUsecase{SignupFunc: tt.mockSignupFunc}
+			mockUC := &mockUsecase{SignupFunc: tt.mockSignupFunc}
 			h := authhttp.NewHandler(mockUC, nil, false)
 
 			router := gin.New()
@@ -187,7 +187,7 @@ func TestAuthHandler_Login_RateLimited(t *testing.T) {
 
 	limiter := httpratelimit.NewLimiter(rdb)
 	loginCalled := false
-	mockUC := &mockAuthUsecase{
+	mockUC := &mockUsecase{
 		LoginFunc: func(ctx context.Context, email, password string) (string, error) {
 			loginCalled = true
 			return "", errors.New("should not be called")
@@ -284,7 +284,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockUC := &mockAuthUsecase{LoginFunc: tt.mockLoginFunc}
+			mockUC := &mockUsecase{LoginFunc: tt.mockLoginFunc}
 			h := authhttp.NewHandler(mockUC, nil, tt.secureCookie)
 
 			router := gin.New()
@@ -315,7 +315,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := authhttp.NewHandler(&mockAuthUsecase{}, nil, tt.secureCookie)
+			h := authhttp.NewHandler(&mockUsecase{}, nil, tt.secureCookie)
 
 			router := gin.New()
 			router.DELETE("/logout", h.Logout)

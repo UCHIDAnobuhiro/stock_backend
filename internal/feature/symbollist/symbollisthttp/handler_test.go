@@ -18,13 +18,13 @@ func strPtr(s string) *string {
 	return &s
 }
 
-// mockSymbolUsecase はUsecaseインターフェースのモック実装です。
-type mockSymbolUsecase struct {
+// mockUsecase はUsecaseインターフェースのモック実装です。
+type mockUsecase struct {
 	ListActiveSymbolsFunc func(ctx context.Context) ([]symbollist.Symbol, error)
 }
 
 // ListActiveSymbols はモックのListActiveSymbols関数を呼び出します。
-func (m *mockSymbolUsecase) ListActiveSymbols(ctx context.Context) ([]symbollist.Symbol, error) {
+func (m *mockUsecase) ListActiveSymbols(ctx context.Context) ([]symbollist.Symbol, error) {
 	if m.ListActiveSymbolsFunc != nil {
 		return m.ListActiveSymbolsFunc(ctx)
 	}
@@ -35,7 +35,7 @@ func (m *mockSymbolUsecase) ListActiveSymbols(ctx context.Context) ([]symbollist
 func TestNewSymbolHandler(t *testing.T) {
 	t.Parallel()
 
-	mockUC := &mockSymbolUsecase{}
+	mockUC := &mockUsecase{}
 	h := symbollisthttp.NewHandler(mockUC)
 
 	assert.NotNil(t, h, "handler should not be nil")
@@ -102,7 +102,7 @@ func TestSymbolHandler_List(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockUC := &mockSymbolUsecase{
+			mockUC := &mockUsecase{
 				ListActiveSymbolsFunc: tt.mockListActiveFunc,
 			}
 			h := symbollisthttp.NewHandler(mockUC)
@@ -127,7 +127,7 @@ func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	// レスポンスに公開DTOフィールドのみが含まれることを検証（ID、Market、IsActiveは含まれない）
-	mockUC := &mockSymbolUsecase{
+	mockUC := &mockUsecase{
 		ListActiveSymbolsFunc: func(ctx context.Context) ([]symbollist.Symbol, error) {
 			return []symbollist.Symbol{
 				{
