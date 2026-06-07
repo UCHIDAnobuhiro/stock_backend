@@ -2,8 +2,8 @@
 package di
 
 import (
-	"stock_backend/internal/feature/candles/twelvedata"
-	"stock_backend/internal/infra/httpclient"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles/twelvedata"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/infra/httpclient"
 )
 
 // NewMarket はHTTPクライアント付きの完全に設定されたTwelveDataMarketを生成します。

@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"stock_backend/internal/api"
-	"stock_backend/internal/feature/candles"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles"
 )
 
 // Usecase はローソク足データ操作のユースケースインターフェースを定義します。

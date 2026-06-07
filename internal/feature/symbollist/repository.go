@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"stock_backend/internal/feature/symbollist/sqlc"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist/sqlc"
 )
 
 // repository は Repository / LogoSymbolRepository の sqlc ベース実装です。

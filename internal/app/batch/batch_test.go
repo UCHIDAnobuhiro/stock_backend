@@ -3,8 +3,8 @@ package batch
 import (
 	"testing"
 
-	"stock_backend/internal/feature/candles"
-	"stock_backend/internal/feature/symbollist"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist"
 )
 
 // TestShouldFailExit はしきい値判定の境界条件を検証します。

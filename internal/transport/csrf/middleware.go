@@ -9,7 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"stock_backend/internal/api"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
 )
 
 const (

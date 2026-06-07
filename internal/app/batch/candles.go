@@ -7,12 +7,12 @@ import (
 
 	redisv9 "github.com/redis/go-redis/v9"
 
-	"stock_backend/internal/app/di"
-	"stock_backend/internal/feature/candles"
-	"stock_backend/internal/feature/symbollist"
-	"stock_backend/internal/infra/db"
-	infraredis "stock_backend/internal/infra/redis"
-	"stock_backend/internal/shared/clientratelimit"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/app/di"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/infra/db"
+	infraredis "github.com/UCHIDAnobuhiro/stock-backend/internal/infra/redis"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/shared/clientratelimit"
 )
 
 // runCandleIngest は TwelveData から株価データを取り込み、終了コード（0 or 1）を返す。

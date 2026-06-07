@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"stock_backend/internal/feature/symbollist"
-	"stock_backend/internal/feature/symbollist/symbollisthttp"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist/symbollisthttp"
 )
 
 func strPtr(s string) *string {

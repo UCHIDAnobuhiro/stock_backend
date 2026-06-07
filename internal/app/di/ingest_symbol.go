@@ -3,8 +3,8 @@ package di
 import (
 	"context"
 
-	"stock_backend/internal/feature/candles"
-	"stock_backend/internal/feature/symbollist"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist"
 )
 
 // SymbolLister は symbollist リポジトリが提供するアクティブ銘柄取得インターフェースです。

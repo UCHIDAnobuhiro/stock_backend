@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"stock_backend/internal/feature/auth"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth"
 )
 
 const testPepper = "test-pepper-secret-32chars-long!"

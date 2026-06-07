@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	"stock_backend/internal/app/migrate"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/app/migrate"
 )
 
 // main はロガーを設定し、migrate.Run の戻り値で os.Exit するだけの薄いラッパー。

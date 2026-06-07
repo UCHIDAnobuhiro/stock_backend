@@ -8,8 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"stock_backend/internal/api"
-	"stock_backend/internal/feature/logodetection"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/logodetection"
 )
 
 // Usecase はロゴ検出・企業分析のユースケースインターフェースを定義します。

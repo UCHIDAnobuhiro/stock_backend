@@ -14,8 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"stock_backend/internal/feature/logodetection"
-	"stock_backend/internal/feature/logodetection/logodetectionhttp"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/logodetection"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/logodetection/logodetectionhttp"
 )
 
 // mockUsecase はUsecaseインターフェースのモック実装です。

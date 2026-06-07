@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"stock_backend/internal/feature/watchlist/sqlc"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/watchlist/sqlc"
 )
 
 const (

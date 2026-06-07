@@ -33,4 +33,4 @@ formatters:
       sections:
         - standard
         - default
-        - prefix(stock_backend)
+        - prefix(github.com/UCHIDAnobuhiro/stock-backend)

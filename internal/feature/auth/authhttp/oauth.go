@@ -8,9 +8,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"stock_backend/internal/api"
-	"stock_backend/internal/feature/auth"
-	"stock_backend/internal/transport/csrf"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/csrf"
 )
 
 // OAuthUsecase はOAuth2認証フローのユースケースインターフェースです。

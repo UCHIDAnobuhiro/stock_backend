@@ -8,9 +8,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"stock_backend/internal/api"
-	"stock_backend/internal/feature/watchlist"
-	"stock_backend/internal/transport/jwt"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/watchlist"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/jwt"
 )
 
 // Usecase はウォッチリスト操作のユースケースインターフェースを定義します。

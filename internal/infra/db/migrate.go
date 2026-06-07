@@ -8,7 +8,7 @@ import (
 
 	"github.com/pressly/goose/v3"
 
-	dbmigrations "stock_backend/db"
+	dbmigrations "github.com/UCHIDAnobuhiro/stock-backend/db"
 )
 
 // gooseGlobalMu は goose の package-level state (SetDialect / SetBaseFS) への

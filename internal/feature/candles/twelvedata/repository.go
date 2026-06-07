@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"time"
 
-	"stock_backend/internal/feature/candles"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles"
 )
 
 // TwelveDataMarket はTwelve Data外部APIから株価データを取得するMarketRepository実装です。

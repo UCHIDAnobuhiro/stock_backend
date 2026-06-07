@@ -8,8 +8,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"stock_backend/internal/feature/auth"
-	"stock_backend/internal/feature/auth/authhttp"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth/authhttp"
 )
 
 // oauthHTTPTimeout は OAuth プロバイダ（Google/GitHub）への HTTP 呼び出しに用いるタイムアウト。

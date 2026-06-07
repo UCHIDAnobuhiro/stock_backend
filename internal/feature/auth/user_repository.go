@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"stock_backend/internal/feature/auth/sqlc"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth/sqlc"
 )
 
 // pgErrUniqueViolation は PostgreSQL のユニーク制約違反コードです。
