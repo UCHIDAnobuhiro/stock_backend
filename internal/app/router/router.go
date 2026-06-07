@@ -28,8 +28,14 @@ func NewRouter(authHandler *authhttp.Handler, oauthHandler *authhttp.OAuthHandle
 	watchlist *watchlisthttp.Handler,
 	limiter *httpratelimit.Limiter,
 	allowedOrigins []string,
+	gcpProjectID string,
 ) *gin.Engine {
-	r := gin.Default()
+	// gin.Default() の代わりに gin.New() を使い、アクセスログを slog（構造化）で出力する。
+	// AccessLog を外側、Recovery を内側に置くことで、panic を 500 に変換した結果も
+	// アクセスログに記録される。
+	r := gin.New()
+	r.Use(httpmw.AccessLog(gcpProjectID))
+	r.Use(gin.Recovery())
 
 	// リバースプロキシを使用しない構成のため、X-Forwarded-For等のヘッダーを信頼しない
 	// c.ClientIP()がRemoteAddr（実際のTCP接続元）を返すようにする

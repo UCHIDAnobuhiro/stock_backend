@@ -150,3 +150,78 @@ func TestParseBoolString(t *testing.T) {
 		})
 	}
 }
+
+// TestParseLogFormat は LOG_FORMAT 明示指定と APP_ENV フォールバックの組み合わせを検証します。
+func TestParseLogFormat(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		logFormatRaw string
+		appEnv       string
+		wantUseJSON  bool
+		wantOK       bool
+	}{
+		{
+			name:         "json 明示",
+			logFormatRaw: "json",
+			appEnv:       "docker-dev",
+			wantUseJSON:  true,
+			wantOK:       true,
+		},
+		{
+			name:         "text 明示は production でも text",
+			logFormatRaw: "text",
+			appEnv:       "production",
+			wantUseJSON:  false,
+			wantOK:       true,
+		},
+		{
+			name:         "大文字・前後空白は無視する",
+			logFormatRaw: "  JSON  ",
+			appEnv:       "docker-dev",
+			wantUseJSON:  true,
+			wantOK:       true,
+		},
+		{
+			name:         "未設定 + production は JSON",
+			logFormatRaw: "",
+			appEnv:       "production",
+			wantUseJSON:  true,
+			wantOK:       true,
+		},
+		{
+			name:         "未設定 + docker-dev は Text",
+			logFormatRaw: "",
+			appEnv:       "docker-dev",
+			wantUseJSON:  false,
+			wantOK:       true,
+		},
+		{
+			name:         "不正値は production フォールバックで JSON + ok=false",
+			logFormatRaw: "yaml",
+			appEnv:       "production",
+			wantUseJSON:  true,
+			wantOK:       false,
+		},
+		{
+			name:         "不正値は dev フォールバックで Text + ok=false",
+			logFormatRaw: "yaml",
+			appEnv:       "docker-dev",
+			wantUseJSON:  false,
+			wantOK:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotUseJSON, gotOK := ParseLogFormat(tt.logFormatRaw, tt.appEnv)
+			if gotUseJSON != tt.wantUseJSON || gotOK != tt.wantOK {
+				t.Errorf("ParseLogFormat(%q, %q) = (%v, %v), want (%v, %v)",
+					tt.logFormatRaw, tt.appEnv, gotUseJSON, gotOK, tt.wantUseJSON, tt.wantOK)
+			}
+		})
+	}
+}

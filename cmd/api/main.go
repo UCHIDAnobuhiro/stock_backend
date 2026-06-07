@@ -25,6 +25,7 @@ import (
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/watchlist"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/watchlist/watchlisthttp"
 	infradb "github.com/UCHIDAnobuhiro/stock-backend/internal/infra/db"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/infra/logging"
 	infraredis "github.com/UCHIDAnobuhiro/stock-backend/internal/infra/redis"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpratelimit"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/jwt"
@@ -45,10 +46,12 @@ func run() int {
 	if os.Getenv("LOG_LEVEL") == "DEBUG" {
 		logLevel = slog.LevelDebug
 	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: logLevel,
-	}))
+	useJSON, formatOK := config.ParseLogFormat(os.Getenv("LOG_FORMAT"), os.Getenv("APP_ENV"))
+	logger := slog.New(logging.NewHandler(os.Stdout, logLevel, useJSON))
 	slog.SetDefault(logger)
+	if !formatOK {
+		slog.Warn("invalid LOG_FORMAT value, using default", "value", os.Getenv("LOG_FORMAT"))
+	}
 
 	// 環境変数を外部接続前に検証する
 	cfg, err := loadServerConfig()
@@ -141,7 +144,7 @@ func run() int {
 	watchlistH := watchlisthttp.NewHandler(watchlistUC)
 
 	// ルーター作成
-	r := router.NewRouter(authH, oauthH, candlesH, symbolH, logoH, watchlistH, rateLimiter, cfg.corsOrigins)
+	r := router.NewRouter(authH, oauthH, candlesH, symbolH, logoH, watchlistH, rateLimiter, cfg.corsOrigins, cfg.gcpProjectID)
 
 	slog.Info("Starting server", "port", 8080)
 	if err := r.Run(":8080"); err != nil {
@@ -157,6 +160,7 @@ type serverConfig struct {
 	passwordPepper string
 	secureCookie   bool
 	corsOrigins    []string
+	gcpProjectID   string          // GOOGLE_CLOUD_PROJECT。未設定可（トレース相関に使用）
 	oauth          *di.OAuthConfig // OAuth 無効なら nil
 }
 
@@ -198,6 +202,7 @@ func loadServerConfig() (serverConfig, error) {
 		passwordPepper: passwordPepper,
 		secureCookie:   secureCookie,
 		corsOrigins:    corsOrigins,
+		gcpProjectID:   os.Getenv("GOOGLE_CLOUD_PROJECT"),
 		oauth:          oauth,
 	}, nil
 }
