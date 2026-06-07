@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
-	"stock_backend/internal/feature/auth"
-	"stock_backend/internal/transport/jwt"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/jwt"
 )
 
 // clearEnv は設定検証に関わる環境変数をすべて空にし、テストを決定的にする。

@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"stock_backend/internal/api"
-	"stock_backend/internal/feature/symbollist"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist"
 )
 
 // Usecase は銘柄（株式コード）操作のユースケースインターフェースを定義します。

@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	"stock_backend/internal/app/batch"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/app/batch"
 )
 
 // main はロガーを設定し、batch.Run の戻り値で os.Exit するだけの薄いラッパー。

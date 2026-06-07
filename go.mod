@@ -1,4 +1,4 @@
-module stock_backend
+module github.com/UCHIDAnobuhiro/stock-backend
 
 go 1.26.3
 

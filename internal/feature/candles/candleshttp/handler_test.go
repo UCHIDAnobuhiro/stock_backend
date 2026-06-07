@@ -13,8 +13,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"stock_backend/internal/feature/candles"
-	"stock_backend/internal/feature/candles/candleshttp"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles/candleshttp"
 )
 
 // mockUsecase はusecaseインターフェースのモック実装です。

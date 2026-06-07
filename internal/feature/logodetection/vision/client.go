@@ -8,7 +8,7 @@ import (
 	gvision "cloud.google.com/go/vision/v2/apiv1"
 	visionpb "cloud.google.com/go/vision/v2/apiv1/visionpb"
 
-	"stock_backend/internal/feature/logodetection"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/logodetection"
 )
 
 // VisionLogoDetector はGoogle Cloud Vision APIを使用してロゴを検出します。

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"stock_backend/internal/feature/candles/sqlc"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles/sqlc"
 )
 
 // dbRepository は Repository / WriteRepository の sqlc + 生 SQL 実装です。

@@ -283,8 +283,8 @@ go generate ./internal/api/...
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/UCHIDAnobuhiro/stock_backend.git
-cd stock_backend
+git clone https://github.com/UCHIDAnobuhiro/stock-backend.git
+cd stock-backend
 
 # 環境変数ファイルをコピー
 cp docker/example.env.app docker/.env.app

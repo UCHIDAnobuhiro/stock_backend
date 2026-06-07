@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"stock_backend/internal/feature/logodetection"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/logodetection"
 )
 
 // ErrAPI はモックと期待値の間で共有されるセンチネルエラーです。

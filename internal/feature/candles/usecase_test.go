@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"stock_backend/internal/feature/candles"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles"
 )
 
 // ErrDB はモックと期待値の間で共有されるセンチネルエラーです。

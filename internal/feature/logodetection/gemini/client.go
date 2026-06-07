@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/genai"
 
-	"stock_backend/internal/feature/logodetection"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/logodetection"
 )
 
 const (

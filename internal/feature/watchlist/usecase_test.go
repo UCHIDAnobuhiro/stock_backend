@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"stock_backend/internal/feature/watchlist"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/watchlist"
 )
 
 // mockRepository はRepositoryインターフェースのモック実装です。

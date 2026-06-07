@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"stock_backend/internal/feature/auth/sqlc"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth/sqlc"
 )
 
 // oauthAccountRepository は OAuthAccountRepository の sqlc ベース実装です。

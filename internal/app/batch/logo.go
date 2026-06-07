@@ -5,10 +5,10 @@ import (
 	"log/slog"
 	"time"
 
-	"stock_backend/internal/app/di"
-	"stock_backend/internal/feature/symbollist"
-	"stock_backend/internal/infra/db"
-	"stock_backend/internal/shared/clientratelimit"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/app/di"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/infra/db"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/shared/clientratelimit"
 )
 
 // runLogoIngest は TwelveData からロゴURLを取り込み、終了コード（0 or 1）を返す。

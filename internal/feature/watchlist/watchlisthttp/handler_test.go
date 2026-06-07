@@ -12,9 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"stock_backend/internal/feature/watchlist"
-	"stock_backend/internal/feature/watchlist/watchlisthttp"
-	"stock_backend/internal/transport/jwt"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/watchlist"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/watchlist/watchlisthttp"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/jwt"
 )
 
 const testUserID int64 = 1

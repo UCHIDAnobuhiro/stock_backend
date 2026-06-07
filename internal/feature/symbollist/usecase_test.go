@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"stock_backend/internal/feature/symbollist"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist"
 )
 
 // mockRepository はRepositoryインターフェースのモック実装です。

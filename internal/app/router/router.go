@@ -7,16 +7,16 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
-	"stock_backend/internal/feature/auth/authhttp"
-	"stock_backend/internal/feature/candles/candleshttp"
-	"stock_backend/internal/feature/logodetection/logodetectionhttp"
-	"stock_backend/internal/feature/symbollist/symbollisthttp"
-	"stock_backend/internal/feature/watchlist/watchlisthttp"
-	csrfmw "stock_backend/internal/transport/csrf"
-	handler "stock_backend/internal/transport/handler"
-	"stock_backend/internal/transport/httpratelimit"
-	"stock_backend/internal/transport/jwt"
-	httpmw "stock_backend/internal/transport/middleware"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth/authhttp"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles/candleshttp"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/logodetection/logodetectionhttp"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist/symbollisthttp"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/watchlist/watchlisthttp"
+	csrfmw "github.com/UCHIDAnobuhiro/stock-backend/internal/transport/csrf"
+	handler "github.com/UCHIDAnobuhiro/stock-backend/internal/transport/handler"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpratelimit"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/jwt"
+	httpmw "github.com/UCHIDAnobuhiro/stock-backend/internal/transport/middleware"
 )
 
 // NewRouter はすべてのアプリケーションルートを設定したGinルーターを生成します。

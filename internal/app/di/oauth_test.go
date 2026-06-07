@@ -7,7 +7,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"stock_backend/internal/feature/auth"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth"
 )
 
 // stubOAuthUserStore は OAuthUserStore（UserRepository + OAuthUserCreator）の最小実装。
