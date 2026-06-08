@@ -11,17 +11,17 @@ type Repository interface {
 	ListActive(ctx context.Context) ([]Symbol, error)
 }
 
-// Usecase は銘柄操作のビジネスロジックを提供します。
-type Usecase struct {
+// usecase は銘柄操作のビジネスロジックを提供します。
+type usecase struct {
 	repo Repository
 }
 
-// NewUsecase は指定されたリポジトリでUsecaseの新しいインスタンスを生成します。
-func NewUsecase(r Repository) *Usecase {
-	return &Usecase{repo: r}
+// NewUsecase は指定されたリポジトリでusecaseの新しいインスタンスを生成します。
+func NewUsecase(r Repository) *usecase {
+	return &usecase{repo: r}
 }
 
 // ListActiveSymbols はリポジトリからすべてのアクティブな銘柄を取得して返します。
-func (u *Usecase) ListActiveSymbols(ctx context.Context) ([]Symbol, error) {
+func (u *usecase) ListActiveSymbols(ctx context.Context) ([]Symbol, error) {
 	return u.repo.ListActive(ctx)
 }

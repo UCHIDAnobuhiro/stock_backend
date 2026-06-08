@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/infra/logging"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/csrf"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpratelimit"
@@ -26,11 +27,6 @@ type Usecase interface {
 	Login(ctx context.Context, email, password string) (string, error)
 }
 
-// PostSignupHook はサインアップ成功後に呼び出されるフックのインターフェースです。
-type PostSignupHook interface {
-	OnUserCreated(ctx context.Context, userID int64) error
-}
-
 // ログインのメールベースレートリミット設定
 const (
 	loginEmailLimit  = 5                // 15分間のメールアドレスあたりの最大ログイン試行回数
@@ -40,18 +36,18 @@ const (
 // Handler は認証操作のHTTPリクエストを処理します。
 // Usecaseインターフェースに依存し、JSONリクエスト/レスポンスを処理します。
 type Handler struct {
-	auth         Usecase
+	uc           Usecase
 	limiter      *httpratelimit.Limiter
 	secureCookie bool
-	postHooks    []PostSignupHook
+	postHooks    []auth.UserCreatedHook
 }
 
 // NewHandler はHandlerの新しいインスタンスを生成します。
 // 依存性注入用のコンストラクタで、外部からUsecaseとレートリミッターを注入します。
 // secureCookie が true の場合、Secure属性付きのCookieを設定します（本番環境用）。
 // postHooks にはサインアップ後に実行するフックを任意で渡せます。
-func NewHandler(auth Usecase, limiter *httpratelimit.Limiter, secureCookie bool, postHooks ...PostSignupHook) *Handler {
-	return &Handler{auth: auth, limiter: limiter, secureCookie: secureCookie, postHooks: postHooks}
+func NewHandler(uc Usecase, limiter *httpratelimit.Limiter, secureCookie bool, postHooks ...auth.UserCreatedHook) *Handler {
+	return &Handler{uc: uc, limiter: limiter, secureCookie: secureCookie, postHooks: postHooks}
 }
 
 // Signup はユーザー登録APIエンドポイントを処理します。
@@ -66,7 +62,7 @@ func (h *Handler) Signup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "invalid request"})
 		return
 	}
-	userID, err := h.auth.Signup(c.Request.Context(), req.Email, req.Password)
+	userID, err := h.uc.Signup(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		// ユーザー列挙攻撃を防止するため、実際のエラーを公開しない
 		slog.Warn("signup failed", "error", err, "email_hash", logging.HashedEmail(req.Email), "remote_addr", c.ClientIP())
@@ -111,7 +107,7 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := h.auth.Login(c.Request.Context(), req.Email, req.Password)
+	token, err := h.uc.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		// ユーザー列挙攻撃を防止するため、実際のエラーを公開しない
 		slog.Warn("login failed", "error", err, "email_hash", logging.HashedEmail(req.Email), "remote_addr", c.ClientIP())

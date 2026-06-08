@@ -25,26 +25,26 @@ type SymbolExistsChecker interface {
 	Exists(ctx context.Context, code string) (bool, error)
 }
 
-// Usecase はウォッチリスト操作のビジネスロジックを提供します。
-type Usecase struct {
+// usecase はウォッチリスト操作のビジネスロジックを提供します。
+type usecase struct {
 	repo          Repository
 	symbolChecker SymbolExistsChecker
 }
 
-// NewUsecase は指定されたリポジトリと銘柄チェッカーで Usecase の新しいインスタンスを生成します。
-func NewUsecase(repo Repository, symbolChecker SymbolExistsChecker) *Usecase {
-	return &Usecase{repo: repo, symbolChecker: symbolChecker}
+// NewUsecase は指定されたリポジトリと銘柄チェッカーで usecase の新しいインスタンスを生成します。
+func NewUsecase(repo Repository, symbolChecker SymbolExistsChecker) *usecase {
+	return &usecase{repo: repo, symbolChecker: symbolChecker}
 }
 
 // ListUserSymbols はユーザーのウォッチリストをソート順で返します。
-func (u *Usecase) ListUserSymbols(ctx context.Context, userID int64) ([]UserSymbol, error) {
+func (u *usecase) ListUserSymbols(ctx context.Context, userID int64) ([]UserSymbol, error) {
 	return u.repo.ListByUser(ctx, userID)
 }
 
 // AddSymbol はウォッチリストに銘柄を追加します。
 // symbols テーブルに存在しない銘柄コードの場合は ErrSymbolNotFound を返します。
 // 既にウォッチリストに存在する場合は ErrAlreadyInWatchlist を返します。
-func (u *Usecase) AddSymbol(ctx context.Context, userID int64, symbolCode string) error {
+func (u *usecase) AddSymbol(ctx context.Context, userID int64, symbolCode string) error {
 	exists, err := u.symbolChecker.Exists(ctx, symbolCode)
 	if err != nil {
 		return fmt.Errorf("checking symbol existence: %w", err)
@@ -57,12 +57,12 @@ func (u *Usecase) AddSymbol(ctx context.Context, userID int64, symbolCode string
 }
 
 // RemoveSymbol はウォッチリストから銘柄を削除します。
-func (u *Usecase) RemoveSymbol(ctx context.Context, userID int64, symbolCode string) error {
+func (u *usecase) RemoveSymbol(ctx context.Context, userID int64, symbolCode string) error {
 	return u.repo.Remove(ctx, userID, symbolCode)
 }
 
 // ReorderSymbols はウォッチリストの並び順を更新します。
-func (u *Usecase) ReorderSymbols(ctx context.Context, userID int64, orderedCodes []string) error {
+func (u *usecase) ReorderSymbols(ctx context.Context, userID int64, orderedCodes []string) error {
 	entries := make([]UserSymbol, 0, len(orderedCodes))
 	for i, code := range orderedCodes {
 		entries = append(entries, UserSymbol{
@@ -76,13 +76,13 @@ func (u *Usecase) ReorderSymbols(ctx context.Context, userID int64, orderedCodes
 
 // OnUserCreated は PostSignupHook インターフェースを実装します。
 // サインアップ直後に呼ばれ、デフォルト銘柄を追加します。
-func (u *Usecase) OnUserCreated(ctx context.Context, userID int64) error {
+func (u *usecase) OnUserCreated(ctx context.Context, userID int64) error {
 	return u.InitializeDefaults(ctx, userID)
 }
 
 // InitializeDefaults は新規ユーザー向けにデフォルト銘柄（AAPL/MSFT/GOOGL）を追加します。
 // symbols テーブルに存在する銘柄のみ追加します（存在しない場合はスキップ）。
-func (u *Usecase) InitializeDefaults(ctx context.Context, userID int64) error {
+func (u *usecase) InitializeDefaults(ctx context.Context, userID int64) error {
 	defaultSymbols := []string{"AAPL", "MSFT", "GOOGL"}
 
 	for i, code := range defaultSymbols {
