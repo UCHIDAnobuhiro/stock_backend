@@ -43,3 +43,26 @@ func ParseBoolString(raw string, fallback bool) (value bool, ok bool) {
 	}
 	return parsed, true
 }
+
+// ParseLogFormat はログ出力を JSON にするか Text にするかを決定する。
+//   - logFormatRaw が "json" / "text"（大小文字・前後空白は無視）の場合は
+//     その指定に従い (useJSON, true) を返す。
+//   - logFormatRaw が空文字の場合は appEnv にフォールバックし、
+//     appEnv が "production" のとき JSON とする ((useJSON, true))。
+//   - 上記以外の不正値の場合は appEnv ベースの既定値 + ok=false を返す。
+//     呼び出し側で警告ログなどの判断に利用する。
+//
+// env を直接読まず純粋な文字列を受け取るため、呼び出し側は os.Getenv 等で取得した値を渡す。
+func ParseLogFormat(logFormatRaw, appEnv string) (useJSON bool, ok bool) {
+	defaultJSON := appEnv == "production"
+	switch strings.ToLower(strings.TrimSpace(logFormatRaw)) {
+	case "":
+		return defaultJSON, true
+	case "json":
+		return true, true
+	case "text":
+		return false, true
+	default:
+		return defaultJSON, false
+	}
+}

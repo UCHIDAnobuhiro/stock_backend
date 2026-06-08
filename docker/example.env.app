@@ -4,6 +4,10 @@ APP_ENV=docker
 # ログレベル（任意。DEBUG を指定した場合のみ slog のレベルを下げる。未設定時は INFO 相当）
 # LOG_LEVEL=DEBUG
 
+# ログ出力フォーマット（任意。text | json）
+# 未設定時は APP_ENV で判定: production → json、それ以外（docker-dev 等）→ text
+# LOG_FORMAT=text
+
 # DB
 DB_HOST=db
 DB_PORT=5432
