@@ -170,7 +170,7 @@ func TestWatchlistHandler_Add(t *testing.T) {
 			body:           `{"symbol_code":""}`,
 			mockAdd:        nil,
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "",
+			expectedBody:   `{"error":"invalid request"}`,
 		},
 		{
 			name: "error: usecase returns internal error",
@@ -295,7 +295,7 @@ func TestWatchlistHandler_Reorder(t *testing.T) {
 			body:           `{"codes":[]}`,
 			mockReorder:    nil,
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "",
+			expectedBody:   `{"error":"invalid request"}`,
 		},
 		{
 			name: "error: usecase returns internal error",

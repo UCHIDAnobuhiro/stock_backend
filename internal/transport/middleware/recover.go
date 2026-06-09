@@ -16,6 +16,10 @@ func Recover() func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if rec := recover(); rec != nil {
+					// http.ErrAbortHandler は標準サーバが特別扱いする規約のため、握りつぶさず伝播させる。
+					if rec == http.ErrAbortHandler {
+						panic(rec)
+					}
 					slog.Error("panic recovered", "error", rec, "path", r.URL.Path, "method", r.Method)
 					httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
 				}

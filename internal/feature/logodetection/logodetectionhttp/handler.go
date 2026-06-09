@@ -2,6 +2,7 @@ package logodetectionhttp
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -36,8 +37,18 @@ func NewHandler(uc Usecase) *Handler {
 func (h *Handler) DetectLogos(w http.ResponseWriter, r *http.Request) {
 	const maxImageSize = 10 * 1024 * 1024 // 10MB
 
-	// メモリ上に保持するマルチパートデータの上限（Gin の MaxMultipartMemory 相当）。
+	// multipart の境界・ヘッダ分の余裕を見込み、リクエスト全体のサイズを制限する。
+	// 一時ファイルの肥大を防ぐため、ParseMultipartForm の前段でハードリミットをかける。
+	r.Body = http.MaxBytesReader(w, r.Body, maxImageSize+1<<20)
+
+	// ParseMultipartForm の引数はメモリ上限（Gin の MaxMultipartMemory 相当）。
 	if err := r.ParseMultipartForm(maxImageSize); err != nil {
+		var mbe *http.MaxBytesError
+		if errors.As(err, &mbe) {
+			slog.Warn("画像ファイルサイズ超過", "max", maxImageSize, "remote_addr", httpx.ClientIP(r))
+			httpx.WriteJSON(w, http.StatusRequestEntityTooLarge, api.ErrorResponse{Error: "画像サイズが上限（10MB）を超えています"})
+			return
+		}
 		slog.Warn("画像ファイルの取得に失敗", "error", err, "remote_addr", httpx.ClientIP(r))
 		httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "画像ファイルが必要です"})
 		return
