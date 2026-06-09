@@ -1,11 +1,278 @@
-// Package config はサーバー起動時に環境変数から設定を読み取るための
-// 純粋関数ヘルパーを提供します。
+// Package config はアプリケーション全体の環境変数読み込みを一箇所に集約します。
+//
+// os.Getenv の呼び出しはこのパッケージ内に閉じ込め、他のパッケージは
+// 構築済みの設定値を注入される形にします。エントリポイントごとに必要な
+// 環境変数と必須項目が異なるため、LoadAPI / LoadBatch / LoadMigrate に
+// 分割しています。
+//
+// 各 Load は logger を生成しません（副作用を持ちません）。返却される *Config は
+// 致命的エラー時でも Log を best-effort で埋めて非 nil で返し、非致命的な不正値は
+// Warnings に蓄積します。呼び出し側は cfg.Log でロガーを構成し、cfg.Warnings を
+// slog.Warn で出力したうえで、err を確認してください。
 package config
 
 import (
+	"fmt"
+	"log/slog"
+	"os"
 	"strconv"
 	"strings"
+
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/app/di"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles/twelvedata"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/infra/db"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/jwt"
 )
+
+const (
+	// defaultCORSOrigin は CORS_ALLOWED_ORIGINS 未設定時のフォールバック。
+	defaultCORSOrigin = "http://localhost:3000"
+	// defaultIngestTimeoutHours は *_TIMEOUT_HOURS のデフォルト値。
+	defaultIngestTimeoutHours = 3
+	// defaultMaxFailureRate は *_MAX_FAILURE_RATE のデフォルト値。
+	defaultMaxFailureRate = 0.2
+)
+
+// Config はアプリケーション全体の設定を保持します。
+// 使用するエントリポイントによって、埋められるフィールドのグループが異なります。
+type Config struct {
+	Log        LogConfig         // 全エントリポイント共通
+	DB         db.Config         // API / batch / migrate
+	Redis      RedisConfig       // API / batch
+	Server     ServerConfig      // API のみ
+	OAuth      *di.OAuthConfig   // API のみ（OAuth 無効なら nil）
+	TwelveData twelvedata.Config // batch のみ
+	Batch      BatchConfig       // batch のみ
+	Warnings   []string          // 非致命的な不正値（呼び出し側で slog.Warn する）
+}
+
+// LogConfig はロガー構成に必要な設定です。
+type LogConfig struct {
+	Level   slog.Level
+	UseJSON bool
+}
+
+// RedisConfig は Redis 接続設定です。
+type RedisConfig struct {
+	Host     string
+	Port     string
+	Password string
+}
+
+// ServerConfig は API サーバー固有の検証済み設定です。
+type ServerConfig struct {
+	JWTSecret      string
+	PasswordPepper string
+	SecureCookie   bool
+	CORSOrigins    []string
+	GCPProjectID   string // GOOGLE_CLOUD_PROJECT。未設定可（トレース相関に使用）
+}
+
+// BatchConfig はバッチ実行のタイムアウト・失敗率しきい値です。
+type BatchConfig struct {
+	CandlesTimeoutHours   int
+	CandlesMaxFailureRate float64
+	LogoTimeoutHours      int
+	LogoMaxFailureRate    float64
+}
+
+// LoadAPI は API サーバー用の設定を読み込み検証します。
+// 必須項目（JWT_SECRET / PASSWORD_PEPPER）の欠落や OAuth 設定の不整合があれば
+// エラーを返します。DB の検証は接続時（db.OpenSQL）に行うため、ここでは行いません。
+func LoadAPI() (*Config, error) {
+	cfg := &Config{}
+	cfg.Log = readLog(&cfg.Warnings)
+	cfg.DB = readDB()
+	cfg.Redis = readRedis()
+
+	server, err := readServer(&cfg.Warnings)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.Server = server
+
+	oauth, err := readOAuth()
+	if err != nil {
+		return cfg, err
+	}
+	cfg.OAuth = oauth
+
+	return cfg, nil
+}
+
+// LoadBatch はバッチ実行用の設定を読み込みます。
+// バッチには必須の環境変数がないため、現状エラーは返しません（将来の拡張のため戻り値は維持）。
+func LoadBatch() (*Config, error) {
+	cfg := &Config{}
+	cfg.Log = readLog(&cfg.Warnings)
+	cfg.DB = readDB()
+	cfg.Redis = readRedis()
+	cfg.TwelveData = readTwelveData()
+	cfg.Batch = readBatch(&cfg.Warnings)
+	return cfg, nil
+}
+
+// LoadMigrate はマイグレーション実行用の設定を読み込みます。
+func LoadMigrate() (*Config, error) {
+	cfg := &Config{}
+	cfg.Log = readLog(&cfg.Warnings)
+	cfg.DB = readDB()
+	return cfg, nil
+}
+
+// readLog は LOG_LEVEL / LOG_FORMAT / APP_ENV からロガー設定を組み立てます。
+func readLog(warn *[]string) LogConfig {
+	level := slog.LevelInfo
+	if os.Getenv("LOG_LEVEL") == "DEBUG" {
+		level = slog.LevelDebug
+	}
+	rawFormat := os.Getenv("LOG_FORMAT")
+	useJSON, ok := ParseLogFormat(rawFormat, os.Getenv("APP_ENV"))
+	if !ok {
+		*warn = append(*warn, fmt.Sprintf("invalid LOG_FORMAT value %q, using default", rawFormat))
+	}
+	return LogConfig{Level: level, UseJSON: useJSON}
+}
+
+// readDB は DB_* 環境変数からデータベース設定を組み立てます。
+// 必須項目の検証は接続時（Config.Validate）に行います。
+func readDB() db.Config {
+	return db.Config{
+		User:         os.Getenv("DB_USER"),
+		Password:     db.Password(os.Getenv("DB_PASSWORD")),
+		Name:         os.Getenv("DB_NAME"),
+		Host:         os.Getenv("DB_HOST"),
+		Port:         os.Getenv("DB_PORT"),
+		InstanceName: os.Getenv("INSTANCE_CONNECTION_NAME"),
+	}
+}
+
+// readRedis は REDIS_* 環境変数から Redis 接続設定を組み立てます。
+func readRedis() RedisConfig {
+	return RedisConfig{
+		Host:     os.Getenv("REDIS_HOST"),
+		Port:     os.Getenv("REDIS_PORT"),
+		Password: os.Getenv("REDIS_PASSWORD"),
+	}
+}
+
+// readTwelveData は TWELVE_DATA_* 環境変数から TwelveData クライアント設定を組み立てます。
+func readTwelveData() twelvedata.Config {
+	return twelvedata.NewConfig(
+		os.Getenv("TWELVE_DATA_API_KEY"),
+		os.Getenv("TWELVE_DATA_BASE_URL"),
+	)
+}
+
+// readServer は API サーバー固有の環境変数を読み込み検証します。
+func readServer(warn *[]string) (ServerConfig, error) {
+	jwtSecret := os.Getenv(jwt.EnvKeyJWTSecret)
+	if jwtSecret == "" {
+		return ServerConfig{}, fmt.Errorf("%s is required", jwt.EnvKeyJWTSecret)
+	}
+
+	passwordPepper := os.Getenv(auth.EnvKeyPasswordPepper)
+	if passwordPepper == "" {
+		return ServerConfig{}, fmt.Errorf("%s is required", auth.EnvKeyPasswordPepper)
+	}
+
+	// COOKIE_SECURE を優先し、未設定なら APP_ENV=production をフォールバックとして使用
+	cookieSecureRaw := os.Getenv("COOKIE_SECURE")
+	defaultSecure := os.Getenv("APP_ENV") == "production"
+	secureCookie, ok := ParseBoolString(cookieSecureRaw, defaultSecure)
+	if !ok {
+		*warn = append(*warn, fmt.Sprintf("invalid COOKIE_SECURE value %q, falling back to default %v", cookieSecureRaw, secureCookie))
+	}
+
+	// CORS許可オリジン（デフォルト: http://localhost:3000）
+	corsOrigins := ParseCORSOrigins(os.Getenv("CORS_ALLOWED_ORIGINS"))
+	if corsOrigins == nil {
+		corsOrigins = []string{defaultCORSOrigin}
+	}
+
+	return ServerConfig{
+		JWTSecret:      jwtSecret,
+		PasswordPepper: passwordPepper,
+		SecureCookie:   secureCookie,
+		CORSOrigins:    corsOrigins,
+		GCPProjectID:   os.Getenv("GOOGLE_CLOUD_PROJECT"),
+	}, nil
+}
+
+// readOAuth は OAuth 関連の環境変数を検証します。
+// GOOGLE_CLIENT_ID / GITHUB_CLIENT_ID のいずれも未設定なら OAuth 無効として nil を返します。
+func readOAuth() (*di.OAuthConfig, error) {
+	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
+	githubClientID := os.Getenv("GITHUB_CLIENT_ID")
+	if googleClientID == "" && githubClientID == "" {
+		return nil, nil
+	}
+
+	frontendURL := os.Getenv("OAUTH_FRONTEND_REDIRECT_URL")
+	if frontendURL == "" {
+		return nil, fmt.Errorf("OAUTH_FRONTEND_REDIRECT_URL is required when OAuth is enabled")
+	}
+
+	cfg := &di.OAuthConfig{FrontendURL: frontendURL}
+
+	if googleClientID != "" {
+		secret := os.Getenv("GOOGLE_CLIENT_SECRET")
+		if secret == "" {
+			return nil, fmt.Errorf("GOOGLE_CLIENT_SECRET is required when GOOGLE_CLIENT_ID is set")
+		}
+		redirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
+		if redirectURL == "" {
+			return nil, fmt.Errorf("GOOGLE_REDIRECT_URL is required when GOOGLE_CLIENT_ID is set")
+		}
+		cfg.Google = &di.ProviderCredentials{ClientID: googleClientID, ClientSecret: secret, RedirectURL: redirectURL}
+	}
+
+	if githubClientID != "" {
+		secret := os.Getenv("GITHUB_CLIENT_SECRET")
+		if secret == "" {
+			return nil, fmt.Errorf("GITHUB_CLIENT_SECRET is required when GITHUB_CLIENT_ID is set")
+		}
+		redirectURL := os.Getenv("GITHUB_REDIRECT_URL")
+		if redirectURL == "" {
+			return nil, fmt.Errorf("GITHUB_REDIRECT_URL is required when GITHUB_CLIENT_ID is set")
+		}
+		cfg.GitHub = &di.ProviderCredentials{ClientID: githubClientID, ClientSecret: secret, RedirectURL: redirectURL}
+	}
+
+	return cfg, nil
+}
+
+// readBatch はバッチ実行のタイムアウト・失敗率しきい値を読み込みます。
+func readBatch(warn *[]string) BatchConfig {
+	return BatchConfig{
+		CandlesTimeoutHours:   readTimeoutHours("INGEST_TIMEOUT_HOURS", defaultIngestTimeoutHours),
+		CandlesMaxFailureRate: readMaxFailureRate("INGEST_MAX_FAILURE_RATE", defaultMaxFailureRate, warn),
+		LogoTimeoutHours:      readTimeoutHours("LOGO_INGEST_TIMEOUT_HOURS", defaultIngestTimeoutHours),
+		LogoMaxFailureRate:    readMaxFailureRate("LOGO_INGEST_MAX_FAILURE_RATE", defaultMaxFailureRate, warn),
+	}
+}
+
+// readTimeoutHours は env のタイムアウト時間（正の整数）を読み取ります。未設定・不正時は def を返します。
+func readTimeoutHours(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
+}
+
+// readMaxFailureRate は env の失敗率しきい値（[0,1]）を読み取ります。不正時は警告を蓄積して def を返します。
+func readMaxFailureRate(key string, def float64, warn *[]string) float64 {
+	if v := os.Getenv(key); v != "" {
+		if r, err := strconv.ParseFloat(v, 64); err == nil && r >= 0 && r <= 1 {
+			return r
+		}
+		*warn = append(*warn, fmt.Sprintf("invalid max failure rate for %s=%q, using default %v", key, v, def))
+	}
+	return def
+}
 
 // ParseCORSOrigins は CORS_ALLOWED_ORIGINS env の生文字列を、カンマ区切りで
 // trim して空要素を除いたスライスに変換する。raw が空なら nil を返し、
