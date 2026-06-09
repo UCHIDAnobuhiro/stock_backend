@@ -30,6 +30,7 @@ func NewRouter(authHandler *authhttp.Handler, oauthHandler *authhttp.OAuthHandle
 	limiter *httpratelimit.Limiter,
 	allowedOrigins []string,
 	gcpProjectID string,
+	jwtSecret string,
 ) http.Handler {
 	r := chi.NewRouter()
 
@@ -83,7 +84,7 @@ func NewRouter(authHandler *authhttp.Handler, oauthHandler *authhttp.OAuthHandle
 
 		// 保護ルート（認証必須・CSRF保護）
 		r.Group(func(r chi.Router) {
-			r.Use(jwt.AuthRequired())
+			r.Use(jwt.AuthRequired(jwtSecret))
 			r.Use(csrfmw.Protect())
 
 			r.Get("/candles/{code}", candles.GetCandlesHandler)
