@@ -6,10 +6,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/logodetection"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpx"
 )
 
 // Usecase はロゴ検出・企業分析のユースケースインターフェースを定義します。
@@ -34,45 +33,45 @@ func NewHandler(uc Usecase) *Handler {
 // エンドポイント: POST /v1/logo/detect
 // Content-Type: multipart/form-data
 // フィールド: image（画像ファイル、最大10MB）
-func (h *Handler) DetectLogos(c *gin.Context) {
+func (h *Handler) DetectLogos(w http.ResponseWriter, r *http.Request) {
 	const maxImageSize = 10 * 1024 * 1024 // 10MB
 
-	file, err := c.FormFile("image")
-	if err != nil {
-		slog.Warn("画像ファイルの取得に失敗", "error", err, "remote_addr", c.ClientIP())
-		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "画像ファイルが必要です"})
+	// メモリ上に保持するマルチパートデータの上限（Gin の MaxMultipartMemory 相当）。
+	if err := r.ParseMultipartForm(maxImageSize); err != nil {
+		slog.Warn("画像ファイルの取得に失敗", "error", err, "remote_addr", httpx.ClientIP(r))
+		httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "画像ファイルが必要です"})
 		return
 	}
 
-	if file.Size > maxImageSize {
-		slog.Warn("画像ファイルサイズ超過", "size", file.Size, "max", maxImageSize, "remote_addr", c.ClientIP())
-		c.JSON(http.StatusRequestEntityTooLarge, api.ErrorResponse{Error: "画像サイズが上限（10MB）を超えています"})
-		return
-	}
-
-	f, err := file.Open()
+	file, header, err := r.FormFile("image")
 	if err != nil {
-		slog.Error("画像ファイルのオープンに失敗", "error", err)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "画像の読み込みに失敗しました"})
+		slog.Warn("画像ファイルの取得に失敗", "error", err, "remote_addr", httpx.ClientIP(r))
+		httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "画像ファイルが必要です"})
 		return
 	}
 	defer func() {
-		if err := f.Close(); err != nil {
+		if err := file.Close(); err != nil {
 			slog.Warn("画像ファイルのクローズに失敗", "error", err)
 		}
 	}()
 
-	imageData, err := io.ReadAll(io.LimitReader(f, maxImageSize+1))
-	if err != nil {
-		slog.Error("画像データの読み取りに失敗", "error", err)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "画像の読み込みに失敗しました"})
+	if header.Size > maxImageSize {
+		slog.Warn("画像ファイルサイズ超過", "size", header.Size, "max", maxImageSize, "remote_addr", httpx.ClientIP(r))
+		httpx.WriteJSON(w, http.StatusRequestEntityTooLarge, api.ErrorResponse{Error: "画像サイズが上限（10MB）を超えています"})
 		return
 	}
 
-	logos, err := h.uc.DetectLogos(c.Request.Context(), imageData)
+	imageData, err := io.ReadAll(io.LimitReader(file, maxImageSize+1))
+	if err != nil {
+		slog.Error("画像データの読み取りに失敗", "error", err)
+		httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "画像の読み込みに失敗しました"})
+		return
+	}
+
+	logos, err := h.uc.DetectLogos(r.Context(), imageData)
 	if err != nil {
 		slog.Error("ロゴ検出に失敗", "error", err)
-		c.JSON(http.StatusBadGateway, api.ErrorResponse{Error: "ロゴ検出に失敗しました"})
+		httpx.WriteJSON(w, http.StatusBadGateway, api.ErrorResponse{Error: "ロゴ検出に失敗しました"})
 		return
 	}
 
@@ -83,29 +82,29 @@ func (h *Handler) DetectLogos(c *gin.Context) {
 			Confidence: l.Confidence,
 		})
 	}
-	c.JSON(http.StatusOK, out)
+	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
 // AnalyzeCompany は企業分析サマリーを生成します。
 //
 // エンドポイント: POST /v1/logo/analyze
 // Content-Type: application/json
-func (h *Handler) AnalyzeCompany(c *gin.Context) {
+func (h *Handler) AnalyzeCompany(w http.ResponseWriter, r *http.Request) {
 	var req api.CompanyAnalysisRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		slog.Warn("企業分析リクエストのバリデーションに失敗", "error", err, "remote_addr", c.ClientIP())
-		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "企業名が必要です"})
+	if err := httpx.DecodeAndValidate(r, &req); err != nil {
+		slog.Warn("企業分析リクエストのバリデーションに失敗", "error", err, "remote_addr", httpx.ClientIP(r))
+		httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "企業名が必要です"})
 		return
 	}
 
-	analysis, err := h.uc.AnalyzeCompany(c.Request.Context(), req.CompanyName)
+	analysis, err := h.uc.AnalyzeCompany(r.Context(), req.CompanyName)
 	if err != nil {
 		slog.Error("企業分析に失敗", "error", err, "company", req.CompanyName)
-		c.JSON(http.StatusBadGateway, api.ErrorResponse{Error: "企業分析に失敗しました"})
+		httpx.WriteJSON(w, http.StatusBadGateway, api.ErrorResponse{Error: "企業分析に失敗しました"})
 		return
 	}
 
-	c.JSON(http.StatusOK, api.CompanyAnalysisResponse{
+	httpx.WriteJSON(w, http.StatusOK, api.CompanyAnalysisResponse{
 		CompanyName: analysis.CompanyName,
 		Summary:     analysis.Summary,
 	})

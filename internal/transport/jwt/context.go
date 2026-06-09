@@ -20,8 +20,9 @@ const (
 	AuthSourceBearer = "bearer"
 )
 
-// withUserID は context に認証済みユーザーIDを格納した新しい context を返します。
-func withUserID(ctx context.Context, userID int64) context.Context {
+// WithUserID は context に認証済みユーザーIDを格納した新しい context を返します。
+// 認証ミドルウェア（AuthRequired）が使用するほか、テストでの認証状態の注入にも利用できます。
+func WithUserID(ctx context.Context, userID int64) context.Context {
 	return context.WithValue(ctx, ctxKeyUserID, userID)
 }
 

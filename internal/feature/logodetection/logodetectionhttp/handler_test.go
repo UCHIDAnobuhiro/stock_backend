@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/logodetection"
@@ -52,18 +51,13 @@ func createMultipartRequest(t *testing.T, fieldName, fileName string, content []
 		t.Fatalf("failed to close writer: %v", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, "/logo/detect", body)
-	if err != nil {
-		t.Fatalf("failed to create request: %v", err)
-	}
+	req := httptest.NewRequest(http.MethodPost, "/logo/detect", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	return req, writer.FormDataContentType()
 }
 
 func TestLogoDetectionHandler_DetectLogos(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	tests := []struct {
 		name           string
 		setupRequest   func(t *testing.T) *http.Request
@@ -88,8 +82,7 @@ func TestLogoDetectionHandler_DetectLogos(t *testing.T) {
 		{
 			name: "error: no image field",
 			setupRequest: func(t *testing.T) *http.Request {
-				req, _ := http.NewRequest(http.MethodPost, "/logo/detect", io.NopCloser(bytes.NewReader(nil)))
-				return req
+				return httptest.NewRequest(http.MethodPost, "/logo/detect", nil)
 			},
 			mockFunc:       nil,
 			expectedStatus: http.StatusBadRequest,
@@ -117,13 +110,10 @@ func TestLogoDetectionHandler_DetectLogos(t *testing.T) {
 
 			h := logodetectionhttp.NewHandler(mockUC)
 
-			router := gin.New()
-			router.POST("/logo/detect", h.DetectLogos)
-
 			w := httptest.NewRecorder()
 			req := tt.setupRequest(t)
 
-			router.ServeHTTP(w, req)
+			h.DetectLogos(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			assert.JSONEq(t, tt.expectedBody, w.Body.String())
@@ -132,8 +122,6 @@ func TestLogoDetectionHandler_DetectLogos(t *testing.T) {
 }
 
 func TestLogoDetectionHandler_AnalyzeCompany(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	tests := []struct {
 		name           string
 		requestBody    string
@@ -185,14 +173,11 @@ func TestLogoDetectionHandler_AnalyzeCompany(t *testing.T) {
 
 			h := logodetectionhttp.NewHandler(mockUC)
 
-			router := gin.New()
-			router.POST("/logo/analyze", h.AnalyzeCompany)
-
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest(http.MethodPost, "/logo/analyze", strings.NewReader(tt.requestBody))
+			req := httptest.NewRequest(http.MethodPost, "/logo/analyze", strings.NewReader(tt.requestBody))
 			req.Header.Set("Content-Type", "application/json")
 
-			router.ServeHTTP(w, req)
+			h.AnalyzeCompany(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			assert.JSONEq(t, tt.expectedBody, w.Body.String())

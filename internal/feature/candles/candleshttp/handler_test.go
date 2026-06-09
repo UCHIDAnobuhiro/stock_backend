@@ -1,16 +1,14 @@
 package candleshttp_test
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles"
@@ -28,8 +26,6 @@ func (m *mockUsecase) GetCandles(ctx context.Context, symbol, interval string, o
 
 // TestCandlesHandler_GetCandlesHandler はGetCandlesHandlerのHTTPリクエスト/レスポンス処理をテストします。
 func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	// テスト用の固定時刻
 	testTime := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 
@@ -93,11 +89,11 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 
 			h := candleshttp.NewHandler(mockUC)
 
-			router := gin.New()
-			router.GET("/candles/:code", h.GetCandlesHandler)
+			router := chi.NewRouter()
+			router.Get("/candles/{code}", h.GetCandlesHandler)
 
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest(http.MethodGet, tt.url, io.NopCloser(bytes.NewReader(nil)))
+			req := httptest.NewRequest(http.MethodGet, tt.url, nil)
 
 			router.ServeHTTP(w, req)
 

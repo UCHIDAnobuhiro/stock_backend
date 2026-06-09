@@ -6,11 +6,12 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/csrf"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpx"
 )
 
 // OAuthUsecase はOAuth2認証フローのユースケースインターフェースです。
@@ -38,41 +39,41 @@ func NewOAuthHandler(oauth OAuthUsecase, secureCookie bool, frontendURL string) 
 
 // BeginAuth はOAuth2認可フローを開始します。
 // プロバイダーの認可画面へリダイレクトします。
-func (h *OAuthHandler) BeginAuth(c *gin.Context) {
-	provider := c.Param("provider")
-	authURL, err := h.oauth.BeginAuth(c.Request.Context(), provider)
+func (h *OAuthHandler) BeginAuth(w http.ResponseWriter, r *http.Request) {
+	provider := chi.URLParam(r, "provider")
+	authURL, err := h.oauth.BeginAuth(r.Context(), provider)
 	if err != nil {
 		slog.Warn("oauth begin: failed", "provider", provider, "error", err)
-		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "unsupported provider"})
+		httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "unsupported provider"})
 		return
 	}
-	c.Redirect(http.StatusFound, authURL)
+	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
 // Callback はOAuth2コールバックを処理します。
 // stateの検証・コード交換・ユーザー作成/リンクを行い、JWTとCSRFトークンをCookieにセットして
 // フロントエンドURLへリダイレクトします。
-func (h *OAuthHandler) Callback(c *gin.Context) {
-	provider := c.Param("provider")
-	code := c.Query("code")
-	state := c.Query("state")
+func (h *OAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
+	provider := chi.URLParam(r, "provider")
+	code := r.URL.Query().Get("code")
+	state := r.URL.Query().Get("state")
 
 	if code == "" || state == "" {
-		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "missing code or state"})
+		httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "missing code or state"})
 		return
 	}
 
-	token, err := h.oauth.HandleCallback(c.Request.Context(), provider, code, state)
+	token, err := h.oauth.HandleCallback(r.Context(), provider, code, state)
 	if err != nil {
 		if errors.Is(err, auth.ErrStateNotFound) {
-			c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "invalid or expired state"})
+			httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "invalid or expired state"})
 		} else if errors.Is(err, auth.ErrOAuthEmailUnavailable) {
-			c.JSON(http.StatusBadGateway, api.ErrorResponse{Error: "cannot obtain verified email from provider"})
+			httpx.WriteJSON(w, http.StatusBadGateway, api.ErrorResponse{Error: "cannot obtain verified email from provider"})
 		} else if errors.Is(err, auth.ErrUnknownProvider) {
-			c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "unsupported provider"})
+			httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "unsupported provider"})
 		} else {
 			slog.Error("oauth callback failed", "provider", provider, "error", err)
-			c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "oauth failed"})
+			httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "oauth failed"})
 		}
 		return
 	}
@@ -81,18 +82,15 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 	csrfToken, err := csrf.GenerateToken()
 	if err != nil {
 		slog.Error("failed to generate csrf token", "error", err)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "internal error"})
+		httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "internal error"})
 		return
 	}
 
 	slog.Info("oauth login successful", "provider", provider)
 
-	// auth_handler.goのLoginと同一パターンでCookieをセット
-	// GinのSetSameSiteは直後のSetCookie1回にのみ適用されるため、Cookieごとに毎回呼ぶ必要がある。
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("auth_token", token, 3600, "/", "", h.secureCookie, true)
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("csrf_token", csrfToken, 3600, "/", "", h.secureCookie, false)
+	// handler.go の Login と同一パターンで Cookie をセット
+	setAuthCookie(w, "auth_token", token, 3600, h.secureCookie, true)
+	setAuthCookie(w, "csrf_token", csrfToken, 3600, h.secureCookie, false)
 
-	c.Redirect(http.StatusFound, h.frontendURL)
+	http.Redirect(w, r, h.frontendURL, http.StatusFound)
 }

@@ -73,7 +73,7 @@ func AuthRequired() func(http.Handler) http.Handler {
 			}
 
 			// 6. ユーザーIDと認証方式を context に格納し、次のハンドラーへ制御を渡す
-			ctx := withUserID(r.Context(), userID)
+			ctx := WithUserID(r.Context(), userID)
 			ctx = withAuthSource(ctx, authSource)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

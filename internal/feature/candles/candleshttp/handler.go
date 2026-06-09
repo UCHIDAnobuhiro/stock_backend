@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpx"
 )
 
 // Usecase はローソク足データ操作のユースケースインターフェースを定義します。
@@ -30,22 +31,22 @@ func NewHandler(uc Usecase) *Handler {
 // GetCandlesHandler は銘柄コードと時間間隔を受け取り、ローソク足データをJSONで返します。
 //
 // エンドポイント例:
-// GET /candles/:code?interval=1day&outputsize=200
-func (h *Handler) GetCandlesHandler(c *gin.Context) {
-	code := c.Param("code")
+// GET /candles/{code}?interval=1day&outputsize=200
+func (h *Handler) GetCandlesHandler(w http.ResponseWriter, r *http.Request) {
+	code := chi.URLParam(r, "code")
 	// 未指定の場合はデフォルト値を使用
-	interval := c.DefaultQuery("interval", "1day")
-	outputsizeStr := c.DefaultQuery("outputsize", "200")
+	interval := queryOrDefault(r, "interval", "1day")
+	outputsizeStr := queryOrDefault(r, "outputsize", "200")
 	// 文字列を整数に変換
 	outputsize, err := strconv.Atoi(outputsizeStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: "outputsize must be an integer"})
+		httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "outputsize must be an integer"})
 		return
 	}
 
-	candles, err := h.uc.GetCandles(c.Request.Context(), code, interval, outputsize)
+	candles, err := h.uc.GetCandles(r.Context(), code, interval, outputsize)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, api.ErrorResponse{Error: err.Error()})
+		httpx.WriteJSON(w, http.StatusBadGateway, api.ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -62,5 +63,15 @@ func (h *Handler) GetCandlesHandler(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, out)
+	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// queryOrDefault はクエリパラメータ key の値を返します。key が存在しない場合のみ def を返します。
+// Gin の c.DefaultQuery と同じく、key が空文字で存在する場合（?interval=）は空文字を返します。
+func queryOrDefault(r *http.Request, key, def string) string {
+	q := r.URL.Query()
+	if q.Has(key) {
+		return q.Get(key)
+	}
+	return def
 }
