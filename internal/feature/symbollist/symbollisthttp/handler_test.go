@@ -83,7 +83,7 @@ func TestSymbolHandler_List(t *testing.T) {
 				return nil, errors.New("database connection failed")
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   `{"error":"database connection failed"}`,
+			expectedBody:   `{"error":"internal server error"}`,
 		},
 		{
 			name: "success: returns nil from usecase",

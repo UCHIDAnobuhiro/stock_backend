@@ -2,6 +2,7 @@ package candleshttp
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -46,7 +47,8 @@ func (h *Handler) GetCandlesHandler(w http.ResponseWriter, r *http.Request) {
 
 	candles, err := h.uc.GetCandles(r.Context(), code, interval, outputsize)
 	if err != nil {
-		httpx.WriteJSON(w, http.StatusBadGateway, api.ErrorResponse{Error: err.Error()})
+		slog.Error("failed to get candles", "error", err, "code", code)
+		httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
 		return
 	}
 

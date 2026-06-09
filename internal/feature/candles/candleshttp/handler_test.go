@@ -68,7 +68,7 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 			mockGetCandles: func(ctx context.Context, symbol, interval string, outputsize int) ([]candles.Candle, error) {
 				return nil, errors.New("internal server error")
 			},
-			expectedStatus: http.StatusBadGateway,
+			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   `{"error":"internal server error"}`,
 		},
 		{
