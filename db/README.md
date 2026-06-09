@@ -8,7 +8,10 @@
 db/
 ├── migrations/                  # goose 管理の SQL マイグレーションファイル
 │   └── NNNNN_<name>.sql         # `-- +goose Up` と `-- +goose Down` を含む単一ファイル
-├── embed.go                     # *.sql を go:embed で取り込み、cmd/migrate などに提供
+├── seed/                        # 初期データ投入
+│   ├── seed.sql                 # symbols の upsert（冪等）。docker-compose の seed サービスが流す
+│   └── seed.sh                  # 手動再投入用ラッパー（docker compose exec で seed.sql を流す）
+├── embed.go                     # migrations/*.sql を go:embed で取り込み、cmd/migrate などに提供
 └── README.md
 ```
 
@@ -70,6 +73,18 @@ go tool goose down
 
 接続情報はサーバーと同じ環境変数（`DB_USER` / `DB_PASSWORD` / `DB_NAME` / `DB_HOST` / `DB_PORT` /
 `INSTANCE_CONNECTION_NAME`）から読み取ります。
+
+## シードデータの投入
+
+`db/seed/seed.sql` は `symbols` の初期データを `INSERT ... ON CONFLICT` で upsert する冪等な SQL です。
+通常は `backend` 起動時に docker-compose の `seed` サービスが `migrate` 完了後に自動で流すため、
+手動操作は不要です。
+
+DB を起動したまま手動で再投入したい場合は、ラッパースクリプトを使います。
+
+```bash
+bash db/seed/seed.sh
+```
 
 ## sqlc コード生成
 
