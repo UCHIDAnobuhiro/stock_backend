@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	redisv9 "github.com/redis/go-redis/v9"
@@ -146,12 +150,45 @@ func run() int {
 	// ルーター作成
 	r := router.NewRouter(authH, oauthH, candlesH, symbolH, logoH, watchlistH, rateLimiter, cfg.corsOrigins, cfg.gcpProjectID)
 
-	slog.Info("Starting server", "port", 8080)
-	if err := r.Run(":8080"); err != nil {
-		slog.Error("Server failed to start", "error", err)
-		return 1
+	srv := &http.Server{
+		Addr:              ":8080",
+		Handler:           r,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
-	return 0
+
+	// SIGINT / SIGTERM を受けてグレースフルシャットダウンする。
+	// Cloud Run 等では SIGTERM 受信後に処理中リクエストを完了させてから終了する。
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	serverErr := make(chan error, 1)
+	go func() {
+		slog.Info("Starting server", "port", 8080)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+			return
+		}
+		serverErr <- nil
+	}()
+
+	select {
+	case err := <-serverErr:
+		if err != nil {
+			slog.Error("Server failed to start", "error", err)
+			return 1
+		}
+		return 0
+	case <-ctx.Done():
+		slog.Info("Shutdown signal received, draining connections")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			slog.Error("graceful shutdown failed", "error", err)
+			return 1
+		}
+		slog.Info("Server stopped gracefully")
+		return 0
+	}
 }
 
 // serverConfig は環境変数から読み込んだ検証済みのサーバー設定。
