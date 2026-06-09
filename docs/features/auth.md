@@ -490,26 +490,26 @@ graph TB
 ### 依存関係の説明
 
 #### Transport層
-- **Handler**（[authhttp/handler.go](authhttp/handler.go)）: メール/パスワード認証のHTTPリクエストを処理し、Usecaseを呼び出す
-- **OAuthHandler**（[authhttp/oauth.go](authhttp/oauth.go)）: OAuth2 認可開始およびコールバックを処理し、OAuthUsecaseを呼び出す
+- **Handler**（[authhttp/handler.go](../../internal/feature/auth/authhttp/handler.go)）: メール/パスワード認証のHTTPリクエストを処理し、Usecaseを呼び出す
+- **OAuthHandler**（[authhttp/oauth.go](../../internal/feature/auth/authhttp/oauth.go)）: OAuth2 認可開始およびコールバックを処理し、OAuthUsecaseを呼び出す
   - `OAuthUsecase` インターフェースを定義（コンシューマー側で定義）
 - **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成されたリクエスト/レスポンス型を使用
   - `api.SignupRequest`: ユーザー登録リクエスト
   - `api.LoginRequest`: ログインリクエスト
 
 #### Usecase層
-- **Usecase**（[usecase.go](usecase.go)）: 認証ビジネスロジックを実装
+- **Usecase**（[usecase.go](../../internal/feature/auth/usecase.go)）: 認証ビジネスロジックを実装
   - パスワードバリデーション（最低8文字）
   - パスワードハッシュ化（bcrypt + HMAC-SHA256 ペッパー）
   - タイミング攻撃を防止するパスワード検証（ユーザー未検出時もbcrypt比較を実行）
   - UserRepository / JWTGenerator / UserCreatedHook インターフェースを定義
-- **OAuthUsecase**（[oauth.go](oauth.go)）: OAuth2 認証フローを実装
+- **OAuthUsecase**（[oauth.go](../../internal/feature/auth/oauth.go)）: OAuth2 認証フローを実装
   - PKCE（S256）の state / codeVerifier 生成
   - 既存ユーザー（同メール）への自動リンク
   - 新規ユーザー作成は `OAuthUserCreator` でトランザクション原子化
   - `UserCreatedHook` を呼び出して付随処理（例: ウォッチリスト初期化）を実行
   - `OAuthProvider` / `OAuthStateStore` / `OAuthAccountRepository` / `OAuthUserCreator` インターフェースを定義
-- **ドメインエラー**（[errors.go](errors.go)）: エラー定義の一元管理
+- **ドメインエラー**（[errors.go](../../internal/feature/auth/errors.go)）: エラー定義の一元管理
   - `ErrUserNotFound`: ユーザー検索が失敗した場合に返却
   - `ErrEmailAlreadyExists`: メールアドレスが既に登録されている場合に返却
   - `ErrInvalidCredentials`: メールアドレスまたはパスワードが正しくない場合に返却
@@ -518,8 +518,8 @@ graph TB
   - `ErrUnknownProvider`: 未対応の OAuth プロバイダー指定
 
 #### Domain層
-- **User Entity**（[user.go](user.go)）: ユーザードメインモデル（OAuth 専用ユーザーは `Password = nil`）
-- **OAuthAccount Entity**（[oauth_account.go](oauth_account.go)）: OAuth プロバイダーとユーザーの紐付け
+- **User Entity**（[user.go](../../internal/feature/auth/user.go)）: ユーザードメインモデル（OAuth 専用ユーザーは `Password = nil`）
+- **OAuthAccount Entity**（[oauth_account.go](../../internal/feature/auth/oauth_account.go)）: OAuth プロバイダーとユーザーの紐付け
   - `(provider, provider_uid)` の複合ユニーク制約
   - `oauth_accounts` テーブルにマッピング
 
@@ -533,11 +533,11 @@ graph TB
 - **UserCreatedHook**: ユーザー新規作成後のフック（例: ウォッチリスト初期化）
 
 #### Adapters層
-- **userRepository**（[user_repository.go](user_repository.go)）: UserRepository / OAuthUserCreator の sqlc + database/sql 実装
-- **oauthAccountRepository**（[oauth_account_repository.go](oauth_account_repository.go)）: OAuthAccountRepository の sqlc + database/sql 実装
-- **redisOAuthStateStore**（[oauth_state_store.go](oauth_state_store.go)）: OAuthStateStore の Redis 実装（`GETDEL` で atomic に消費）
-- **GoogleProvider**（[google_provider.go](google_provider.go)）: Google OAuth2 実装（PKCE S256 対応、`/oauth2/v3/userinfo` でメール取得）
-- **GitHubProvider**（[github_provider.go](github_provider.go)）: GitHub OAuth2 実装（GitHub は PKCE 非対応、state による CSRF 保護のみ）
+- **userRepository**（[user_repository.go](../../internal/feature/auth/user_repository.go)）: UserRepository / OAuthUserCreator の sqlc + database/sql 実装
+- **oauthAccountRepository**（[oauth_account_repository.go](../../internal/feature/auth/oauth_account_repository.go)）: OAuthAccountRepository の sqlc + database/sql 実装
+- **redisOAuthStateStore**（[oauth_state_store.go](../../internal/feature/auth/oauth_state_store.go)）: OAuthStateStore の Redis 実装（`GETDEL` で atomic に消費）
+- **GoogleProvider**（[google_provider.go](../../internal/feature/auth/google_provider.go)）: Google OAuth2 実装（PKCE S256 対応、`/oauth2/v3/userinfo` でメール取得）
+- **GitHubProvider**（[github_provider.go](../../internal/feature/auth/github_provider.go)）: GitHub OAuth2 実装（GitHub は PKCE 非対応、state による CSRF 保護のみ）
 
 ### アーキテクチャ上の特徴
 
@@ -615,7 +615,7 @@ auth フィーチャーのすべてのテストは、一貫性と保守性のた
    - Handler: `makeRequest()`, `assertJSONResponse()`
    - Repository: `setupTestDB()`, `seedUser()`
 
-#### Usecaseテスト（[usecase_test.go](usecase_test.go)）
+#### Usecaseテスト（[usecase_test.go](../../internal/feature/auth/usecase_test.go)）
 
 **モックリポジトリ**を使用してビジネスロジックを単独でテストします。
 
@@ -642,7 +642,7 @@ tests := []struct {
 go test ./internal/feature/auth/... -v
 ```
 
-#### ハンドラーテスト（[authhttp/handler_test.go](authhttp/handler_test.go)）
+#### ハンドラーテスト（[authhttp/handler_test.go](../../internal/feature/auth/authhttp/handler_test.go)）
 
 **モックusecase**を使用してHTTPリクエスト/レスポンスの処理をテストします。
 
@@ -668,7 +668,7 @@ tests := []struct {
 go test ./internal/feature/auth/authhttp/... -v
 ```
 
-#### リポジトリテスト（[user_repository_test.go](user_repository_test.go)）
+#### リポジトリテスト（[user_repository_test.go](../../internal/feature/auth/user_repository_test.go)）
 
 統合テストに**インメモリSQLiteデータベース**を使用します。
 

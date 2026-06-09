@@ -253,24 +253,24 @@ graph TB
 
 ### 依存関係の説明
 
-#### トランスポート層（[watchlisthttp/handler.go](watchlisthttp/handler.go)）
+#### トランスポート層（[watchlisthttp/handler.go](../../internal/feature/watchlist/watchlisthttp/handler.go)）
 - **Handler**: HTTPリクエストを処理し、Usecaseを呼び出す
 - **Usecase インターフェース**: watchlisthttp層で定義（Goの「インターフェースは利用者が定義する」慣例）
 - **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成された `api.WatchlistItem` 等を使用
 
-#### ユースケース層（[usecase.go](usecase.go)）
+#### ユースケース層（[usecase.go](../../internal/feature/watchlist/usecase.go)）
 - **Usecase**: ウォッチリスト操作のビジネスロジック
 - **Repository インターフェース**: 永続化層を抽象化（usecase層で定義）
 - **SymbolExistsChecker インターフェース**: symbollist フィーチャーへの最小限の依存を表現。フィーチャー分離ルールに従い、symbollist の具体実装はインポートせずインターフェース経由で利用
 
-#### ドメイン層（[user_symbol.go](user_symbol.go)）
+#### ドメイン層（[user_symbol.go](../../internal/feature/watchlist/user_symbol.go)）
 - **UserSymbol**: `watchlists` テーブルにマップされるエンティティ
   - `UserID`: 所有ユーザーID（FK: users.id）
   - `SymbolCode`: 銘柄コード（FK: symbols.code、最大20文字）
   - `SortKey`: 表示順（ユーザー内でユニーク制約）
 - ユニーク制約: `(user_id, symbol_code)` および `(user_id, sort_key)`
 
-#### アダプター層（[repository.go](repository.go)）
+#### アダプター層（[repository.go](../../internal/feature/watchlist/repository.go)）
 - **repository**: RepositoryインターフェースのPostgreSQL実装
   - `ListByUser`: `sort_key ASC` 順でリスト返却
   - `Add`: エントリ追加（PostgreSQLエラーコードで `ErrAlreadyInWatchlist` / `ErrSymbolNotFound` に変換）
