@@ -2,6 +2,7 @@ package symbollisthttp
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
@@ -31,7 +32,8 @@ func NewHandler(uc Usecase) *Handler {
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	symbols, err := h.uc.ListActiveSymbols(r.Context())
 	if err != nil {
-		httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: err.Error()})
+		slog.Error("failed to list symbols", "error", err)
+		httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
 		return
 	}
 	out := make([]api.SymbolItem, 0, len(symbols))
