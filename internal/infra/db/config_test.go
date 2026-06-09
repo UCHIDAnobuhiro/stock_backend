@@ -297,30 +297,3 @@ func TestConfig_Validate_WhitespaceOnly(t *testing.T) {
 		}
 	}
 }
-
-// TestLoadConfigFromEnv は環境変数からデータベース設定が正しく読み込まれることを検証します。
-func TestLoadConfigFromEnv(t *testing.T) {
-	t.Setenv("DB_USER", "envuser")
-	t.Setenv("DB_PASSWORD", "envpass")
-	t.Setenv("DB_NAME", "envdb")
-	t.Setenv("DB_HOST", "envhost")
-	t.Setenv("DB_PORT", "5432")
-	t.Setenv("INSTANCE_CONNECTION_NAME", "")
-
-	cfg := LoadConfigFromEnv()
-	if cfg.User != "envuser" {
-		t.Errorf("expected User 'envuser', got %q", cfg.User)
-	}
-	if string(cfg.Password) != "envpass" {
-		t.Errorf("expected Password 'envpass', got %q", string(cfg.Password))
-	}
-	if cfg.Name != "envdb" {
-		t.Errorf("expected Name 'envdb', got %q", cfg.Name)
-	}
-	if cfg.Host != "envhost" {
-		t.Errorf("expected Host 'envhost', got %q", cfg.Host)
-	}
-	if cfg.Port != "5432" {
-		t.Errorf("expected Port '5432', got %q", cfg.Port)
-	}
-}

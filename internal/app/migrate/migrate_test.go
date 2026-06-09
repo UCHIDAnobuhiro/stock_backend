@@ -4,6 +4,9 @@ import (
 	"io"
 	"log/slog"
 	"testing"
+
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/app/config"
+	infradb "github.com/UCHIDAnobuhiro/stock-backend/internal/infra/db"
 )
 
 // TestRun_RejectsUnsupportedCommand は allowedCommands に含まれないサブコマンドを
@@ -19,9 +22,10 @@ func TestRun_RejectsUnsupportedCommand(t *testing.T) {
 		{name: "unknown command", args: []string{"no-such"}},
 	}
 
+	cfg := &config.Config{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Run(tt.args)
+			got := Run(cfg, tt.args)
 			if got != 2 {
 				t.Errorf("Run(%v) = %d, want 2", tt.args, got)
 			}
@@ -38,7 +42,7 @@ func TestRun_DoesNotChangeDefaultLogger(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	slog.SetDefault(logger)
 
-	if got := Run([]string{"no-such"}); got != 2 {
+	if got := Run(&config.Config{}, []string{"no-such"}); got != 2 {
 		t.Fatalf("Run() = %d, want 2", got)
 	}
 	if got := slog.Default(); got != logger {
@@ -75,9 +79,11 @@ func TestAllowedCommands_ContainsExpectedSet(t *testing.T) {
 }
 
 func TestRun_ReturnsOneWhenDBConfigInvalid(t *testing.T) {
-	t.Setenv("DB_USER", "")
+	t.Parallel()
 
-	if got := Run(nil); got != 1 {
+	// DB_USER 未設定相当の不正な DB Config → OpenSQL の検証で失敗し 1 を返す。
+	cfg := &config.Config{DB: infradb.Config{}}
+	if got := Run(cfg, nil); got != 1 {
 		t.Errorf("Run(nil) = %d, want 1", got)
 	}
 }

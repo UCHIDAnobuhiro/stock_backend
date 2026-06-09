@@ -94,9 +94,10 @@ func TestConnectSQLWithRetry_ErrorWrapped(t *testing.T) {
 }
 
 func TestOpenSQL_InvalidConfig(t *testing.T) {
-	t.Setenv("DB_USER", "")
+	t.Parallel()
 
-	_, err := OpenSQL()
+	// User 未設定の不正な Config（環境変数の読み込みは config パッケージに集約済み）
+	_, err := OpenSQL(Config{})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -106,12 +107,15 @@ func TestOpenSQL_InvalidConfig(t *testing.T) {
 }
 
 func TestOpenSQLWithRetry_ConnectionFailure(t *testing.T) {
-	t.Setenv("DB_USER", "appuser")
-	t.Setenv("DB_PASSWORD", "apppass")
-	t.Setenv("DB_NAME", "app")
-	t.Setenv("DB_HOST", "localhost")
-	t.Setenv("DB_PORT", "5432")
-	t.Setenv("INSTANCE_CONNECTION_NAME", "")
+	t.Parallel()
+
+	cfg := Config{
+		User:     "appuser",
+		Password: "apppass",
+		Name:     "app",
+		Host:     "localhost",
+		Port:     "5432",
+	}
 
 	sentinel := errors.New("connection refused")
 	calls := 0
@@ -120,7 +124,7 @@ func TestOpenSQLWithRetry_ConnectionFailure(t *testing.T) {
 		return nil, sentinel
 	}
 
-	_, err := openSQLWithRetry(0, opener)
+	_, err := openSQLWithRetry(cfg, 0, opener)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

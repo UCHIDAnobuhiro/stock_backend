@@ -4,7 +4,6 @@ package db
 import (
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 )
 
@@ -34,18 +33,6 @@ type Config struct {
 	Host         string
 	Port         string
 	InstanceName string // Cloud SQLインスタンス接続名（オプション）
-}
-
-// LoadConfigFromEnv は環境変数からデータベース設定を読み込みます。
-func LoadConfigFromEnv() Config {
-	return Config{
-		User:         os.Getenv("DB_USER"),
-		Password:     Password(os.Getenv("DB_PASSWORD")),
-		Name:         os.Getenv("DB_NAME"),
-		Host:         os.Getenv("DB_HOST"),
-		Port:         os.Getenv("DB_PORT"),
-		InstanceName: os.Getenv("INSTANCE_CONNECTION_NAME"),
-	}
 }
 
 // Validate は Config の必須項目が設定されているかを検証します。

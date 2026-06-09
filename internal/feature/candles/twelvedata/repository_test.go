@@ -473,13 +473,18 @@ func TestTwelveDataMarket_GetTimeSeries_ContextCancellation(t *testing.T) {
 	}
 }
 
-// TestLoadConfig はデフォルトのタイムアウト値とリトライ設定のデフォルト値が正しく設定されることを検証します。
-func TestLoadConfig(t *testing.T) {
+// TestNewConfig はデフォルトのタイムアウト値とリトライ設定のデフォルト値が正しく設定されることを検証します。
+func TestNewConfig(t *testing.T) {
 	t.Parallel()
 
-	// Note: This test doesn't set environment variables to avoid affecting other tests
-	cfg := LoadConfig()
+	cfg := NewConfig("api-key", "https://example.com")
 
+	if cfg.TwelveDataAPIKey != "api-key" {
+		t.Errorf("expected APIKey 'api-key', got %q", cfg.TwelveDataAPIKey)
+	}
+	if cfg.BaseURL != "https://example.com" {
+		t.Errorf("expected BaseURL 'https://example.com', got %q", cfg.BaseURL)
+	}
 	if cfg.Timeout != 10*time.Second {
 		t.Errorf("expected timeout 10s, got %v", cfg.Timeout)
 	}

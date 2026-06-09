@@ -2,7 +2,6 @@
 package twelvedata
 
 import (
-	"os"
 	"time"
 )
 
@@ -19,11 +18,13 @@ type Config struct {
 	RetryJitterRatio float64       // ジッター比率（0.2 なら ±20%）
 }
 
-// LoadConfig は環境変数からTwelve Dataの設定を読み込みます。
-func LoadConfig() Config {
+// NewConfig は呼び出し側から渡された APIキー・ベースURL を用いて Twelve Data の設定を組み立てます。
+// 環境変数は直接読まず（読み込みは internal/app/config に集約）、タイムアウト・リトライ等の
+// デフォルト値のみをこの層で所有します。
+func NewConfig(apiKey, baseURL string) Config {
 	return Config{
-		TwelveDataAPIKey: os.Getenv("TWELVE_DATA_API_KEY"),
-		BaseURL:          os.Getenv("TWELVE_DATA_BASE_URL"),
+		TwelveDataAPIKey: apiKey,
+		BaseURL:          baseURL,
 		Timeout:          10 * time.Second,
 		MaxRetries:       3,
 		RetryBaseBackoff: 500 * time.Millisecond,

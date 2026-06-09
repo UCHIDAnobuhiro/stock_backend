@@ -45,16 +45,16 @@ func ConnectSQLWithRetry(dsn string, timeout time.Duration, opener SQLOpener) (*
 	}
 }
 
-// OpenSQL は環境変数から設定を読み取り *sql.DB を返します。
+// OpenSQL は渡された設定を検証して *sql.DB を返します。
 // リトライロジックを含み、設定不正や接続失敗は呼び出し元へ返します。
-func OpenSQL() (*sql.DB, error) {
-	return openSQLWithRetry(60*time.Second, DefaultSQLOpener)
+// 設定の読み込み（環境変数）は internal/app/config に集約されています。
+func OpenSQL(cfg Config) (*sql.DB, error) {
+	return openSQLWithRetry(cfg, 60*time.Second, DefaultSQLOpener)
 }
 
-// openSQLWithRetry は OpenSQL の設定読み込みと接続処理を実行します。
+// openSQLWithRetry は OpenSQL の検証と接続処理を実行します。
 // timeout と opener を受け取り、異常系を短時間でテストできるようにします。
-func openSQLWithRetry(timeout time.Duration, opener SQLOpener) (*sql.DB, error) {
-	cfg := LoadConfigFromEnv()
+func openSQLWithRetry(cfg Config, timeout time.Duration, opener SQLOpener) (*sql.DB, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid DB config: %w", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/app/config"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/app/di"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/infra/db"
@@ -12,8 +13,8 @@ import (
 )
 
 // runLogoIngest は TwelveData からロゴURLを取り込み、終了コード（0 or 1）を返す。
-func runLogoIngest() int {
-	sqlDB, err := db.OpenSQL()
+func runLogoIngest(cfg *config.Config) int {
+	sqlDB, err := db.OpenSQL(cfg.DB)
 	if err != nil {
 		slog.Error("DB open failed", "error", err)
 		return 1
@@ -23,16 +24,15 @@ func runLogoIngest() int {
 			slog.Warn("failed to close sqlDB", "error", err)
 		}
 	}()
-	logoProvider := di.NewMarket()
+	logoProvider := di.NewMarket(cfg.TwelveData)
 	symbolRepo := symbollist.NewRepository(sqlDB)
 	rateLimiter := clientratelimit.NewRateLimiter(rateLimitPerMinute, time.Minute)
 	uc := symbollist.NewLogoIngestUsecase(logoProvider, symbolRepo, rateLimiter)
 
-	timeoutHours := parseTimeoutHours("LOGO_INGEST_TIMEOUT_HOURS", 3)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutHours)*time.Hour)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Batch.LogoTimeoutHours)*time.Hour)
 	defer cancel()
 
-	maxFailureRate := parseMaxFailureRate("LOGO_INGEST_MAX_FAILURE_RATE", defaultMaxFailureRate)
+	maxFailureRate := cfg.Batch.LogoMaxFailureRate
 
 	start := time.Now()
 	result, err := uc.IngestAll(ctx)

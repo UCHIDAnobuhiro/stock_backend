@@ -3,6 +3,7 @@ package jwt
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -28,7 +29,9 @@ func runAuth(authHeader string, mutate func(r *http.Request)) (*httptest.Respons
 		nextCalled = true
 		seen = r
 	})
-	AuthRequired()(next).ServeHTTP(w, req)
+	// シークレットは起動時注入に変更されたが、既存テストの t.Setenv パターンを維持するため
+	// ヘルパー内で env から読み取って注入する。
+	AuthRequired(os.Getenv(EnvKeyJWTSecret))(next).ServeHTTP(w, req)
 	return w, nextCalled, seen
 }
 
