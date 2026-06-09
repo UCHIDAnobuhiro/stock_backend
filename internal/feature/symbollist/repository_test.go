@@ -162,69 +162,6 @@ func TestSymbolRepository_ListActive(t *testing.T) {
 	}
 }
 
-func TestSymbolRepository_ListActiveCodes(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name          string
-		setupFunc     func(t *testing.T, db *sql.DB)
-		expectedCodes []string
-	}{
-		{
-			name: "success: returns active symbol codes sorted by code",
-			setupFunc: func(t *testing.T, db *sql.DB) {
-				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true)
-				seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
-				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
-			},
-			expectedCodes: []string{"6758.T", "7203.T", "9984.T"},
-		},
-		{
-			name: "success: excludes inactive symbol codes",
-			setupFunc: func(t *testing.T, db *sql.DB) {
-				seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
-				inactive := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
-				updateSymbolActive(t, db, inactive, false)
-				seedSymbol(t, db, "9984.T", "SoftBank Group", "TSE", true)
-			},
-			expectedCodes: []string{"7203.T", "9984.T"},
-		},
-		{
-			name:          "success: returns empty list when no symbols",
-			setupFunc:     func(t *testing.T, db *sql.DB) {},
-			expectedCodes: []string{},
-		},
-		{
-			name: "success: returns empty list when all symbols are inactive",
-			setupFunc: func(t *testing.T, db *sql.DB) {
-				s1 := seedSymbol(t, db, "7203.T", "Toyota Motor", "TSE", true)
-				updateSymbolActive(t, db, s1, false)
-				s2 := seedSymbol(t, db, "6758.T", "Sony Group", "TSE", true)
-				updateSymbolActive(t, db, s2, false)
-			},
-			expectedCodes: []string{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			db := setupTestDB(t)
-			repo := NewRepository(db)
-			if tt.setupFunc != nil {
-				tt.setupFunc(t, db)
-			}
-			codes, err := repo.ListActiveCodes(context.Background())
-			require.NoError(t, err)
-			if len(tt.expectedCodes) == 0 {
-				assert.Empty(t, codes)
-			} else {
-				assert.Equal(t, tt.expectedCodes, codes)
-			}
-		})
-	}
-}
-
 func TestSymbolRepository_ListActive_FieldValues(t *testing.T) {
 	t.Parallel()
 	db := setupTestDB(t)

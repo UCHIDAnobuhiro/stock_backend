@@ -4,12 +4,6 @@ FROM symbols
 WHERE is_active = TRUE
 ORDER BY code ASC;
 
--- name: ListActiveSymbolCodes :many
-SELECT code
-FROM symbols
-WHERE is_active = TRUE
-ORDER BY code ASC;
-
 -- name: SymbolExists :one
 SELECT EXISTS (
   SELECT 1 FROM symbols WHERE code = $1

@@ -10,36 +10,6 @@ import (
 	"database/sql"
 )
 
-const listActiveSymbolCodes = `-- name: ListActiveSymbolCodes :many
-SELECT code
-FROM symbols
-WHERE is_active = TRUE
-ORDER BY code ASC
-`
-
-func (q *Queries) ListActiveSymbolCodes(ctx context.Context) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listActiveSymbolCodes)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []string{}
-	for rows.Next() {
-		var code string
-		if err := rows.Scan(&code); err != nil {
-			return nil, err
-		}
-		items = append(items, code)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listActiveSymbols = `-- name: ListActiveSymbols :many
 SELECT id, code, name, market, timezone, logo_url, logo_updated_at, is_active, created_at, updated_at
 FROM symbols

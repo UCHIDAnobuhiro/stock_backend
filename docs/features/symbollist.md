@@ -165,7 +165,6 @@ graph TB
 - **repository**: sqlc + database/sql ベースのリポジトリ実装。`Repository` と `LogoSymbolRepository` の両インターフェースを満たす
   - `ListActive(ctx)`: コード昇順でアクティブな銘柄を返す
   - `UpdateLogoURL(ctx, code, logoURL, updatedAt)`: 指定銘柄のロゴ URL と取得日時を更新（対象行が無い場合は警告ログのみ）
-  - `ListActiveCodes(ctx)`: アクティブな銘柄のコードのみを返す（補助メソッド）
   - `Exists(ctx, code)`: 指定コードの銘柄存在チェック
 
 なお、candles フィーチャーの `IngestUsecase` が要求する `SymbolRepository`（`ListActiveSymbols(ctx) ([]ActiveSymbol, error)`）は、`internal/app/di/ingest_symbol.go` のアダプターで `repository.ListActive` の結果を変換することで満たしています。これによりフィーチャー間の直接依存を避けています。
