@@ -201,9 +201,9 @@ func TestCachingCandleRepository_Find_CacheMiss(t *testing.T) {
 
 	inner := &mockReadWriteRepository{
 		findFn: func(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
-			// maxCacheOutputSize(5000) で呼ばれることを検証
-			if outputsize != maxCacheOutputSize {
-				t.Errorf("expected outputsize %d, got %d", maxCacheOutputSize, outputsize)
+			// MaxOutputSize(5000) で呼ばれることを検証
+			if outputsize != MaxOutputSize {
+				t.Errorf("expected outputsize %d, got %d", MaxOutputSize, outputsize)
 			}
 			return expectedCandles, nil
 		},

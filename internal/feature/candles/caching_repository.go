@@ -10,10 +10,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// maxCacheOutputSize はキャッシュに保存する最大ローソク足件数です。
-// usecaseのMaxOutputSizeと合わせています（依存ルール上usecaseをimport不可のためここで定義）。
-const maxCacheOutputSize = 5000
-
 // DefaultCacheTTL はingestの連続失敗時に古いデータが残り続けないためのセーフティネットTTL。
 // 通常運用ではingestのUpsertBatchによりキャッシュが日次で上書きされるため、
 // この値はフォールバックとしてのみ機能する。
@@ -77,7 +73,7 @@ func (c *CachingRepository) UpsertBatch(ctx context.Context, candles []Candle) e
 		key := c.cacheKey(si.symbol, si.interval)
 		_ = c.rdb.Del(ctx, key).Err() // ベストエフォート
 
-		data, err := c.inner.Find(ctx, si.symbol, si.interval, maxCacheOutputSize)
+		data, err := c.inner.Find(ctx, si.symbol, si.interval, MaxOutputSize)
 		if err != nil {
 			continue // ベストエフォート: エラー時はウォームアップをスキップ
 		}
@@ -89,7 +85,7 @@ func (c *CachingRepository) UpsertBatch(ctx context.Context, candles []Candle) e
 }
 
 // Find はローソク足データを取得します。まずキャッシュを確認し、なければデータベースにフォールバックします。
-// キャッシュには全データ（最大maxCacheOutputSize件）を保存し、outputsize件にスライスして返します。
+// キャッシュには全データ（最大MaxOutputSize件）を保存し、outputsize件にスライスして返します。
 func (c *CachingRepository) Find(ctx context.Context, symbol, interval string, outputsize int) ([]Candle, error) {
 	// Redisが未設定の場合はキャッシュをバイパス
 	if c.rdb == nil {
@@ -109,7 +105,7 @@ func (c *CachingRepository) Find(ctx context.Context, symbol, interval string, o
 	}
 
 	// 2) データベースにフォールバック（全データ取得してキャッシュに保存）
-	all, err := c.inner.Find(ctx, symbol, interval, maxCacheOutputSize)
+	all, err := c.inner.Find(ctx, symbol, interval, MaxOutputSize)
 	if err != nil {
 		return nil, err
 	}
