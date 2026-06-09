@@ -122,7 +122,7 @@ services:
     env_file:
       - ./.env.app
     volumes:
-      - ./postgres/seed.sql:/seed.sql:ro
+      - ../db/seed/seed.sql:/seed.sql:ro
     command:
       - sh
       - -c

@@ -53,7 +53,7 @@
 
 - `MarketRepository.GetTimeSeries` のシグネチャ変更により、既存呼び出し元（テスト含む）の修正が必要
 - `symbols.timezone` を将来追加する銘柄でも必ず正しい IANA 文字列で埋める運用責任が発生する
-- 既存 `candles` データは UTC 解釈で保存されているため、再 ingest による上書きで一掃する必要がある（dev 環境では `docker/postgres/seed.sql` の `TRUNCATE TABLE symbols CASCADE` が candles も連動クリアするため、自然に解消される）
+- 既存 `candles` データは UTC 解釈で保存されているため、再 ingest による上書きで一掃する必要がある（dev 環境では `db/seed/seed.sql` の `TRUNCATE TABLE symbols CASCADE` が candles も連動クリアするため、自然に解消される）
 
 ## 既存データのマイグレーション
 
