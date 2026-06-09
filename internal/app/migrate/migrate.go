@@ -18,6 +18,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/app/config"
 	infradb "github.com/UCHIDAnobuhiro/stock-backend/internal/infra/db"
 )
 
@@ -36,9 +37,9 @@ var allowedCommands = map[string]struct{}{
 }
 
 // Run は goose サブコマンド（コマンド引数）に応じてマイグレーションを実行し、終了コードを返す。
-// 引数なしの場合は up を適用する。
+// 引数なしの場合は up を適用する。環境変数から読み込んだ設定は cfg として注入される。
 // os.Exit は呼ばず、終了コードを返すのみ（呼び出し側の main で os.Exit する）。
-func Run(args []string) int {
+func Run(cfg *config.Config, args []string) int {
 	cmd := "up"
 	var extra []string
 	if len(args) > 0 {
@@ -50,7 +51,7 @@ func Run(args []string) int {
 		return 2
 	}
 
-	db, err := infradb.OpenSQL()
+	db, err := infradb.OpenSQL(cfg.DB)
 	if err != nil {
 		slog.Error("DB open failed", "error", err)
 		return 1

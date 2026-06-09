@@ -3,8 +3,10 @@ package batch
 import (
 	"testing"
 
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/app/config"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist"
+	infradb "github.com/UCHIDAnobuhiro/stock-backend/internal/infra/db"
 )
 
 // TestShouldFailExit はしきい値判定の境界条件を検証します。
@@ -106,9 +108,10 @@ func TestRunInvalidJobID(t *testing.T) {
 		{name: "未知の job_id", args: []string{"bogus"}, want: 2},
 	}
 
+	cfg := &config.Config{}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := Run(tc.args); got != tc.want {
+			if got := Run(cfg, tc.args); got != tc.want {
 				t.Errorf("Run(%v)=%d, want %d", tc.args, got, tc.want)
 			}
 		})
@@ -116,11 +119,13 @@ func TestRunInvalidJobID(t *testing.T) {
 }
 
 func TestRun_ReturnsOneWhenDBConfigInvalid(t *testing.T) {
-	t.Setenv("DB_USER", "")
+	t.Parallel()
 
+	// DB_USER 未設定相当の不正な DB Config → OpenSQL の検証で失敗し 1 を返す。
+	cfg := &config.Config{DB: infradb.Config{}}
 	for _, jobID := range []string{"candles", "logo"} {
 		t.Run(jobID, func(t *testing.T) {
-			if got := Run([]string{jobID}); got != 1 {
+			if got := Run(cfg, []string{jobID}); got != 1 {
 				t.Errorf("Run(%q) = %d, want 1", jobID, got)
 			}
 		})
