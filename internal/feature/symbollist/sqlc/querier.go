@@ -9,7 +9,6 @@ import (
 )
 
 type Querier interface {
-	ListActiveSymbolCodes(ctx context.Context) ([]string, error)
 	ListActiveSymbols(ctx context.Context) ([]Symbol, error)
 	SymbolExists(ctx context.Context, code string) (bool, error)
 	UpdateSymbolLogoURL(ctx context.Context, arg UpdateSymbolLogoURLParams) (int64, error)

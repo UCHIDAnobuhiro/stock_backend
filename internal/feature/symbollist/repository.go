@@ -38,11 +38,6 @@ func (r *repository) ListActive(ctx context.Context) ([]Symbol, error) {
 	return out, nil
 }
 
-// ListActiveCodes はコード昇順にアクティブな銘柄のコードのみを返します。
-func (r *repository) ListActiveCodes(ctx context.Context) ([]string, error) {
-	return r.q.ListActiveSymbolCodes(ctx)
-}
-
 // Exists は指定されたコードの銘柄が存在するかを返します。
 func (r *repository) Exists(ctx context.Context, code string) (bool, error) {
 	return r.q.SymbolExists(ctx, code)
