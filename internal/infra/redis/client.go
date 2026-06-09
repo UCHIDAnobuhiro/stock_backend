@@ -5,7 +5,6 @@ import (
 	"context"
 	"log/slog"
 	"net"
-	"os"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -28,16 +27,17 @@ func (Password) MarshalJSON() ([]byte, error) { return []byte(`"***"`), nil }
 // LogValue は slog による構造化ログ出力時にパスワードをマスクします。
 func (Password) LogValue() slog.Value { return slog.StringValue("***") }
 
-// NewRedisClient は環境変数を使用して設定された新しいRedisクライアントを作成します。
+// NewRedisClient は渡された接続情報で新しいRedisクライアントを作成します。
 // 返却前にPINGコマンドで接続を検証します。
-// 必要な環境変数: REDIS_HOST, REDIS_PORT, REDIS_PASSWORD（オプション）。
-func NewRedisClient() (*redis.Client, error) {
-	addr := net.JoinHostPort(os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT"))
-	password := Password(os.Getenv("REDIS_PASSWORD"))
+// 設定の読み込み（環境変数 REDIS_HOST / REDIS_PORT / REDIS_PASSWORD）は
+// internal/app/config に集約されています。password は空文字を許容します。
+func NewRedisClient(host, port, password string) (*redis.Client, error) {
+	addr := net.JoinHostPort(host, port)
+	pw := Password(password)
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     addr,
-		Password: string(password),
+		Password: string(pw),
 		DB:       0,
 	})
 
