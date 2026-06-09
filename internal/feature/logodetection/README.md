@@ -404,7 +404,6 @@ tests := []struct {
 ```
 
 **主な特徴:**
-- `gin.TestMode`でのテスト実行
 - `httptest.NewRecorder()`によるHTTPレスポンス記録
 - `assert.JSONEq`によるJSONレスポンスボディの照合
 - マルチパートリクエストのヘルパー関数

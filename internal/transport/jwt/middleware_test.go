@@ -3,24 +3,37 @@ package jwt
 import (
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	gojwt "github.com/golang-jwt/jwt/v5"
 )
 
-// TestMain はテスト実行前にGinをテストモードに設定します。
-func TestMain(m *testing.M) {
-	gin.SetMode(gin.TestMode)
-	os.Exit(m.Run())
+// runAuth はミドルウェアを実行し、レスポンスレコーダー・next が呼ばれたか・
+// next が受け取ったリクエストを返すテストヘルパーです。
+func runAuth(authHeader string, mutate func(r *http.Request)) (*httptest.ResponseRecorder, bool, *http.Request) {
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	if authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+	if mutate != nil {
+		mutate(req)
+	}
+
+	var nextCalled bool
+	var seen *http.Request
+	next := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		nextCalled = true
+		seen = r
+	})
+	AuthRequired()(next).ServeHTTP(w, req)
+	return w, nextCalled, seen
 }
 
 // TestAuthRequired_MissingBearerToken はBearerトークンがない場合やプレフィックスが不正な場合に401が返されることを検証します。
 func TestAuthRequired_MissingBearerToken(t *testing.T) {
-	// Set up environment for this test
 	t.Setenv(EnvKeyJWTSecret, "test-secret")
 
 	tests := []struct {
@@ -36,21 +49,13 @@ func TestAuthRequired_MissingBearerToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-			c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-			if tt.authHeader != "" {
-				c.Request.Header.Set("Authorization", tt.authHeader)
-			}
-
-			handler := AuthRequired()
-			handler(c)
+			w, nextCalled, _ := runAuth(tt.authHeader, nil)
 
 			if w.Code != http.StatusUnauthorized {
 				t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
 			}
-			if !c.IsAborted() {
-				t.Error("expected request to be aborted")
+			if nextCalled {
+				t.Error("expected request to be aborted (next must not be called)")
 			}
 		})
 	}
@@ -58,19 +63,15 @@ func TestAuthRequired_MissingBearerToken(t *testing.T) {
 
 // TestAuthRequired_MissingJWTSecret はJWT_SECRET環境変数が未設定の場合に500が返されることを検証します。
 func TestAuthRequired_MissingJWTSecret(t *testing.T) {
-	// Ensure JWT_SECRET is not set (t.Setenv with empty string)
 	t.Setenv(EnvKeyJWTSecret, "")
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-	c.Request.Header.Set("Authorization", "Bearer sometoken")
-
-	handler := AuthRequired()
-	handler(c)
+	w, nextCalled, _ := runAuth("Bearer sometoken", nil)
 
 	if w.Code != http.StatusInternalServerError {
 		t.Errorf("expected status %d, got %d", http.StatusInternalServerError, w.Code)
+	}
+	if nextCalled {
+		t.Error("expected request to be aborted")
 	}
 }
 
@@ -91,13 +92,7 @@ func TestAuthRequired_InvalidToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-			c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-			c.Request.Header.Set("Authorization", "Bearer "+tt.token)
-
-			handler := AuthRequired()
-			handler(c)
+			w, _, _ := runAuth("Bearer "+tt.token, nil)
 
 			if w.Code != http.StatusUnauthorized {
 				t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
@@ -125,25 +120,19 @@ func TestAuthRequired_ValidToken(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			token := createTokenWithSecret(testSecret, tt.userID, time.Hour)
 
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-			c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-			c.Request.Header.Set("Authorization", "Bearer "+token)
+			w, nextCalled, seen := runAuth("Bearer "+token, nil)
 
-			handler := AuthRequired()
-			handler(c)
-
-			if c.IsAborted() {
+			if !nextCalled {
 				t.Errorf("expected request not to be aborted, response: %s", w.Body.String())
 				return
 			}
 
-			userID, exists := c.Get(ContextUserID)
+			userID, exists := UserIDFromContext(seen.Context())
 			if !exists {
 				t.Error("expected userID to be set in context")
 				return
 			}
-			if userID.(int64) != tt.expectedUserID {
+			if userID != tt.expectedUserID {
 				t.Errorf("expected userID %d, got %d", tt.expectedUserID, userID)
 			}
 		})
@@ -156,17 +145,12 @@ func TestAuthRequired_LegacyNumericSubject(t *testing.T) {
 	t.Setenv(EnvKeyJWTSecret, testSecret)
 
 	token := createLegacyTokenWithSecret(testSecret, 42, time.Hour)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-	c.Request.Header.Set("Authorization", "Bearer "+token)
+	w, nextCalled, seen := runAuth("Bearer "+token, nil)
 
-	AuthRequired()(c)
-
-	if c.IsAborted() {
+	if !nextCalled {
 		t.Fatalf("expected request not to be aborted, response: %s", w.Body.String())
 	}
-	if userID, _ := c.Get(ContextUserID); userID != int64(42) {
+	if userID, _ := UserIDFromContext(seen.Context()); userID != int64(42) {
 		t.Errorf("expected userID 42, got %v", userID)
 	}
 }
@@ -189,12 +173,7 @@ func TestAuthRequired_InvalidSubject(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			token := createTokenWithSubject(testSecret, tt.sub, time.Hour)
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
-			c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-			c.Request.Header.Set("Authorization", "Bearer "+token)
-
-			AuthRequired()(c)
+			w, _, _ := runAuth("Bearer "+token, nil)
 
 			if w.Code != http.StatusUnauthorized {
 				t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
@@ -208,7 +187,7 @@ func TestAuthRequired_InvalidSigningMethod(t *testing.T) {
 	const testSecret = "test-secret-key-for-signing"
 	t.Setenv(EnvKeyJWTSecret, testSecret)
 
-	// Create token with "none" algorithm (unsigned)
+	// "none" アルゴリズム（未署名）のトークンを生成
 	token := gojwt.NewWithClaims(gojwt.SigningMethodNone, gojwt.MapClaims{
 		"sub": float64(1),
 		"exp": time.Now().Add(time.Hour).Unix(),
@@ -216,16 +195,28 @@ func TestAuthRequired_InvalidSigningMethod(t *testing.T) {
 	})
 	tokenStr, _ := token.SignedString(gojwt.UnsafeAllowNoneSignatureType)
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-	c.Request.Header.Set("Authorization", "Bearer "+tokenStr)
-
-	handler := AuthRequired()
-	handler(c)
+	w, _, _ := runAuth("Bearer "+tokenStr, nil)
 
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
+	}
+}
+
+// TestAuthRequired_CookiePreferred はCookie認証が設定され、認証方式がcookieになることを検証します。
+func TestAuthRequired_CookiePreferred(t *testing.T) {
+	const testSecret = "test-secret-key-for-cookie"
+	t.Setenv(EnvKeyJWTSecret, testSecret)
+
+	token := createTokenWithSecret(testSecret, 7, time.Hour)
+	_, nextCalled, seen := runAuth("", func(r *http.Request) {
+		r.AddCookie(&http.Cookie{Name: "auth_token", Value: token})
+	})
+
+	if !nextCalled {
+		t.Fatal("expected request to pass")
+	}
+	if src := AuthSourceFromContext(seen.Context()); src != AuthSourceCookie {
+		t.Errorf("expected auth source %q, got %q", AuthSourceCookie, src)
 	}
 }
 

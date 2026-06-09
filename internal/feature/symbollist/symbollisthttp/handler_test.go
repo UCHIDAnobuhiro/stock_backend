@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist"
@@ -43,8 +42,6 @@ func TestNewSymbolHandler(t *testing.T) {
 
 // TestSymbolHandler_List はListハンドラーの各種シナリオをテーブル駆動テストで検証します。
 func TestSymbolHandler_List(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	tests := []struct {
 		name               string
 		mockListActiveFunc func(ctx context.Context) ([]symbollist.Symbol, error)
@@ -107,13 +104,10 @@ func TestSymbolHandler_List(t *testing.T) {
 			}
 			h := symbollisthttp.NewHandler(mockUC)
 
-			router := gin.New()
-			router.GET("/symbols", h.List)
-
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest(http.MethodGet, "/symbols", nil)
+			req := httptest.NewRequest(http.MethodGet, "/symbols", nil)
 
-			router.ServeHTTP(w, req)
+			h.List(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			assert.JSONEq(t, tt.expectedBody, w.Body.String())
@@ -124,7 +118,6 @@ func TestSymbolHandler_List(t *testing.T) {
 // TestSymbolHandler_List_DTOConversion はレスポンスに公開DTOフィールドのみが含まれ、内部フィールドが公開されないことを検証します。
 func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 	t.Parallel()
-	gin.SetMode(gin.TestMode)
 
 	// レスポンスに公開DTOフィールドのみが含まれることを検証（ID、Market、IsActiveは含まれない）
 	mockUC := &mockUsecase{
@@ -143,13 +136,10 @@ func TestSymbolHandler_List_DTOConversion(t *testing.T) {
 	}
 	h := symbollisthttp.NewHandler(mockUC)
 
-	router := gin.New()
-	router.GET("/symbols", h.List)
-
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/symbols", nil)
+	req := httptest.NewRequest(http.MethodGet, "/symbols", nil)
 
-	router.ServeHTTP(w, req)
+	h.List(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.JSONEq(t, `[{"code":"TEST.T","name":"Test Company","logo_url":"https://api.twelvedata.com/logo/test.com"}]`, w.Body.String())

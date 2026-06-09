@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/watchlist"
@@ -55,13 +54,14 @@ func (m *mockUsecase) ReorderSymbols(ctx context.Context, userID int64, orderedC
 	return nil
 }
 
-// newRouter は ContextUserID を注入するミドルウェア付きの gin ルーターを構築します。
-func newRouter(t *testing.T, register func(r *gin.Engine)) *gin.Engine {
+// newRouter は認証済みユーザーIDを context に注入するミドルウェア付きの chi ルーターを構築します。
+func newRouter(t *testing.T, register func(r chi.Router)) chi.Router {
 	t.Helper()
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.Use(func(c *gin.Context) {
-		c.Set(jwt.ContextUserID, testUserID)
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			next.ServeHTTP(w, req.WithContext(jwt.WithUserID(req.Context(), testUserID)))
+		})
 	})
 	register(r)
 	return r
@@ -112,12 +112,12 @@ func TestWatchlistHandler_List(t *testing.T) {
 
 			mockUC := &mockUsecase{ListUserSymbolsFunc: tt.mockList}
 			h := watchlisthttp.NewHandler(mockUC)
-			router := newRouter(t, func(r *gin.Engine) {
-				r.GET("/watchlist", h.List)
+			router := newRouter(t, func(r chi.Router) {
+				r.Get("/watchlist", h.List)
 			})
 
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest(http.MethodGet, "/watchlist", io.NopCloser(bytes.NewReader(nil)))
+			req := httptest.NewRequest(http.MethodGet, "/watchlist", nil)
 			router.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
@@ -170,7 +170,7 @@ func TestWatchlistHandler_Add(t *testing.T) {
 			body:           `{"symbol_code":""}`,
 			mockAdd:        nil,
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "",
+			expectedBody:   `{"error":"invalid request"}`,
 		},
 		{
 			name: "error: usecase returns internal error",
@@ -189,12 +189,12 @@ func TestWatchlistHandler_Add(t *testing.T) {
 
 			mockUC := &mockUsecase{AddSymbolFunc: tt.mockAdd}
 			h := watchlisthttp.NewHandler(mockUC)
-			router := newRouter(t, func(r *gin.Engine) {
-				r.POST("/watchlist", h.Add)
+			router := newRouter(t, func(r chi.Router) {
+				r.Post("/watchlist", h.Add)
 			})
 
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest(http.MethodPost, "/watchlist", bytes.NewReader([]byte(tt.body)))
+			req := httptest.NewRequest(http.MethodPost, "/watchlist", bytes.NewReader([]byte(tt.body)))
 			req.Header.Set("Content-Type", "application/json")
 			router.ServeHTTP(w, req)
 
@@ -253,12 +253,12 @@ func TestWatchlistHandler_Remove(t *testing.T) {
 
 			mockUC := &mockUsecase{RemoveSymbolFunc: tt.mockRemove}
 			h := watchlisthttp.NewHandler(mockUC)
-			router := newRouter(t, func(r *gin.Engine) {
-				r.DELETE("/watchlist/:code", h.Remove)
+			router := newRouter(t, func(r chi.Router) {
+				r.Delete("/watchlist/{code}", h.Remove)
 			})
 
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest(http.MethodDelete, "/watchlist/"+tt.code, io.NopCloser(bytes.NewReader(nil)))
+			req := httptest.NewRequest(http.MethodDelete, "/watchlist/"+tt.code, nil)
 			router.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
@@ -295,7 +295,7 @@ func TestWatchlistHandler_Reorder(t *testing.T) {
 			body:           `{"codes":[]}`,
 			mockReorder:    nil,
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "",
+			expectedBody:   `{"error":"invalid request"}`,
 		},
 		{
 			name: "error: usecase returns internal error",
@@ -314,12 +314,12 @@ func TestWatchlistHandler_Reorder(t *testing.T) {
 
 			mockUC := &mockUsecase{ReorderSymbolsFunc: tt.mockReorder}
 			h := watchlisthttp.NewHandler(mockUC)
-			router := newRouter(t, func(r *gin.Engine) {
-				r.PUT("/watchlist/reorder", h.Reorder)
+			router := newRouter(t, func(r chi.Router) {
+				r.Put("/watchlist/reorder", h.Reorder)
 			})
 
 			w := httptest.NewRecorder()
-			req, _ := http.NewRequest(http.MethodPut, "/watchlist/reorder", bytes.NewReader([]byte(tt.body)))
+			req := httptest.NewRequest(http.MethodPut, "/watchlist/reorder", bytes.NewReader([]byte(tt.body)))
 			req.Header.Set("Content-Type", "application/json")
 			router.ServeHTTP(w, req)
 

@@ -1,9 +1,9 @@
-# Stock View API (Go / Gin / クリーンアーキテクチャ)
+# Stock View API (Go / net/http (chi) / クリーンアーキテクチャ)
 
 ## 概要
 
 **株式データ配信・認証用バックエンドAPI**
-GoとGinフレームワークで構築し、フロントエンド（Kotlin / Jetpack Compose）と連携します。
+Goの標準ライブラリ net/http（ルーティングに chi）で構築し、フロントエンド（Kotlin / Jetpack Compose）と連携します。
 REST APIとして、ユーザー認証・株式データ配信・キャッシュ最適化を提供します。
 
 ## 主な機能
@@ -50,7 +50,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 | カテゴリ        | 技術                                                                |
 | --------------- | ------------------------------------------------------------------- |
 | 言語            | Go (1.26.3)                                                          |
-| Webフレームワーク | Gin                                                                 |
+| Webフレームワーク | net/http（標準ライブラリ）+ chi（ルーター）                         |
 | DB アクセス     | sqlc + database/sql + pgx/v5 stdlib                                 |
 | DB マイグレーション | goose（埋め込み SQL ベース）                                      |
 | DB              | PostgreSQL / Cloud SQL                                              |
@@ -111,7 +111,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   │       ├── sqlc/           # sqlc 生成コード（package watchlistsqlc）
 │   │       └── watchlisthttp/  # HTTPハンドラー（package watchlisthttp）
 │   │
-│   ├── transport/             # inbound HTTP 層（Gin ハンドラー/ミドルウェア）
+│   ├── transport/             # inbound HTTP 層（net/http ハンドラー/ミドルウェア、chi ルーター）
 │   │   ├── csrf/               # CSRF保護（Double Submit Cookieパターン）
 │   │   ├── handler/            # ヘルスチェックハンドラー
 │   │   ├── httpratelimit/      # Redisベースのスライディングウィンドウレートリミッター（HTTPミドルウェア）

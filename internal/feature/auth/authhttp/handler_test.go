@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redismock/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,6 +17,9 @@ import (
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth/authhttp"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpratelimit"
 )
+
+// H は JSON ボディ構築用の簡易マップ型です（旧 gin.H 相当）。
+type H = map[string]any
 
 // mockUsecase はUsecaseインターフェースのモック実装です。
 type mockUsecase struct {
@@ -41,36 +43,29 @@ func (m *mockUsecase) Login(ctx context.Context, email, password string) (string
 	return "", errors.New("login failed") // デフォルト: 失敗
 }
 
-// TestMain は全テスト共通のテスト環境を設定します。
-func TestMain(m *testing.M) {
-	gin.SetMode(gin.TestMode)
-	m.Run()
-}
-
-// makeRequest はHTTPリクエストを作成・実行するヘルパー関数です。
-func makeRequest(t *testing.T, router *gin.Engine, method, path string, body gin.H) *httptest.ResponseRecorder {
+// makeRequest はHTTPリクエストを作成し、指定ハンドラーを直接実行するヘルパー関数です。
+func makeRequest(t *testing.T, handler http.HandlerFunc, method, path string, body H) *httptest.ResponseRecorder {
 	t.Helper()
 
 	bodyBytes, err := json.Marshal(body)
 	require.NoError(t, err)
 
-	req, err := http.NewRequest(method, path, bytes.NewBuffer(bodyBytes))
-	require.NoError(t, err)
+	req := httptest.NewRequest(method, path, bytes.NewBuffer(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler(w, req)
 
 	return w
 }
 
 // assertJSONResponse はJSONレスポンスのステータスコードとボディを検証するヘルパー関数です。
-func assertJSONResponse(t *testing.T, w *httptest.ResponseRecorder, expectedStatus int, expectedBody gin.H) {
+func assertJSONResponse(t *testing.T, w *httptest.ResponseRecorder, expectedStatus int, expectedBody H) {
 	t.Helper()
 
 	assert.Equal(t, expectedStatus, w.Code)
 
-	var responseBody gin.H
+	var responseBody H
 	err := json.Unmarshal(w.Body.Bytes(), &responseBody)
 	require.NoError(t, err)
 
@@ -118,40 +113,40 @@ func TestAuthHandler_Signup(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		requestBody    gin.H
+		requestBody    H
 		mockSignupFunc func(ctx context.Context, email, password string) (int64, error)
 		expectedStatus int
-		expectedBody   gin.H
+		expectedBody   H
 	}{
 		{
 			name:           "success: user registration",
-			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
+			requestBody:    H{"email": "test@example.com", "password": "password123"},
 			mockSignupFunc: func(ctx context.Context, email, password string) (int64, error) { return 1, nil },
 			expectedStatus: http.StatusCreated,
-			expectedBody:   gin.H{"message": "ok"},
+			expectedBody:   H{"message": "ok"},
 		},
 		{
 			name:           "failure: invalid email address",
-			requestBody:    gin.H{"email": "invalid-email", "password": "password123"},
+			requestBody:    H{"email": "invalid-email", "password": "password123"},
 			mockSignupFunc: nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "invalid request"},
+			expectedBody:   H{"error": "invalid request"},
 		},
 		{
 			name:           "failure: short password",
-			requestBody:    gin.H{"email": "test@example.com", "password": "short"},
+			requestBody:    H{"email": "test@example.com", "password": "short"},
 			mockSignupFunc: nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "invalid request"},
+			expectedBody:   H{"error": "invalid request"},
 		},
 		{
 			name:        "failure: duplicate email (usecase error)",
-			requestBody: gin.H{"email": "existing@example.com", "password": "password123"},
+			requestBody: H{"email": "existing@example.com", "password": "password123"},
 			mockSignupFunc: func(ctx context.Context, email, password string) (int64, error) {
 				return 0, errors.New("email already exists")
 			},
 			expectedStatus: http.StatusConflict,
-			expectedBody:   gin.H{"error": "signup failed"},
+			expectedBody:   H{"error": "signup failed"},
 		},
 	}
 
@@ -162,10 +157,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 			mockUC := &mockUsecase{SignupFunc: tt.mockSignupFunc}
 			h := authhttp.NewHandler(mockUC, nil, false)
 
-			router := gin.New()
-			router.POST("/signup", h.Signup)
-
-			w := makeRequest(t, router, http.MethodPost, "/signup", tt.requestBody)
+			w := makeRequest(t, h.Signup, http.MethodPost, "/signup", tt.requestBody)
 			assertJSONResponse(t, w, tt.expectedStatus, tt.expectedBody)
 		})
 	}
@@ -195,10 +187,7 @@ func TestAuthHandler_Login_RateLimited(t *testing.T) {
 	}
 	h := authhttp.NewHandler(mockUC, limiter, false)
 
-	router := gin.New()
-	router.POST("/login", h.Login)
-
-	w := makeRequest(t, router, http.MethodPost, "/login", gin.H{
+	w := makeRequest(t, h.Login, http.MethodPost, "/login", H{
 		"email":    "test@example.com",
 		"password": "password123",
 	})
@@ -221,62 +210,62 @@ func TestAuthHandler_Login(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		requestBody    gin.H
+		requestBody    H
 		mockLoginFunc  func(ctx context.Context, email, password string) (string, error)
 		expectedStatus int
-		expectedBody   gin.H
+		expectedBody   H
 		checkCookies   bool
 		secureCookie   bool
 	}{
 		{
 			name:           "success: user login",
-			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
+			requestBody:    H{"email": "test@example.com", "password": "password123"},
 			mockLoginFunc:  func(ctx context.Context, email, password string) (string, error) { return "dummy-jwt-token", nil },
 			expectedStatus: http.StatusOK,
-			expectedBody:   gin.H{"message": "ok"},
+			expectedBody:   H{"message": "ok"},
 			checkCookies:   true,
 			secureCookie:   false,
 		},
 		{
 			name:           "success: user login (secureCookie=true)",
-			requestBody:    gin.H{"email": "test@example.com", "password": "password123"},
+			requestBody:    H{"email": "test@example.com", "password": "password123"},
 			mockLoginFunc:  func(ctx context.Context, email, password string) (string, error) { return "dummy-jwt-token", nil },
 			expectedStatus: http.StatusOK,
-			expectedBody:   gin.H{"message": "ok"},
+			expectedBody:   H{"message": "ok"},
 			checkCookies:   true,
 			secureCookie:   true,
 		},
 		{
 			name:           "failure: invalid email address",
-			requestBody:    gin.H{"email": "invalid-email", "password": "password123"},
+			requestBody:    H{"email": "invalid-email", "password": "password123"},
 			mockLoginFunc:  nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "invalid request"},
+			expectedBody:   H{"error": "invalid request"},
 		},
 		{
 			name:           "failure: missing password",
-			requestBody:    gin.H{"email": "test@example.com"},
+			requestBody:    H{"email": "test@example.com"},
 			mockLoginFunc:  nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   gin.H{"error": "invalid request"},
+			expectedBody:   H{"error": "invalid request"},
 		},
 		{
 			name:        "failure: invalid credentials (usecase error)",
-			requestBody: gin.H{"email": "wrong@example.com", "password": "wrong-password"},
+			requestBody: H{"email": "wrong@example.com", "password": "wrong-password"},
 			mockLoginFunc: func(ctx context.Context, email, password string) (string, error) {
 				return "", errors.New("invalid email or password")
 			},
 			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   gin.H{"error": "invalid email or password"},
+			expectedBody:   H{"error": "invalid email or password"},
 		},
 		{
 			name:        "failure: JWT secret not set (usecase error)",
-			requestBody: gin.H{"email": "test@example.com", "password": "password123"},
+			requestBody: H{"email": "test@example.com", "password": "password123"},
 			mockLoginFunc: func(ctx context.Context, email, password string) (string, error) {
 				return "", errors.New("server misconfigured: JWT_SECRET missing")
 			},
 			expectedStatus: http.StatusUnauthorized,
-			expectedBody:   gin.H{"error": "invalid email or password"}, // Usecaseのエラーメッセージは隠蔽される
+			expectedBody:   H{"error": "invalid email or password"}, // Usecaseのエラーメッセージは隠蔽される
 		},
 	}
 
@@ -287,10 +276,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			mockUC := &mockUsecase{LoginFunc: tt.mockLoginFunc}
 			h := authhttp.NewHandler(mockUC, nil, tt.secureCookie)
 
-			router := gin.New()
-			router.POST("/login", h.Login)
-
-			w := makeRequest(t, router, http.MethodPost, "/login", tt.requestBody)
+			w := makeRequest(t, h.Login, http.MethodPost, "/login", tt.requestBody)
 			assertJSONResponse(t, w, tt.expectedStatus, tt.expectedBody)
 			if tt.checkCookies {
 				assertLoginCookies(t, w, tt.secureCookie)
@@ -317,10 +303,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 
 			h := authhttp.NewHandler(&mockUsecase{}, nil, tt.secureCookie)
 
-			router := gin.New()
-			router.DELETE("/logout", h.Logout)
-
-			w := makeRequest(t, router, http.MethodDelete, "/logout", gin.H{})
+			w := makeRequest(t, h.Logout, http.MethodDelete, "/logout", H{})
 
 			assert.Equal(t, http.StatusOK, w.Code)
 

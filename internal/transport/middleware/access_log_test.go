@@ -8,16 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// TestMain は全テスト共通のテスト環境を設定します。
-func TestMain(m *testing.M) {
-	gin.SetMode(gin.TestMode)
-	m.Run()
-}
 
 func TestSeverityForStatus(t *testing.T) {
 	t.Parallel()
@@ -110,15 +103,15 @@ func TestAccessLog_LogsStructuredRequest(t *testing.T) {
 	restore := swapDefaultLogger(&buf)
 	defer restore()
 
-	r := gin.New()
-	r.Use(AccessLog(""))
-	r.GET("/v1/symbols", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
+	h := AccessLog("")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/symbols?interval=1day", nil)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	h.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
 
@@ -145,14 +138,14 @@ func TestAccessLog_IncludesTrace(t *testing.T) {
 	restore := swapDefaultLogger(&buf)
 	defer restore()
 
-	r := gin.New()
-	r.Use(AccessLog("my-proj"))
-	r.GET("/ping", func(c *gin.Context) { c.Status(http.StatusOK) })
+	h := AccessLog("my-proj")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
 	req.Header.Set("X-Cloud-Trace-Context", "trace-abc/span-1;o=1")
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	h.ServeHTTP(w, req)
 
 	got := decodeLog(t, buf.Bytes())
 	assert.Equal(t, "projects/my-proj/traces/trace-abc", got["logging.googleapis.com/trace"])
@@ -166,13 +159,13 @@ func TestAccessLog_ErrorStatusSeverity(t *testing.T) {
 	restore := swapDefaultLogger(&buf)
 	defer restore()
 
-	r := gin.New()
-	r.Use(AccessLog(""))
-	r.GET("/fail", func(c *gin.Context) { c.Status(http.StatusInternalServerError) })
+	h := AccessLog("")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/fail", nil)
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	h.ServeHTTP(w, req)
 
 	got := decodeLog(t, buf.Bytes())
 	assert.Equal(t, "ERROR", got["severity"])

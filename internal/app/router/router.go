@@ -2,10 +2,11 @@
 package router
 
 import (
+	"net/http"
 	"time"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/auth/authhttp"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles/candleshttp"
@@ -19,7 +20,7 @@ import (
 	httpmw "github.com/UCHIDAnobuhiro/stock-backend/internal/transport/middleware"
 )
 
-// NewRouter はすべてのアプリケーションルートを設定したGinルーターを生成します。
+// NewRouter はすべてのアプリケーションルートを設定したHTTPハンドラー（chiルーター）を生成します。
 // 公開ルート（signup, login）とJWT認証ミドルウェア付きの保護ルート（candles, symbols, logo, watchlist）を設定します。
 // oauthHandler が nil の場合はOAuthルートを登録しません。
 func NewRouter(authHandler *authhttp.Handler, oauthHandler *authhttp.OAuthHandler,
@@ -29,85 +30,72 @@ func NewRouter(authHandler *authhttp.Handler, oauthHandler *authhttp.OAuthHandle
 	limiter *httpratelimit.Limiter,
 	allowedOrigins []string,
 	gcpProjectID string,
-) *gin.Engine {
-	// gin.Default() の代わりに gin.New() を使い、アクセスログを slog（構造化）で出力する。
-	// AccessLog を外側、Recovery を内側に置くことで、panic を 500 に変換した結果も
+) http.Handler {
+	r := chi.NewRouter()
+
+	// AccessLog を外側、Recover を内側に置くことで、panic を 500 に変換した結果も
 	// アクセスログに記録される。
-	r := gin.New()
 	r.Use(httpmw.AccessLog(gcpProjectID))
-	r.Use(gin.Recovery())
+	r.Use(httpmw.Recover())
 
-	// リバースプロキシを使用しない構成のため、X-Forwarded-For等のヘッダーを信頼しない
-	// c.ClientIP()がRemoteAddr（実際のTCP接続元）を返すようにする
-	_ = r.SetTrustedProxies(nil)
-
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     allowedOrigins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-CSRF-Token"},
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   allowedOrigins,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Origin", "Content-Type", "Authorization", "X-CSRF-Token"},
 		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
+		MaxAge:           int((12 * time.Hour).Seconds()),
 	}))
 	r.Use(httpmw.SecurityHeaders())
 
-	// 画像アップロードのサイズ制限を設定（10MB）
-	r.MaxMultipartMemory = 10 << 20
-
-	// ヘルスチェックエンドポイント（バージョンなし）
-	r.GET("/healthz", handler.Health)
+	// ヘルスチェックエンドポイント（バージョンなし）。
+	// Health はメソッドごとの分岐を自身で行うため、全メソッドを単一ハンドラーで処理する。
+	r.Handle("/healthz", http.HandlerFunc(handler.Health))
 
 	// API v1 ルート
-	v1 := r.Group("/v1")
-	{
+	r.Route("/v1", func(r chi.Router) {
 		// 公開ルート（認証不要）+ レートリミット
-		v1.POST("/signup",
-			httpratelimit.ByIP(limiter, httpratelimit.IPRateLimitConfig{
-				Prefix: "rl:signup:ip",
-				Limit:  5,
-				Window: 1 * time.Hour,
-			}),
-			authHandler.Signup,
-		)
-		v1.POST("/login",
-			httpratelimit.ByIP(limiter, httpratelimit.IPRateLimitConfig{
-				Prefix: "rl:login:ip",
-				Limit:  10,
-				Window: 1 * time.Minute,
-			}),
-			authHandler.Login,
-		)
+		r.With(httpratelimit.ByIP(limiter, httpratelimit.IPRateLimitConfig{
+			Prefix: "rl:signup:ip",
+			Limit:  5,
+			Window: 1 * time.Hour,
+		})).Post("/signup", authHandler.Signup)
+
+		r.With(httpratelimit.ByIP(limiter, httpratelimit.IPRateLimitConfig{
+			Prefix: "rl:login:ip",
+			Limit:  10,
+			Window: 1 * time.Minute,
+		})).Post("/login", authHandler.Login)
+
 		// 期限切れトークンでもログアウトできるよう認証不要
-		v1.DELETE("/logout", authHandler.Logout)
+		r.Delete("/logout", authHandler.Logout)
 
 		// OAuthルート（環境変数が設定されている場合のみ登録）
 		if oauthHandler != nil {
-			oauthGroup := v1.Group("/auth/oauth")
-			oauthGroup.GET("/:provider", oauthHandler.BeginAuth)
-			oauthGroup.GET("/:provider/callback",
-				httpratelimit.ByIP(limiter, httpratelimit.IPRateLimitConfig{
+			r.Route("/auth/oauth", func(r chi.Router) {
+				r.Get("/{provider}", oauthHandler.BeginAuth)
+				r.With(httpratelimit.ByIP(limiter, httpratelimit.IPRateLimitConfig{
 					Prefix: "rl:oauth:callback:ip",
 					Limit:  20,
 					Window: 1 * time.Minute,
-				}),
-				oauthHandler.Callback,
-			)
+				})).Get("/{provider}/callback", oauthHandler.Callback)
+			})
 		}
 
 		// 保護ルート（認証必須・CSRF保護）
-		auth := v1.Group("/")
-		auth.Use(jwt.AuthRequired())
-		auth.Use(csrfmw.Protect())
-		{
-			auth.GET("/candles/:code", candles.GetCandlesHandler)
-			auth.GET("/symbols", symbol.List)
-			auth.POST("/logo/detect", logo.DetectLogos)
-			auth.POST("/logo/analyze", logo.AnalyzeCompany)
-			auth.GET("/watchlist", watchlist.List)
-			auth.POST("/watchlist", watchlist.Add)
-			auth.DELETE("/watchlist/:code", watchlist.Remove)
-			auth.PUT("/watchlist/order", watchlist.Reorder)
-		}
-	}
+		r.Group(func(r chi.Router) {
+			r.Use(jwt.AuthRequired())
+			r.Use(csrfmw.Protect())
+
+			r.Get("/candles/{code}", candles.GetCandlesHandler)
+			r.Get("/symbols", symbol.List)
+			r.Post("/logo/detect", logo.DetectLogos)
+			r.Post("/logo/analyze", logo.AnalyzeCompany)
+			r.Get("/watchlist", watchlist.List)
+			r.Post("/watchlist", watchlist.Add)
+			r.Delete("/watchlist/{code}", watchlist.Remove)
+			r.Put("/watchlist/order", watchlist.Reorder)
+		})
+	})
 
 	return r
 }

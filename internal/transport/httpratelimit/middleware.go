@@ -7,9 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpx"
 )
 
 // IPRateLimitConfig はIPベースのレートリミットの設定を保持します。
@@ -19,24 +18,27 @@ type IPRateLimitConfig struct {
 	Window time.Duration // スライディングウィンドウの時間幅
 }
 
-// ByIP はIPアドレスベースのレートリミットGinミドルウェアを返します。
-func ByIP(limiter *Limiter, cfg IPRateLimitConfig) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		key := fmt.Sprintf("%s:%s", cfg.Prefix, c.ClientIP())
-		result := limiter.Allow(c.Request.Context(), key, cfg.Limit, cfg.Window)
+// ByIP はIPアドレスベースのレートリミットミドルウェアを返します。
+func ByIP(limiter *Limiter, cfg IPRateLimitConfig) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip := httpx.ClientIP(r)
+			key := fmt.Sprintf("%s:%s", cfg.Prefix, ip)
+			result := limiter.Allow(r.Context(), key, cfg.Limit, cfg.Window)
 
-		if !result.Allowed {
-			slog.Warn("rate limit exceeded",
-				"type", "ip",
-				"ip", c.ClientIP(),
-				"prefix", cfg.Prefix,
-			)
-			c.Header("Retry-After", strconv.Itoa(int(result.RetryAfter.Seconds())))
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, api.ErrorResponse{
-				Error: "too many requests",
-			})
-			return
-		}
-		c.Next()
+			if !result.Allowed {
+				slog.Warn("rate limit exceeded",
+					"type", "ip",
+					"ip", ip,
+					"prefix", cfg.Prefix,
+				)
+				w.Header().Set("Retry-After", strconv.Itoa(int(result.RetryAfter.Seconds())))
+				httpx.WriteJSON(w, http.StatusTooManyRequests, api.ErrorResponse{
+					Error: "too many requests",
+				})
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
 }

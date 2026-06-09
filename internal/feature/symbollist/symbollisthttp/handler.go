@@ -4,10 +4,9 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/symbollist"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpx"
 )
 
 // Usecase は銘柄（株式コード）操作のユースケースインターフェースを定義します。
@@ -29,15 +28,15 @@ func NewHandler(uc Usecase) *Handler {
 // List はアクティブな銘柄の一覧を取得します。
 // ユースケースを呼び出して銘柄リストを取得し、DTOに変換してJSONレスポンスとして返します。
 // ユースケースがエラーを返した場合は500 Internal Server Errorを返します。
-func (h *Handler) List(c *gin.Context) {
-	symbols, err := h.uc.ListActiveSymbols(c.Request.Context())
+func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
+	symbols, err := h.uc.ListActiveSymbols(r.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: err.Error()})
+		httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: err.Error()})
 		return
 	}
 	out := make([]api.SymbolItem, 0, len(symbols))
 	for _, s := range symbols {
 		out = append(out, api.SymbolItem{Code: s.Code, Name: s.Name, LogoUrl: s.LogoURL})
 	}
-	c.JSON(http.StatusOK, out)
+	httpx.WriteJSON(w, http.StatusOK, out)
 }

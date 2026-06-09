@@ -8,76 +8,75 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	gojwt "github.com/golang-jwt/jwt/v5"
+
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpx"
 )
 
-// ContextUserID はGinコンテキストに認証済みユーザーIDを格納するためのキーです。
-const ContextUserID = "userID"
-
-// ContextAuthSource はGinコンテキストに認証方式（"cookie" または "bearer"）を格納するためのキーです。
-// CSRFミドルウェアがBearer認証の場合にCSRFチェックをスキップするために使用します。
-const ContextAuthSource = "auth_source"
-
-// AuthRequired はJWTトークンを検証し、認証済みユーザーのみにアクセスを制限するGinミドルウェアを返します。
+// AuthRequired はJWTトークンを検証し、認証済みユーザーのみにアクセスを制限するミドルウェアを返します。
 // 認証はCookie（auth_token）を優先し、存在しない場合はAuthorizationヘッダーにフォールバックします。
-func AuthRequired() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// 1. auth_token Cookie を優先（Next.jsブラウザクライアント用）
-		var tokenStr string
-		if cookie, err := c.Cookie("auth_token"); err == nil && cookie != "" {
-			tokenStr = cookie
-			c.Set(ContextAuthSource, "cookie")
-		} else {
-			// 2. Authorization: Bearer ヘッダーにフォールバック（APIクライアント・curl等）
-			auth := c.GetHeader("Authorization")
-			if strings.HasPrefix(auth, "Bearer ") {
-				tokenStr = strings.TrimPrefix(auth, "Bearer ")
-				c.Set(ContextAuthSource, "bearer")
+func AuthRequired() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// 1. auth_token Cookie を優先（Next.jsブラウザクライアント用）
+			var tokenStr string
+			authSource := ""
+			if cookie, err := r.Cookie("auth_token"); err == nil && cookie.Value != "" {
+				tokenStr = cookie.Value
+				authSource = AuthSourceCookie
+			} else {
+				// 2. Authorization: Bearer ヘッダーにフォールバック（APIクライアント・curl等）
+				auth := r.Header.Get("Authorization")
+				if strings.HasPrefix(auth, "Bearer ") {
+					tokenStr = strings.TrimPrefix(auth, "Bearer ")
+					authSource = AuthSourceBearer
+				}
 			}
-		}
-		if tokenStr == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing authentication token"})
-			return
-		}
-
-		// 3. 環境変数からシークレットキーを読み込み
-		secret := os.Getenv(EnvKeyJWTSecret)
-		if secret == "" {
-			// サーバー設定ミス（JWT_SECRETが未設定）
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "server misconfigured"})
-			return
-		}
-
-		// 4. JWT署名をパースして検証
-		token, err := gojwt.Parse(tokenStr, func(t *gojwt.Token) (interface{}, error) {
-			// 署名アルゴリズムを確認（HMACのみ許可）
-			if _, ok := t.Method.(*gojwt.SigningMethodHMAC); !ok {
-				return nil, gojwt.ErrSignatureInvalid
+			if tokenStr == "" {
+				httpx.WriteJSON(w, http.StatusUnauthorized, api.ErrorResponse{Error: "missing authentication token"})
+				return
 			}
-			return []byte(secret), nil
+
+			// 3. 環境変数からシークレットキーを読み込み
+			secret := os.Getenv(EnvKeyJWTSecret)
+			if secret == "" {
+				// サーバー設定ミス（JWT_SECRETが未設定）
+				httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "server misconfigured"})
+				return
+			}
+
+			// 4. JWT署名をパースして検証
+			token, err := gojwt.Parse(tokenStr, func(t *gojwt.Token) (interface{}, error) {
+				// 署名アルゴリズムを確認（HMACのみ許可）
+				if _, ok := t.Method.(*gojwt.SigningMethodHMAC); !ok {
+					return nil, gojwt.ErrSignatureInvalid
+				}
+				return []byte(secret), nil
+			})
+			if err != nil || !token.Valid {
+				// 検証エラーまたは無効なトークン
+				httpx.WriteJSON(w, http.StatusUnauthorized, api.ErrorResponse{Error: "invalid token"})
+				return
+			}
+
+			// 5. クレーム（ペイロード）を抽出
+			claims, ok := token.Claims.(gojwt.MapClaims)
+			if !ok {
+				httpx.WriteJSON(w, http.StatusUnauthorized, api.ErrorResponse{Error: "invalid token claims"})
+				return
+			}
+			userID, err := parseSubject(claims["sub"])
+			if err != nil {
+				httpx.WriteJSON(w, http.StatusUnauthorized, api.ErrorResponse{Error: "invalid token: invalid subject"})
+				return
+			}
+
+			// 6. ユーザーIDと認証方式を context に格納し、次のハンドラーへ制御を渡す
+			ctx := WithUserID(r.Context(), userID)
+			ctx = withAuthSource(ctx, authSource)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
-		if err != nil || !token.Valid {
-			// 検証エラーまたは無効なトークン
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
-			return
-		}
-
-		// 5. クレーム（ペイロード）を抽出
-		claims, ok := token.Claims.(gojwt.MapClaims)
-		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token claims"})
-			return
-		}
-		userID, err := parseSubject(claims["sub"])
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token: invalid subject"})
-			return
-		}
-		c.Set(ContextUserID, userID)
-
-		// 6. 次のハンドラーに制御を渡す
-		c.Next()
 	}
 }
 

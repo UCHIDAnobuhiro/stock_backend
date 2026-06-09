@@ -6,10 +6,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/watchlist"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpx"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/jwt"
 )
 
@@ -32,13 +33,17 @@ func NewHandler(uc Usecase) *Handler {
 }
 
 // List はユーザーのウォッチリスト一覧を取得します。
-func (h *Handler) List(c *gin.Context) {
-	userID := c.MustGet(jwt.ContextUserID).(int64)
+func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
+	userID, ok := jwt.UserIDFromContext(r.Context())
+	if !ok {
+		httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
+		return
+	}
 
-	entries, err := h.uc.ListUserSymbols(c.Request.Context(), userID)
+	entries, err := h.uc.ListUserSymbols(r.Context(), userID)
 	if err != nil {
 		slog.Error("failed to list watchlist", "error", err, "userID", userID)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
+		httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
 		return
 	}
 
@@ -50,69 +55,81 @@ func (h *Handler) List(c *gin.Context) {
 			SortKey:    e.SortKey,
 		})
 	}
-	c.JSON(http.StatusOK, out)
+	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
 // Add はウォッチリストに銘柄を追加します。
-func (h *Handler) Add(c *gin.Context) {
-	userID := c.MustGet(jwt.ContextUserID).(int64)
-
-	var req api.AddWatchlistRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: err.Error()})
+func (h *Handler) Add(w http.ResponseWriter, r *http.Request) {
+	userID, ok := jwt.UserIDFromContext(r.Context())
+	if !ok {
+		httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
 		return
 	}
 
-	if err := h.uc.AddSymbol(c.Request.Context(), userID, req.SymbolCode); err != nil {
+	var req api.AddWatchlistRequest
+	if err := httpx.DecodeAndValidate(r, &req); err != nil {
+		httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "invalid request"})
+		return
+	}
+
+	if err := h.uc.AddSymbol(r.Context(), userID, req.SymbolCode); err != nil {
 		switch {
 		case errors.Is(err, watchlist.ErrSymbolNotFound):
-			c.JSON(http.StatusNotFound, api.ErrorResponse{Error: err.Error()})
+			httpx.WriteJSON(w, http.StatusNotFound, api.ErrorResponse{Error: err.Error()})
 		case errors.Is(err, watchlist.ErrAlreadyInWatchlist):
-			c.JSON(http.StatusConflict, api.ErrorResponse{Error: err.Error()})
+			httpx.WriteJSON(w, http.StatusConflict, api.ErrorResponse{Error: err.Error()})
 		default:
 			slog.Error("failed to add watchlist symbol", "error", err, "userID", userID)
-			c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
+			httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
 		}
 		return
 	}
 
-	c.JSON(http.StatusCreated, api.MessageResponse{Message: "added to watchlist"})
+	httpx.WriteJSON(w, http.StatusCreated, api.MessageResponse{Message: "added to watchlist"})
 }
 
 // Remove はウォッチリストから銘柄を削除します。
-func (h *Handler) Remove(c *gin.Context) {
-	userID := c.MustGet(jwt.ContextUserID).(int64)
-	code := c.Param("code")
+func (h *Handler) Remove(w http.ResponseWriter, r *http.Request) {
+	userID, ok := jwt.UserIDFromContext(r.Context())
+	if !ok {
+		httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
+		return
+	}
+	code := chi.URLParam(r, "code")
 
-	if err := h.uc.RemoveSymbol(c.Request.Context(), userID, code); err != nil {
+	if err := h.uc.RemoveSymbol(r.Context(), userID, code); err != nil {
 		switch {
 		case errors.Is(err, watchlist.ErrNotInWatchlist):
-			c.JSON(http.StatusNotFound, api.ErrorResponse{Error: err.Error()})
+			httpx.WriteJSON(w, http.StatusNotFound, api.ErrorResponse{Error: err.Error()})
 		default:
 			slog.Error("failed to remove watchlist symbol", "error", err, "userID", userID)
-			c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
+			httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
 		}
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // Reorder はウォッチリストの並び順を更新します。
-func (h *Handler) Reorder(c *gin.Context) {
-	userID := c.MustGet(jwt.ContextUserID).(int64)
+func (h *Handler) Reorder(w http.ResponseWriter, r *http.Request) {
+	userID, ok := jwt.UserIDFromContext(r.Context())
+	if !ok {
+		httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
+		return
+	}
 
 	var req api.ReorderWatchlistRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, api.ErrorResponse{Error: err.Error()})
+	if err := httpx.DecodeAndValidate(r, &req); err != nil {
+		httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "invalid request"})
 		return
 	}
 
-	if err := h.uc.ReorderSymbols(c.Request.Context(), userID, req.Codes); err != nil {
+	if err := h.uc.ReorderSymbols(r.Context(), userID, req.Codes); err != nil {
 		slog.Error("failed to reorder watchlist", "error", err, "userID", userID)
-		c.JSON(http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
+		httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "internal server error"})
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	w.WriteHeader(http.StatusNoContent)
 }
