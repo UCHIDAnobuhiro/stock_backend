@@ -33,11 +33,10 @@ func (Password) LogValue() slog.Value { return slog.StringValue("***") }
 // internal/app/config に集約されています。password は空文字を許容します。
 func NewRedisClient(host, port, password string) (*redis.Client, error) {
 	addr := net.JoinHostPort(host, port)
-	pw := Password(password)
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     addr,
-		Password: string(pw),
+		Password: password,
 		DB:       0,
 	})
 
