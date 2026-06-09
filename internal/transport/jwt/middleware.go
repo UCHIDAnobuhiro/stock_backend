@@ -18,14 +18,17 @@ import (
 // 署名シークレットは起動時に注入されます（環境変数の読み込みは internal/app/config に集約）。
 // secret が空の場合は全リクエストを 500（サーバー設定ミス）として扱います。
 func AuthRequired(secret string) func(http.Handler) http.Handler {
+	if secret == "" {
+		// サーバー設定ミス（JWT_SECRETが未設定）。通常は LoadAPI が起動時に必須を
+		// 強制するため到達しないが、多層防御として全リクエストを 500 にする。
+		return func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "server misconfigured"})
+			})
+		}
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if secret == "" {
-				// サーバー設定ミス（JWT_SECRETが未設定）
-				httpx.WriteJSON(w, http.StatusInternalServerError, api.ErrorResponse{Error: "server misconfigured"})
-				return
-			}
-
 			// 1. auth_token Cookie を優先（Next.jsブラウザクライアント用）
 			var tokenStr string
 			authSource := ""
