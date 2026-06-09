@@ -85,7 +85,7 @@ go build ./...
 
 ```
 api/
-├── openapi.yaml          # OpenAPI 3.0.3 仕様（APIコントラクトの単一ソース）
+├── openapi.yaml          # OpenAPI 3.0.4 仕様（APIコントラクトの単一ソース）
 └── oapi-codegen.cfg.yaml # oapi-codegen設定（型のみ生成）
 
 internal/
@@ -126,7 +126,6 @@ internal/
 
 ```
 feature/<name>/                # package <name>（ドメイン+ユースケース+アダプタ）
-├── README.md                  # フィーチャーのドキュメント
 ├── <entity>.go                # ドメインモデル（例: candle.go の Candle 型）
 ├── usecase.go                 # HTTP 読み取り系ユースケース（リポジトリインターフェース定義含む）
 ├── ingest.go                  # バッチ書き込み系ユースケース（cmd/batch から起動。フィーチャーが持つ場合）
@@ -180,7 +179,7 @@ vertical slice として、各フィーチャーは**HTTP 読み取り**と**バ
 ### 外部依存
 - TwelveData API（株価データ、8リクエスト/分制限） / PostgreSQL（database/sql + pgx/v5/stdlib） / Redis（キャッシュ）
 - スキーマは `db/migrations/*.sql`、クエリは各 feature の `sqlc/queries.sql`
-- 詳細なデータフローは各フィーチャーの README.md を参照
+- 詳細なデータフローは各フィーチャーのドキュメント（`docs/features/`）を参照
 
 ### 認証
 - JWT認証（`transport/jwt/AuthRequired()`）

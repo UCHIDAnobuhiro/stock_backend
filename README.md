@@ -11,6 +11,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 - **ユーザー認証**
 
   - メールアドレス/パスワードによるログイン
+  - OAuth2 ソーシャルログイン（Google / GitHub、PKCE 対応・既存ユーザーへの自動リンク）
   - JWTの発行（短期アクセストークン + リフレッシュトークン実装予定）
   - トークン検証ミドルウェアによる認可
 
@@ -56,7 +57,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 | DB              | PostgreSQL / Cloud SQL                                              |
 | キャッシュ      | Redis                                                               |
 | AI / ML         | Cloud Vision API / Gemini API（Vertex AI）                          |
-| 認証・セキュリティ | JWT / bcrypt / CSRF（Double Submit Cookie）/ レートリミット       |
+| 認証・セキュリティ | JWT / bcrypt / OAuth2（Google・GitHub, PKCE）/ CSRF（Double Submit Cookie）/ レートリミット |
 | API仕様         | OpenAPI 3.0.4 / oapi-codegen（型生成）                              |
 | 設定管理        | **docker/.env.app（ローカル）/ Secret Manager（本番）+ os.Getenv()**|
 | コンテナ        | Docker / Docker Compose                                             |
@@ -139,6 +140,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │
 ├── docs/
 │   ├── adr/                    # アーキテクチャ決定記録（ADR）
+│   ├── features/               # 各フィーチャーのドキュメント（設計・API・シーケンス図）
 │   ├── schema/                 # tbls が生成する DB スキーマドキュメント
 │   └── tbls.yml                # tbls（ER 図生成）設定
 ├── go.mod
@@ -177,8 +179,9 @@ go generate ./internal/api/...
 ### 現在の実装
 
 - JWTアクセストークンによる認証（`Authorization: Bearer <token>` ヘッダー）
+- **OAuth2 ソーシャルログイン**: Google / GitHub（PKCE 対応、state は Redis 管理、既存ユーザーへの自動リンク）。OAuth 環境変数が設定されている場合のみ有効
 - **CSRF保護**: Double Submit Cookieパターン（`csrf_token` Cookie + `X-CSRF-Token` ヘッダーの一致を検証）
-- **レートリミット**: Redisスライディングウィンドウ方式（signup: 5回/時、login: 10回/分）
+- **レートリミット**: Redisスライディングウィンドウ方式（signup: 5回/時、login: 10回/分、oauth callback: 20回/分）
 - **セキュリティヘッダー**: `X-Content-Type-Options`、`X-Frame-Options` 等を全レスポンスに付与
 - **SameSite Cookie**: `Lax` 設定でクロスサイトリクエストを制御
 
@@ -219,6 +222,15 @@ go generate ./internal/api/...
 
 ---
 
+### OAuth認証（OAuth環境変数が設定されている場合のみ有効）
+
+| メソッド | パス                                   | 認証   | 説明                                                    |
+| -------- | -------------------------------------- | ------ | ------------------------------------------------------- |
+| GET      | `/v1/auth/oauth/:provider`             | 不要   | OAuth認可フローを開始（`provider`: `google` / `github`）|
+| GET      | `/v1/auth/oauth/:provider/callback`    | 不要   | OAuth認可コールバック（IPレートリミット: 20回/分）       |
+
+---
+
 ### 株式データ（ローソク足 / シンボル）
 
 | メソッド | パス                | 認証   | 説明                                              |
@@ -251,6 +263,7 @@ go generate ./internal/api/...
 - `/v1/candles`、`/v1/symbols`、`/v1/watchlist`、`/v1/logo/*` は **JWT認証（`Authorization: Bearer <token>`）** が必要です。
 - 認証済みエンドポイントはすべて **CSRFトークン（`X-CSRF-Token` ヘッダー）** も必須です。
 - `/v1/signup` と `/v1/login` には **IPベースのレートリミット** が適用されています。
+- `/v1/auth/oauth/*` は OAuth 環境変数（`GOOGLE_CLIENT_ID` または `GITHUB_CLIENT_ID` 等）が設定されている場合のみ登録されます。詳細は [auth フィーチャーのドキュメント](docs/features/auth.md) を参照してください。
 - 今後、リフレッシュトークン対応として `/auth/refresh` を追加予定です。
 
 ## クラウドアーキテクチャ（Google Cloud）

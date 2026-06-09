@@ -62,7 +62,7 @@ sequenceDiagram
 
 ### バッチ取り込みフロー
 
-外部APIへのリクエスト数を抑えるため、**日足のみを取得し、週足/月足はサーバー内で集計**します。集計ロジックは [aggregation.go](aggregation.go) に分離されています。
+外部APIへのリクエスト数を抑えるため、**日足のみを取得し、週足/月足はサーバー内で集計**します。集計ロジックは [aggregation.go](../../internal/feature/candles/aggregation.go) に分離されています。
 
 ```mermaid
 sequenceDiagram
@@ -282,16 +282,16 @@ graph TB
 
 ### 依存関係の説明
 
-#### トランスポート層（[candleshttp/handler.go](candleshttp/handler.go)）
+#### トランスポート層（[candleshttp/handler.go](../../internal/feature/candles/candleshttp/handler.go)）
 - **Handler**: HTTPリクエストを処理し、Usecaseを呼び出す
 - **API型**（`internal/api/types.gen.go`）: OpenAPI仕様から自動生成された `api.CandleResponse` を使用
 
 #### ユースケース層
-- **Usecase**（[usecase.go](usecase.go)）: パラメータバリデーション付きのローソク足データ取得
+- **Usecase**（[usecase.go](../../internal/feature/candles/usecase.go)）: パラメータバリデーション付きのローソク足データ取得
   - インターバルとoutputsizeのデフォルト値を適用
   - 最大outputsize制限（5000）を適用
   - `Repository`インターフェース（読み取り専用）を定義（Goの「インターフェースは利用者が定義する」慣例に従う）
-- **IngestUsecase**（[ingest.go](ingest.go)）: 外部APIからのバッチデータ取り込み
+- **IngestUsecase**（[ingest.go](../../internal/feature/candles/ingest.go)）: 外部APIからのバッチデータ取り込み
   - アクティブな銘柄（コード + IANA タイムゾーン）を取得
   - **日足のみ外部APIから取得**し、サーバー内で週足/月足を集計（API リクエスト数の削減）
   - RateLimiterによるレート制限を遵守
@@ -299,20 +299,20 @@ graph TB
   - `MarketRepository`インターフェース（外部API抽象化）を定義
   - `SymbolRepository`インターフェース（`ListActiveSymbols(ctx) ([]ActiveSymbol, error)` を返す）を定義
   - 結果は `IngestResult{Total, Succeeded, Failed}` として返却（部分失敗時の集計）
-- **集計ロジック**（[aggregation.go](aggregation.go)）: 日足から週足/月足を生成
+- **集計ロジック**（[aggregation.go](../../internal/feature/candles/aggregation.go)）: 日足から週足/月足を生成
   - `aggregateWeekly` / `aggregateMonthly`: ISO 週・暦月単位で OHLCV を集計（タイムゾーン考慮）
   - `trimIncompleteFirstBucket`: 先頭の不完全バケットを除外し、既存レコードの上書きを防止
   - `aggregate`: 共通の集計エンジン（バケット化 + 出現順保持）
 
 #### ドメイン層
-- **Candle Entity**（[candle.go](candle.go)）: OHLCVローソク足データモデル
+- **Candle Entity**（[candle.go](../../internal/feature/candles/candle.go)）: OHLCVローソク足データモデル
   - `SymbolCode`: 銘柄コード（例: "AAPL", "7203.T"）。`symbols.code` への外部キー
   - `Interval`: 時間間隔（例: "1day", "1week", "1month"）
   - `Time`: ローソク足期間のタイムスタンプ
   - `Open`, `High`, `Low`, `Close`: 価格データ
   - `Volume`: 出来高
 
-#### アダプター層（[repository.go](repository.go)）
+#### アダプター層（[repository.go](../../internal/feature/candles/repository.go)）
 - **candleDBRepository**: Repository/WriteRepository のリポジトリ実装（sqlc + database/sql、UpsertBatch は raw 多値 INSERT ON CONFLICT）
   - `Find`: 時間の降順でローソク足を取得
   - `UpsertBatch`: `ON CONFLICT DO UPDATE`によるバッチ挿入/更新
@@ -320,13 +320,13 @@ graph TB
   - `symbol_code` は `symbols.code` への FK（ON DELETE RESTRICT、`db/migrations` のスキーマで付与）
 
 #### アダプター層（キャッシュ）
-- **CachingRepository**（[caching_repository.go](caching_repository.go)）: Redisキャッシュデコレータ
+- **CachingRepository**（[caching_repository.go](../../internal/feature/candles/caching_repository.go)）: Redisキャッシュデコレータ
   - Repositoryをラップするデコレータパターンを実装
   - `Repository`（読み取り）と`WriteRepository`（書き込み）の両インターフェースを実装
   - キャッシュキー形式: `candles:{symbol}:{interval}:{outputsize}`
   - UpsertBatch時の自動キャッシュ無効化
   - Redis利用不可時のグレースフルデグレード
-- **TwelveDataMarket**（[twelvedata/repository.go](twelvedata/repository.go)）: TwelveData APIクライアント
+- **TwelveDataMarket**（[twelvedata/repository.go](../../internal/feature/candles/twelvedata/repository.go)）: TwelveData APIクライアント
   - `MarketRepository`インターフェースを実装
   - 外部APIからの時系列データ取得
 
@@ -404,7 +404,7 @@ Candlesフィーチャーの全テストは、一貫性と保守性のために*
    - リポジトリ: `setupTestDB()`, `seedCandle()`
    - ハンドラー: HTTPテスト用に`httptest.NewRecorder()`を使用
 
-#### ユースケーステスト（[usecase_test.go](usecase_test.go)）
+#### ユースケーステスト（[usecase_test.go](../../internal/feature/candles/usecase_test.go)）
 
 ビジネスロジックを分離してテストするために**モックリポジトリ**を使用します。
 
@@ -433,7 +433,7 @@ tests := []struct {
 go test ./internal/feature/candles/... -v
 ```
 
-#### ハンドラーテスト（[candleshttp/handler_test.go](candleshttp/handler_test.go)）
+#### ハンドラーテスト（[candleshttp/handler_test.go](../../internal/feature/candles/candleshttp/handler_test.go)）
 
 HTTPリクエスト/レスポンス処理をテストするために**モックユースケース**を使用します。
 
@@ -459,7 +459,7 @@ tests := []struct {
 go test ./internal/feature/candles/candleshttp/... -v
 ```
 
-#### リポジトリテスト（[repository_test.go](repository_test.go)）
+#### リポジトリテスト（[repository_test.go](../../internal/feature/candles/repository_test.go)）
 
 統合テストに**インメモリSQLiteデータベース**を使用します。
 
