@@ -7,16 +7,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redismock/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestMain は全テスト共通のテスト環境を設定します。
-func TestMain(m *testing.M) {
-	gin.SetMode(gin.TestMode)
-	m.Run()
+// okHandler はレートリミットを通過した場合に呼ばれる終端ハンドラーです。
+// 呼ばれたかどうかを called に記録します。
+func okHandler(called *bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if called != nil {
+			*called = true
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	})
 }
 
 // TestByIP_Allowed はレートリミット内のリクエストがハンドラーまで到達し200を返すことを検証します。
@@ -32,17 +38,16 @@ func TestByIP_Allowed(t *testing.T) {
 	limiter := NewLimiter(rdb)
 	cfg := IPRateLimitConfig{Prefix: "rl:test:ip", Limit: 10, Window: window}
 
-	r := gin.New()
-	r.POST("/test", ByIP(limiter, cfg), func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
+	called := false
+	h := ByIP(limiter, cfg)(okHandler(&called))
 
-	req, _ := http.NewRequest(http.MethodPost, "/test", nil)
+	req := httptest.NewRequest(http.MethodPost, "/test", nil)
 	req.RemoteAddr = "192.0.2.1:12345"
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	h.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, called, "ハンドラーが呼ばれるべき")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -61,16 +66,12 @@ func TestByIP_RateLimited(t *testing.T) {
 	cfg := IPRateLimitConfig{Prefix: "rl:test:ip", Limit: 10, Window: window}
 
 	handlerCalled := false
-	r := gin.New()
-	r.POST("/test", ByIP(limiter, cfg), func(c *gin.Context) {
-		handlerCalled = true
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
+	h := ByIP(limiter, cfg)(okHandler(&handlerCalled))
 
-	req, _ := http.NewRequest(http.MethodPost, "/test", nil)
+	req := httptest.NewRequest(http.MethodPost, "/test", nil)
 	req.RemoteAddr = "192.0.2.1:12345"
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	h.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusTooManyRequests, w.Code)
 	assert.False(t, handlerCalled, "ハンドラーは呼ばれるべきではない")
@@ -94,14 +95,14 @@ func TestByIP_NilRedis_Allowed(t *testing.T) {
 	limiter := NewLimiter(nil)
 	cfg := IPRateLimitConfig{Prefix: "rl:test:ip", Limit: 10, Window: time.Minute}
 
-	r := gin.New()
-	r.POST("/test", ByIP(limiter, cfg), func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
+	called := false
+	h := ByIP(limiter, cfg)(okHandler(&called))
 
-	req, _ := http.NewRequest(http.MethodPost, "/test", nil)
+	req := httptest.NewRequest(http.MethodPost, "/test", nil)
+	req.RemoteAddr = "192.0.2.1:12345"
 	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	h.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, called)
 }

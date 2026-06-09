@@ -4,28 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
-
-	"github.com/gin-gonic/gin"
 )
 
-// TestMain はテスト実行前にGinをテストモードに設定します。
-func TestMain(m *testing.M) {
-	gin.SetMode(gin.TestMode)
-	os.Exit(m.Run())
-}
-
-// setupRouter はヘルスチェックエンドポイントを登録したテスト用ルーターを生成します。
-func setupRouter() *gin.Engine {
-	r := gin.New()
-	r.GET("/healthz", Health)
-	r.HEAD("/healthz", Health)
-	r.OPTIONS("/healthz", Health)
-	r.POST("/healthz", Health)
-	r.PUT("/healthz", Health)
-	r.DELETE("/healthz", Health)
-	return r
+// setupRouter はヘルスチェックエンドポイントを処理するテスト用ハンドラーを生成します。
+// Health はメソッドごとの分岐を自身で行うため、全メソッドを単一ハンドラーで処理します。
+func setupRouter() http.Handler {
+	return http.HandlerFunc(Health)
 }
 
 // TestHealth_GET はGETリクエストでJSON形式のステータスレスポンスとCache-Controlヘッダーが返されることを検証します。

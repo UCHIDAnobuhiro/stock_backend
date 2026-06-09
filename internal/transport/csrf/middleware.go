@@ -7,9 +7,9 @@ import (
 	"encoding/hex"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/api"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpx"
+	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/jwt"
 )
 
 const (
@@ -32,38 +32,40 @@ func GenerateToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// Protect はDouble Submit CookieパターンでCSRF攻撃を防ぐGinミドルウェアを返します。
+// Protect はDouble Submit CookieパターンでCSRF攻撃を防ぐミドルウェアを返します。
 //   - GET / HEAD / OPTIONS などの安全なメソッドはスキップします
 //   - Bearer認証（Authorization: Bearer）の場合はスキップします（CSRFはCookieベース認証にのみ必要）
 //   - それ以外のメソッドでは X-CSRF-Token ヘッダーと csrf_token Cookie の値が
 //     一致しない場合に 403 を返します
-func Protect() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		switch c.Request.Method {
-		case http.MethodGet, http.MethodHead, http.MethodOptions:
-			c.Next()
-			return
-		}
+func Protect() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet, http.MethodHead, http.MethodOptions:
+				next.ServeHTTP(w, r)
+				return
+			}
 
-		// Bearer認証の場合はCSRFチェックをスキップ
-		// （CSRFはブラウザのCookie自動送信を悪用する攻撃のため、明示的なAuthorizationヘッダーを使う場合は不要）
-		if c.GetString("auth_source") == "bearer" {
-			c.Next()
-			return
-		}
+			// Bearer認証の場合はCSRFチェックをスキップ
+			// （CSRFはブラウザのCookie自動送信を悪用する攻撃のため、明示的なAuthorizationヘッダーを使う場合は不要）
+			if jwt.AuthSourceFromContext(r.Context()) == jwt.AuthSourceBearer {
+				next.ServeHTTP(w, r)
+				return
+			}
 
-		cookieVal, err := c.Cookie(CookieName)
-		if err != nil || cookieVal == "" {
-			c.AbortWithStatusJSON(http.StatusForbidden, api.ErrorResponse{Error: "missing csrf token"})
-			return
-		}
+			cookie, err := r.Cookie(CookieName)
+			if err != nil || cookie.Value == "" {
+				httpx.WriteJSON(w, http.StatusForbidden, api.ErrorResponse{Error: "missing csrf token"})
+				return
+			}
 
-		headerVal := c.GetHeader(HeaderName)
-		if headerVal == "" || subtle.ConstantTimeCompare([]byte(headerVal), []byte(cookieVal)) != 1 {
-			c.AbortWithStatusJSON(http.StatusForbidden, api.ErrorResponse{Error: "csrf token mismatch"})
-			return
-		}
+			headerVal := r.Header.Get(HeaderName)
+			if headerVal == "" || subtle.ConstantTimeCompare([]byte(headerVal), []byte(cookie.Value)) != 1 {
+				httpx.WriteJSON(w, http.StatusForbidden, api.ErrorResponse{Error: "csrf token mismatch"})
+				return
+			}
 
-		c.Next()
+			next.ServeHTTP(w, r)
+		})
 	}
 }
