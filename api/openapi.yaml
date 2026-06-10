@@ -228,6 +228,8 @@ paths:
           description: "銘柄コード（例: AAPL, 7203.T）"
           schema:
             type: string
+            maxLength: 20
+            pattern: "^[A-Za-z0-9._-]{1,20}$"
         - name: interval
           in: query
           required: false
@@ -377,9 +379,17 @@ paths:
           description: "銘柄コード（例: AAPL, 7203.T）"
           schema:
             type: string
+            maxLength: 20
+            pattern: "^[A-Za-z0-9._-]{1,20}$"
       responses:
         "204":
           description: 削除成功
+        "400":
+          description: バリデーションエラー（銘柄コードの形式不正）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: CSRFトークン不一致
           content:

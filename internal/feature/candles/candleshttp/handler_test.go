@@ -78,6 +78,20 @@ func TestCandlesHandler_GetCandlesHandler(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"error":"outputsize must be an integer"}`,
 		},
+		{
+			name:           "error: symbol code with invalid characters returns 400",
+			url:            "/candles/7203%26T",
+			mockGetCandles: nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"error":"invalid symbol code"}`,
+		},
+		{
+			name:           "error: symbol code longer than 20 characters returns 400",
+			url:            "/candles/AAAAAAAAAAAAAAAAAAAAA",
+			mockGetCandles: nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"error":"invalid symbol code"}`,
+		},
 	}
 
 	for _, tt := range tests {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"regexp"
 
 	"github.com/go-chi/chi/v5"
 
@@ -13,6 +14,10 @@ import (
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpx"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/jwt"
 )
+
+// symbolCodePattern は銘柄コードとして許可する形式（例: AAPL, 7203.T）。
+// symbols.code が VARCHAR(20) のため最大20文字、英数字と . _ - のみ許可する。
+var symbolCodePattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,20}$`)
 
 // Usecase はウォッチリスト操作のユースケースインターフェースを定義します。
 type Usecase interface {
@@ -96,6 +101,10 @@ func (h *Handler) Remove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := chi.URLParam(r, "code")
+	if !symbolCodePattern.MatchString(code) {
+		httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "invalid symbol code"})
+		return
+	}
 
 	if err := h.uc.RemoveSymbol(r.Context(), userID, code); err != nil {
 		switch {

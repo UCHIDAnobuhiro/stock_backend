@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -12,6 +13,10 @@ import (
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/feature/candles"
 	"github.com/UCHIDAnobuhiro/stock-backend/internal/transport/httpx"
 )
+
+// symbolCodePattern は銘柄コードとして許可する形式（例: AAPL, 7203.T）。
+// symbols.code が VARCHAR(20) のため最大20文字、英数字と . _ - のみ許可する。
+var symbolCodePattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,20}$`)
 
 // Usecase はローソク足データ操作のユースケースインターフェースを定義します。
 // Goの慣例に従い、インターフェースは利用者（handler）側で定義します。
@@ -35,6 +40,10 @@ func NewHandler(uc Usecase) *Handler {
 // GET /candles/{code}?interval=1day&outputsize=200
 func (h *Handler) GetCandlesHandler(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
+	if !symbolCodePattern.MatchString(code) {
+		httpx.WriteJSON(w, http.StatusBadRequest, api.ErrorResponse{Error: "invalid symbol code"})
+		return
+	}
 	// 未指定の場合はデフォルト値を使用
 	interval := queryOrDefault(r, "interval", "1day")
 	outputsizeStr := queryOrDefault(r, "outputsize", "200")
