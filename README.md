@@ -59,7 +59,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 | AI / ML         | Cloud Vision API / Gemini API（Vertex AI）                          |
 | 認証・セキュリティ | JWT / bcrypt / OAuth2（Google・GitHub, PKCE）/ CSRF（Double Submit Cookie）/ レートリミット |
 | API仕様         | OpenAPI 3.0.4 / oapi-codegen（型生成）                              |
-| 設定管理        | **docker/.env.app（ローカル）/ Secret Manager（本番）+ os.Getenv()**|
+| 設定管理        | **docker/.env（ローカル）/ Secret Manager（本番）+ os.Getenv()**|
 | コンテナ        | Docker / Docker Compose                                             |
 | クラウド        | Google Cloud Run / Cloud SQL / Secret Manager / Artifact Registry   |
 | CI/CD           | GitHub Actions                                                      |
@@ -134,8 +134,7 @@ REST APIとして、ユーザー認証・株式データ配信・キャッシュ
 │   ├── Dockerfile.api.dev      # APIサーバー用Dockerfile（ローカル開発）
 │   ├── docker-compose.yml      # ローカル開発用 compose 定義（サービス・ネットワーク設定）
 │   ├── air.toml                # Air（ホットリロード）設定
-│   ├── example.env.app         # アプリ用環境変数テンプレート（コンテナにロード）
-│   ├── example.env.gcp         # GCP ADC 用テンプレート（compose 変数置換用）
+│   ├── example.env             # 環境変数テンプレート（compose 変数置換 + コンテナにロード）
 │   └── postgres/               # PostgreSQL初期化スクリプト
 │
 ├── docs/
@@ -273,7 +272,7 @@ go generate ./internal/api/...
 - **Redis（Cloud Memorystore）**: キャッシュ管理
 - **Secret Manager**: APIキー・DBパスワード・JWTシークレットキーを安全に管理
 - 起動時に `os.Getenv()` + Secret Manager APIで読み込み
-- **ローカル開発では `docker/.env.app` から読み込み**
+- **ローカル開発では `docker/.env` から読み込み**
 
 ## CI/CD
 
@@ -288,7 +287,7 @@ go generate ./internal/api/...
 
 - Docker / Docker Compose がインストール済みであること
 - Go のインストールは不要（すべてDocker内で実行）
-- `docker/.env.app` にローカル環境変数を設定
+- `docker/.env` にローカル環境変数を設定
 
 ---
 
@@ -300,8 +299,7 @@ git clone https://github.com/UCHIDAnobuhiro/stock-backend.git
 cd stock-backend
 
 # 環境変数ファイルをコピー
-cp docker/example.env.app docker/.env.app
-cp docker/example.env.gcp docker/.env   # compose 変数置換に必要
+cp docker/example.env docker/.env
 ```
 
 ### Twelve Data APIキーの取得
@@ -311,7 +309,7 @@ cp docker/example.env.gcp docker/.env   # compose 変数置換に必要
 
 1. Twelve Dataのウェブサイトでアカウントを作成
 2. 「Dashboard > API Keys」からキーを発行
-3. `docker/.env.app` に `TWELVE_DATA_API_KEY` として設定
+3. `docker/.env` に `TWELVE_DATA_API_KEY` として設定
    例: `TWELVE_DATA_API_KEY=your_api_key_here`
 
 ### Twelve Data 無料プランの制限事項
@@ -342,7 +340,7 @@ GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credenti
 HOST_GOOGLE_ADC_PATH=$HOME/.config/gcloud/application_default_credentials.json
 ```
 
-4. `docker/.env.app` に以下を追加
+4. `docker/.env` に以下を追加
 
 ```env
 GOOGLE_GENAI_USE_VERTEXAI=true
@@ -393,7 +391,7 @@ docker compose -f docker/docker-compose.yml -p stock --profile on-demand run --r
 docker compose -f docker/docker-compose.yml -p stock --profile on-demand run --rm tbls diff --config /work/docs/tbls.yml
 ```
 
-`backend` は `.env.app` や GCP ADC 等の環境が必要です。認証情報を持たない環境では、手順 1) を以下の軽量バイナリ (`cmd/migrate`) に置き換えられます（引数なしで `up` が適用されます）。
+`backend` は `.env` や GCP ADC 等の環境が必要です。認証情報を持たない環境では、手順 1) を以下の軽量バイナリ (`cmd/migrate`) に置き換えられます（引数なしで `up` が適用されます）。
 
 ```bash
 # 1') db だけ起動してローカルの cmd/migrate でスキーマを反映（GCP 認証不要）

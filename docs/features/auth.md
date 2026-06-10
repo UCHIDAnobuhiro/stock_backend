@@ -733,7 +733,7 @@ go test ./internal/feature/auth/... -v -race -cover
 
 `GOOGLE_CLIENT_ID` または `GITHUB_CLIENT_ID` のいずれかが設定されている場合、OAuth 機能が有効化されます。OAuth 有効時は Redis 接続が必須です（state 保存に使用）。
 
-**設定例**（`docker/.env.app`）:
+**設定例**（`docker/.env`）:
 ```
 JWT_SECRET=your-super-secret-key-change-this-in-production
 PASSWORD_PEPPER=your-password-pepper-change-this-in-production
