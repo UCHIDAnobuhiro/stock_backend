@@ -111,8 +111,8 @@ type SignupRequest struct {
 	// Email メールアドレス
 	Email string `binding:"required,email" json:"email"`
 
-	// Password パスワード（8文字以上）
-	Password string `binding:"required,min=8" json:"password"`
+	// Password パスワード（12文字以上）
+	Password string `binding:"required,min=12" json:"password"`
 }
 
 // SymbolItem defines model for SymbolItem.
