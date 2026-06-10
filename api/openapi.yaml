@@ -559,10 +559,10 @@ components:
             binding: "required,email"
         password:
           type: string
-          minLength: 8
-          description: パスワード（8文字以上）
+          minLength: 12
+          description: パスワード（12文字以上）
           x-oapi-codegen-extra-tags:
-            binding: "required,min=8"
+            binding: "required,min=12"
 
     LoginRequest:
       type: object

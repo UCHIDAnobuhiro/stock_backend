@@ -13,7 +13,9 @@ import (
 
 const (
 	// minPasswordLength はパスワードの最低文字数を定義します。
-	minPasswordLength = 8
+	// NIST SP 800-63B はユーザー選択パスワードに 8 文字以上を要求しているが、
+	// 辞書攻撃への耐性を高めるため、より長い 12 文字を最低長とする。
+	minPasswordLength = 12
 
 	// EnvKeyPasswordPepper はパスワードペッパーの環境変数キーです。
 	EnvKeyPasswordPepper = "PASSWORD_PEPPER"

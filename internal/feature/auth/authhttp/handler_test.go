@@ -120,14 +120,14 @@ func TestAuthHandler_Signup(t *testing.T) {
 	}{
 		{
 			name:           "success: user registration",
-			requestBody:    H{"email": "test@example.com", "password": "password123"},
+			requestBody:    H{"email": "test@example.com", "password": "password12345"},
 			mockSignupFunc: func(ctx context.Context, email, password string) (int64, error) { return 1, nil },
 			expectedStatus: http.StatusCreated,
 			expectedBody:   H{"message": "ok"},
 		},
 		{
 			name:           "failure: invalid email address",
-			requestBody:    H{"email": "invalid-email", "password": "password123"},
+			requestBody:    H{"email": "invalid-email", "password": "password12345"},
 			mockSignupFunc: nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   H{"error": "invalid request"},
@@ -141,7 +141,7 @@ func TestAuthHandler_Signup(t *testing.T) {
 		},
 		{
 			name:        "failure: duplicate email (usecase error)",
-			requestBody: H{"email": "existing@example.com", "password": "password123"},
+			requestBody: H{"email": "existing@example.com", "password": "password12345"},
 			mockSignupFunc: func(ctx context.Context, email, password string) (int64, error) {
 				return 0, errors.New("email already exists")
 			},
@@ -189,7 +189,7 @@ func TestAuthHandler_Login_RateLimited(t *testing.T) {
 
 	w := makeRequest(t, h.Login, http.MethodPost, "/login", H{
 		"email":    "test@example.com",
-		"password": "password123",
+		"password": "password12345",
 	})
 
 	assert.Equal(t, http.StatusTooManyRequests, w.Code)
@@ -219,7 +219,7 @@ func TestAuthHandler_Login(t *testing.T) {
 	}{
 		{
 			name:           "success: user login",
-			requestBody:    H{"email": "test@example.com", "password": "password123"},
+			requestBody:    H{"email": "test@example.com", "password": "password12345"},
 			mockLoginFunc:  func(ctx context.Context, email, password string) (string, error) { return "dummy-jwt-token", nil },
 			expectedStatus: http.StatusOK,
 			expectedBody:   H{"message": "ok"},
@@ -228,7 +228,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		},
 		{
 			name:           "success: user login (secureCookie=true)",
-			requestBody:    H{"email": "test@example.com", "password": "password123"},
+			requestBody:    H{"email": "test@example.com", "password": "password12345"},
 			mockLoginFunc:  func(ctx context.Context, email, password string) (string, error) { return "dummy-jwt-token", nil },
 			expectedStatus: http.StatusOK,
 			expectedBody:   H{"message": "ok"},
@@ -237,7 +237,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		},
 		{
 			name:           "failure: invalid email address",
-			requestBody:    H{"email": "invalid-email", "password": "password123"},
+			requestBody:    H{"email": "invalid-email", "password": "password12345"},
 			mockLoginFunc:  nil, // Usecaseは呼ばれない
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   H{"error": "invalid request"},
@@ -260,7 +260,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		},
 		{
 			name:        "failure: JWT secret not set (usecase error)",
-			requestBody: H{"email": "test@example.com", "password": "password123"},
+			requestBody: H{"email": "test@example.com", "password": "password12345"},
 			mockLoginFunc: func(ctx context.Context, email, password string) (string, error) {
 				return "", errors.New("server misconfigured: JWT_SECRET missing")
 			},

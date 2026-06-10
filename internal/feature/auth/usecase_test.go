@@ -142,7 +142,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 		{
 			name:             "successful signup",
 			email:            "test@example.com",
-			password:         "password123",
+			password:         "password12345",
 			wantErr:          false,
 			verifyBcryptHash: true,
 		},
@@ -151,12 +151,12 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			email:    "test@example.com",
 			password: "short",
 			wantErr:  true,
-			errMsg:   "password must be at least 8 characters long",
+			errMsg:   "password must be at least 12 characters long",
 		},
 		{
 			name:             "password at minimum length",
 			email:            "test@example.com",
-			password:         "12345678",
+			password:         "123456789012",
 			wantErr:          false,
 			verifyBcryptHash: true,
 		},
@@ -165,7 +165,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 			email:    "test@example.com",
 			password: "",
 			wantErr:  true,
-			errMsg:   "password must be at least 8 characters long",
+			errMsg:   "password must be at least 12 characters long",
 		},
 		{
 			name:             "long password",
@@ -177,7 +177,7 @@ func TestAuthUsecase_Signup(t *testing.T) {
 		{
 			name:          "repository create failure",
 			email:         "test@example.com",
-			password:      "password123",
+			password:      "password12345",
 			wantErr:       true,
 			repositoryErr: errors.New("database error"),
 		},
@@ -216,7 +216,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 	t.Parallel() // enable parallel execution for test function
 
 	// Create test user using helper function
-	testUser := createTestUser(t, 1, "test@example.com", "password123")
+	testUser := createTestUser(t, 1, "test@example.com", "password12345")
 
 	tests := []struct {
 		name              string
@@ -233,7 +233,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 		{
 			name:              "successful login",
 			email:             "test@example.com",
-			password:          "password123",
+			password:          "password12345",
 			wantErr:           false,
 			expectedToken:     "mock-jwt-token",
 			findByEmailResult: testUser,
@@ -242,7 +242,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 		{
 			name:           "user not found",
 			email:          "wrong@example.com",
-			password:       "password123",
+			password:       "password12345",
 			wantErr:        true,
 			errMsg:         "invalid email or password",
 			findByEmailErr: errors.New("user not found"),
@@ -258,7 +258,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 		{
 			name:              "JWT generation failure",
 			email:             "test@example.com",
-			password:          "password123",
+			password:          "password12345",
 			wantErr:           true,
 			errMsg:            "failed to generate token: failed to sign token",
 			findByEmailResult: testUser,
@@ -329,12 +329,12 @@ func TestAuthUsecase_PepperApplied(t *testing.T) {
 		mockRepo := &mockUserRepository{
 			CreateFunc: func(ctx context.Context, user *auth.User) error {
 				// 生パスワードではハッシュが一致しないことを確認
-				err := bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte("password123"))
+				err := bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte("password12345"))
 				if err == nil {
 					t.Error("hash should not match raw password when pepper is applied")
 				}
 				// ペッパー適用済みパスワードでは一致することを確認
-				peppered := pepperPasswordForTest("password123", testPepper)
+				peppered := pepperPasswordForTest("password12345", testPepper)
 				if err := bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte(peppered)); err != nil {
 					t.Errorf("hash should match peppered password: %v", err)
 				}
@@ -344,7 +344,7 @@ func TestAuthUsecase_PepperApplied(t *testing.T) {
 		mockJWT := &mockJWTGenerator{}
 
 		uc := auth.NewUsecase(mockRepo, mockJWT, testPepper)
-		_, err := uc.Signup(context.Background(), "test@example.com", "password123")
+		_, err := uc.Signup(context.Background(), "test@example.com", "password12345")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

@@ -244,7 +244,7 @@ sequenceDiagram
 
 **バリデーションルール**
 - `email`: 必須、有効なメールアドレス形式
-- `password`: 必須、最低8文字
+- `password`: 必須、最低12文字
 
 **レスポンス**
 
@@ -499,7 +499,7 @@ graph TB
 
 #### Usecase層
 - **Usecase**（[usecase.go](../../internal/feature/auth/usecase.go)）: 認証ビジネスロジックを実装
-  - パスワードバリデーション（最低8文字）
+  - パスワードバリデーション（最低12文字）
   - パスワードハッシュ化（bcrypt + HMAC-SHA256 ペッパー）
   - タイミング攻撃を防止するパスワード検証（ユーザー未検出時もbcrypt比較を実行）
   - UserRepository / JWTGenerator / UserCreatedHook インターフェースを定義
