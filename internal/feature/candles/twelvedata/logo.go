@@ -44,5 +44,25 @@ func (t *TwelveDataMarket) GetLogoURL(ctx context.Context, symbol string) (strin
 	if logoURL == "" {
 		return "", fmt.Errorf("twelvedata: empty logo url for %q", symbol)
 	}
+	if err := validateLogoURL(logoURL); err != nil {
+		return "", fmt.Errorf("twelvedata: invalid logo url for %q: %w", symbol, err)
+	}
 	return logoURL, nil
+}
+
+// validateLogoURL は外部APIが返したロゴURLを検証します。
+// 取得したURLはDBに保存されフロントエンドへ配信されるため、
+// https以外のスキーム（javascript: 等）やホスト欠落のURLを拒否します。
+func validateLogoURL(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return err
+	}
+	if u.Scheme != "https" {
+		return fmt.Errorf("scheme must be https, got %q", u.Scheme)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("missing host")
+	}
+	return nil
 }
