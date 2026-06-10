@@ -88,6 +88,27 @@ jobs:
       - name: Run go-arch-lint
         run: go tool go-arch-lint check
 
+  # 既知脆弱性スキャン（govulncheck、Go vulnerability database 照合）
+  vuln-scan:
+    name: Vulnerability Scan
+    needs: docs-check
+    if: needs.docs-check.outputs.code_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        run: govulncheck ./...
+
   # ビルド確認とテスト実行
   build-test:
     name: Build & Test
@@ -181,7 +202,7 @@ jobs:
   # GitHub Branch Protectionではこのジョブだけをrequiredに設定する
   ci-gate:
     name: CI Gate
-    needs: [lint, arch-lint, build-test, schema-doc-check]
+    needs: [lint, arch-lint, vuln-scan, build-test, schema-doc-check]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -189,11 +210,13 @@ jobs:
         run: |
           LINT="${{ needs.lint.result }}"
           ARCH_LINT="${{ needs.arch-lint.result }}"
+          VULN_SCAN="${{ needs.vuln-scan.result }}"
           BUILD_TEST="${{ needs.build-test.result }}"
           SCHEMA_DOC="${{ needs.schema-doc-check.result }}"
-          echo "lint=${LINT} arch-lint=${ARCH_LINT} build-test=${BUILD_TEST} schema-doc=${SCHEMA_DOC}"
+          echo "lint=${LINT} arch-lint=${ARCH_LINT} vuln-scan=${VULN_SCAN} build-test=${BUILD_TEST} schema-doc=${SCHEMA_DOC}"
           if [[ "${LINT}" == "success" || "${LINT}" == "skipped" ]] && \
              [[ "${ARCH_LINT}" == "success" || "${ARCH_LINT}" == "skipped" ]] && \
+             [[ "${VULN_SCAN}" == "success" || "${VULN_SCAN}" == "skipped" ]] && \
              [[ "${BUILD_TEST}" == "success" || "${BUILD_TEST}" == "skipped" ]] && \
              [[ "${SCHEMA_DOC}" == "success" || "${SCHEMA_DOC}" == "skipped" ]]; then
             echo "CI passed"
