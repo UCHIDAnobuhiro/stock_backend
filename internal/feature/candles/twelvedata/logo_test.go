@@ -98,6 +98,44 @@ func TestTwelveDataMarket_GetLogoURL_InvalidJSON(t *testing.T) {
 	}
 }
 
+func TestTwelveDataMarket_GetLogoURL_InvalidURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		logoURL string
+	}{
+		{name: "http scheme", logoURL: "http://api.twelvedata.com/logo/apple.com"},
+		{name: "javascript scheme", logoURL: "javascript:alert(1)"},
+		{name: "scheme relative", logoURL: "//api.twelvedata.com/logo/apple.com"},
+		{name: "missing host", logoURL: "https:///logo/apple.com"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"meta":{"symbol":"AAPL"},"url":"` + tt.logoURL + `"}`))
+			}))
+			defer server.Close()
+
+			market := NewTwelveDataMarket(Config{TwelveDataAPIKey: "test-key", BaseURL: server.URL}, server.Client())
+
+			_, err := market.GetLogoURL(context.Background(), "AAPL")
+
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if !strings.Contains(err.Error(), "invalid logo url") {
+				t.Errorf("expected invalid logo url error, got %v", err)
+			}
+		})
+	}
+}
+
 func TestTwelveDataMarket_GetLogoURL_EmptyURL(t *testing.T) {
 	t.Parallel()
 
