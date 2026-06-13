@@ -41,7 +41,7 @@ services:
       dockerfile: docker/Dockerfile.api.dev
     container_name: stock-backend
     env_file:
-      - ./.env.app
+      - ./.env
     environment:
       APP_ENV: docker-dev
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
@@ -71,7 +71,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.api.dev
     env_file:
-      - ./.env.app
+      - ./.env
     volumes:
       - ..:/app
       - go-mod-cache:/go/pkg/mod
@@ -89,7 +89,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.api.dev
     env_file:
-      - ./.env.app
+      - ./.env
     volumes:
       - ..:/app
       - go-mod-cache:/go/pkg/mod
@@ -108,7 +108,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.migrate
     env_file:
-      - ./.env.app
+      - ./.env
     restart: "no"
     depends_on:
       db:
@@ -120,7 +120,7 @@ services:
     image: postgres:18
     container_name: stock-seed
     env_file:
-      - ./.env.app
+      - ./.env
     volumes:
       - ../db/seed/seed.sql:/seed.sql:ro
     command:
